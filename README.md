@@ -26,8 +26,7 @@ VirtAI - A smart AI-powered interactive system with ASR (Automatic Speech Recogn
      ```bash
      $ conda activate project
      ```
-
-> [!TIP] CLI Setup
+> [!TIP]
 > Setup your command line interface for better readability:
 > ```bash
 > $ export PS1="\[\033[01;32m\]\u@\h:\w\n\[\033[00m\]\$ "
