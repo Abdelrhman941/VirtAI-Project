@@ -1,8 +1,68 @@
-# VirtAI-Project
-VirtAI - A smart AI-powered interactive system. Graduation Project.
+# **VirtAI-Project**
 
-1- [1] Abdelrhman     
-2- [1] Hassan       
-3- [1] Abdallah       
-4- [1] Mostafa       
-5- [1] Mohamed       
+VirtAI - A smart AI-powered interactive system with ASR (Automatic Speech Recognition) and VAD (Voice Activity Detection) capabilities. Graduation Project.
+
+## **Overview**
+
+VirtAI provides a production-ready FastAPI service that combines:
+- **ASR**: Speech-to-text transcription using FunASR SenseVoice
+- **VAD**: Voice activity detection using Silero VAD
+- **Avatar**: Lip-sync and facial animation (LiteAvatar, MuseTalk, LAM)
+- **RESTful API**: Clean, well-documented endpoints with type safety
+- **Clean Architecture**: Maintainable, testable, and scalable design
+
+## **Project Structure**
+
+```
+
+```
+
+## **Requirements**
+
+- **Python 3.9 or later** (recommended: 3.11)
+- Install Python using **MiniConda**:
+
+  1. Download and install MiniConda from [here](https://docs.anaconda.com/free/miniconda/#quick-command-line-install)
+
+  2. Create a new environment:
+     ```bash
+     $ conda create -n project python=3.11 -y
+     ```
+
+  3. Activate the environment:
+     ```bash
+     $ conda activate project
+     ```
+
+> ### 💡 **[Optional] CLI Setup**
+> Setup your command line interface for better readability:
+> ```bash
+> $ export PS1="\[\033[01;32m\]\u@\h:\w\n\[\033[00m\]\$ "
+> ```
+
+---
+
+## **Installation**
+
+### **1. Install Required Packages**
+
+**a) Install core dependencies:**
+```bash
+$ pip install -r requirements.txt
+```
+
+**b) Install PyTorch with CUDA support** (if you have a compatible GPU):
+```bash
+$ pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+```
+
+> For CPU-only installation, use:
+> ```bash
+> $ pip install torch torchvision torchaudio
+> ```
+
+### **2. Setup Environment Variables**
+
+```bash
+$ cp .env.example .env
+```
