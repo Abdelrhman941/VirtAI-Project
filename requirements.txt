@@ -1,0 +1,11 @@
+# Core AI & Models
+faster-whisper
+torch
+numpy
+
+# Audio Input/Output
+pyaudio
+
+# Configuration & Environment
+python-dotenv
+pyyaml

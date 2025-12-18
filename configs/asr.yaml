@@ -1,0 +1,28 @@
+asr:
+  name: whisper_faster
+  enabled: true
+
+  model:
+    model_size: "small"     # tiny.en | base.en | small | medium | large
+    device: "cpu"          # cpu | cuda
+    # 🚀 Performance Boost: Changed to 'int8' to double the speed on CPU
+    compute_type: "int8"   # float16 | int8 | float32
+
+  vad:
+    enabled: true
+    type: silero
+    threshold: 0.5         # Sensitivity threshold (0.5 is balanced)
+    min_speech_duration_ms: 700
+    # ⚡ Speed Tweak: Reduced wait time to 500ms for faster response
+    min_silence_duration_ms: 500 
+
+  audio:
+    sample_rate: 16000
+    chunk_size: 512        # Reduced to 512 to lower memory load
+    channels: 1
+    format: int16
+
+  output:
+    type: asr_result
+    language: ar           # Set to 'ar' for Arabic language
+    is_final: true
