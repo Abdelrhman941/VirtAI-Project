@@ -1,0 +1,144 @@
+default:
+  # ------------------------------------------------------------
+  # Logger Configuration: Control the level of detail in logs
+  # Available levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  # DEBUG = Everything          (for development)
+  # INFO  = General information (for production)
+  # ERROR = Errors only
+  # ------------------------------
+  logger:
+    log_level: "INFO"
+
+  # ------------------------------------------------------------
+  # Service Configuration
+  # ------------------------------
+  service:
+    # Host:
+    # - "127.0.0.1" = Local only (your computer)
+    # - "0.0.0.0"   = Accepts connections from network
+    host: "0.0.0.0"
+
+    # Port the server runs on
+    port: 8282
+
+  # ------------------------------------------------------------
+  # Chat Engine Configuration
+  # ------------------------------
+  # Main chat engine
+  chat_engine:
+    # Location for AI model storage
+    model_root: "models"
+
+    # Number of simultaneous conversations ex: 5 => Can serve 5 users at the same time
+    concurrent_limit: 5
+
+    # Search paths for Handlers
+    handler_search_path:
+      - "src/handlers"
+
+    # ------------------------------------------------------------
+    #  Handler Configurations:
+    # ------------------------------
+    # Each Handler = Specific task
+    handler_configs:
+
+      # ---------------------------------
+      # LAM Client (Avatar Display):
+      # ---------------------------------
+      # Responsible for avatar display
+      LamClient:
+        module: client/h5_rendering_client/client_handler_lam
+        asset_path: "lam_samples/barbara.zip"
+        # Session duration in seconds (900 = 15 minutes)
+        connection_ttl: 900
+
+      # ---------------------------------
+      # Silero VAD (Voice Detection):
+      # ---------------------------------
+      # Detects when user starts/stops speaking
+      SileroVad:
+        # Threshold considered as "speech" ex: 0.5 => 50% confidence it's human voice
+        speaking_threshold: 0.5
+
+        # Start delay (in samples) - to avoid cutting off the beginning of speech ex: 2048 samples ≈ 128ms at 16kHz
+        start_delay: 2048
+
+        # End delay (in milliseconds) - to avoid cutting off the end of speech ex: 5000ms = 5 seconds silence → user finished speaking
+        end_delay: 5000
+
+        # Buffer size for looking back
+        buffer_look_back: 5000
+
+        # Padding around speech
+        speech_padding: 512
+
+      # ---------------------------------
+      # SenseVoice (Speech-to-Text):
+      # ---------------------------------
+      # Converts speech to text
+      SenseVoice:
+        # Enable/disable
+        enabled: true
+
+        # Handler path
+        module: asr/sensevoice/asr_handler_sensevoice
+
+        # Model name from Hugging Face
+        model_name: "iic/SenseVoiceSmall"
+
+      # ---------------------------------
+      # CosyVoice (Text-to-Speech):
+      # ---------------------------------
+      # Converts text to speech
+      CosyVoice:
+        enabled: true
+        module: tts/bailian_tts/tts_handler_cosyvoice_bailian
+
+        # Voice to use
+        voice: "longxiaocheng"
+
+        # Model name
+        model_name: "cosyvoice-v1"
+
+        # api_key: ""
+
+      # ---------------------------------
+      # LLM (Language Model):
+      # ---------------------------------
+      # The "brain" that thinks and responds
+      LLMOpenAICompatible:
+        enabled: true
+        module: llm/openai_compatible/llm_handler_openai_compatible
+
+        # Model name
+        model_name: "qwen-plus"
+
+        # Does it support video input?
+        enable_video_input: false
+
+        # Number of conversation messages to keep in history (for context) ex: 20 => Last 20 messages (10 from you + 10 from AI)
+        history_length: 20
+
+        # Basic instructions for AI
+        system_prompt: >
+          You are a smart and friendly assistant.
+          Answer with short, useful responses (2-3 sentences only).
+          Use correct punctuation.
+          Don't talk about punctuation itself.
+
+        # API URL
+        api_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+
+        # Other examples:
+        # api_url: 'http://127.0.0.1:11434/v1'  # Ollama (local)
+        # api_url: 'https://api.openai.com/v1'  # Original OpenAI
+
+        # API key (reads from .env)
+        # api_key: ""
+
+      # ---------------------------------
+      # LAM Driver (Avatar Animation):
+      # ---------------------------------
+      # Controls facial expressions based on audio
+      LAM_Driver:
+        module: avatar/lam/avatar_handler_lam_audio2expression

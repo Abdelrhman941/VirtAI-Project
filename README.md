@@ -3,12 +3,29 @@
 ## **Overview**
 VirtAI - A smart AI-powered interactive system with ASR (Automatic Speech Recognition) and VAD (Voice Activity Detection) capabilities. Graduation Project.
 
+<body>
+    <div style = "
+        width: 100%;
+        border-radius: 100px;
+        height: 20px;
+        background: linear-gradient(to right,#B6AE9F,#C5C7BC,#DEDED1,#C5C7BC,#B6AE9F);">
+    </div>
+</body>
 
 ## **Project Structure**
 
 ```
 
 ```
+
+<body>
+    <div style = "
+        width: 100%;
+        border-radius: 100px;
+        height: 20px;
+        background: linear-gradient(to right,#B6AE9F,#C5C7BC,#DEDED1,#C5C7BC,#B6AE9F);">
+    </div>
+</body>
 
 ## **Requirements**
 
@@ -32,7 +49,14 @@ VirtAI - A smart AI-powered interactive system with ASR (Automatic Speech Recogn
 > $ export PS1="\[\033[01;32m\]\u@\h:\w\n\[\033[00m\]\$ "
 > ```
 
----
+<body>
+    <div style = "
+        width: 100%;
+        border-radius: 100px;
+        height: 20px;
+        background: linear-gradient(to right,#B6AE9F,#C5C7BC,#DEDED1,#C5C7BC,#B6AE9F);">
+    </div>
+</body>
 
 ## **Installation**
 
@@ -56,4 +80,52 @@ VirtAI - A smart AI-powered interactive system with ASR (Automatic Speech Recogn
 
 ```bash
 $ cp .env.example .env
+```
+
+<body>
+    <div style = "
+        width: 100%;
+        border-radius: 100px;
+        height: 20px;
+        background: linear-gradient(to right,#B6AE9F,#C5C7BC,#DEDED1,#C5C7BC,#B6AE9F);">
+    </div>
+</body>
+
+## **Configuration Files**
+`chat_with_lam.yaml`: Configuration file for the chat system.
+   - This file contains all project settings
+   - You can modify it without changing the code!
+
+`settings.py`: Python module to load and parse the YAML configuration file.
+   - Loads settings from `chat_with_lam.yaml`
+   - Provides easy-to-use properties for accessing settings
+   - Integrates values from .env and YAML
+   - Usage Example:
+        ```python
+        >>> from src.config import settings
+        >>> print(settings.server_port)
+        8282
+        ```
+
+<body>
+    <div style = "
+        width: 100%;
+        border-radius: 100px;
+        height: 20px;
+        background: linear-gradient(to right,#B6AE9F,#C5C7BC,#DEDED1,#C5C7BC,#B6AE9F);">
+    </div>
+</body>
+
+## **Testing**
+
+- **Testing YAML Configuration:**
+To ensure your YAML configuration file is valid and correctly set up, run the following test script:
+```bash
+$ python src/tests/test_yaml.py
+```
+
+- **Testing settings.py:**
+To test the `settings.py` module and verify that settings are loaded correctly, run:
+```bash
+$ python src/config/settings.py
 ```
