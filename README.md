@@ -107,6 +107,14 @@ $ cp .env.example .env
         8282
         ```
 
+`logger.py`: Logging configuration module.
+   - Sets up logging based on settings from `settings.py`
+   - Usage Example:
+        ```python
+        >>> from src.config.logger import logger
+        >>> logger.info("This is an info message")
+        ```
+
 <body>
     <div style = "
         width: 100%;
@@ -128,4 +136,16 @@ $ python src/tests/test_yaml.py
 To test the `settings.py` module and verify that settings are loaded correctly, run:
 ```bash
 $ python src/config/settings.py
+```
+
+- **Testing logger.py:**
+To test the logging setup and ensure logs are generated as expected, run:
+```bash
+$ python src/config/logger.py
+```
+
+- **Testing config:**
+To teset the overall configuration setup, run:
+```bash
+$ python src/tests/test_config.py
 ```

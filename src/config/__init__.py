@@ -4,8 +4,39 @@ Contains:
 - logger.py   : Logging system
 """
 
-from .settings import settings
-from .logger import log
+# ------------------------------------------------------------
+# Setup Logger First:
+# ------------------------------
+from .logger import setup_logger, logger, LogContext, log_exception
 
-# When someone does: from src.config import * => Only these items will be imported
-__all__ = ["settings", "log"]
+# Initial setup
+setup_logger()
+
+# ------------------------------------------------------------
+# Load Settings:
+# ------------------------------
+from .settings import settings
+
+# ------------------------------------------------------------
+# Reconfigure Logger based on Settings"
+# ------------------------------
+# Now we have settings from YAML, use them
+setup_logger(
+    log_level=settings.log_level,
+    log_dir="logs",
+    app_name="avatar_chatbot",
+    console_output=True,
+    file_output=True,
+)
+
+logger.info("✅ All settings loaded successfully")
+
+# ------------------------------------------------------------
+# Exports:
+# ------------------------------
+__all__ = [
+    "settings",
+    "logger",
+    "LogContext",
+    "log_exception",
+]
