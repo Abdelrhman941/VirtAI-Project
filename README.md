@@ -124,6 +124,27 @@ $ cp .env.example .env
     </div>
 </body>
 
+## **Handlers**
+`Base Handler`: Abstract base class for all handlers.
+   - Defines common interface and methods for all handlers
+   - Must implement 3 core functions: initialize, process, cleanup
+   - Usage Example:
+        ```python
+        >>> from src.handlers import BaseHandler
+        >>> class MyHandler(BaseHandler):
+        ...     def handle(self, data):
+        ...         pass
+        ```
+
+<body>
+    <div style = "
+        width: 100%;
+        border-radius: 100px;
+        height: 20px;
+        background: linear-gradient(to right,#B6AE9F,#C5C7BC,#DEDED1,#C5C7BC,#B6AE9F);">
+    </div>
+</body>
+
 ## **Testing**
 
 - **Testing YAML Configuration:**
@@ -138,7 +159,7 @@ To test the `settings.py` module and verify that settings are loaded correctly, 
 $ python src/config/settings.py
 ```
 
-- **Testing logger.py:**
+- **Testing `logger.py`:**
 To test the logging setup and ensure logs are generated as expected, run:
 ```bash
 $ python src/config/logger.py
@@ -148,4 +169,10 @@ $ python src/config/logger.py
 To teset the overall configuration setup, run:
 ```bash
 $ python src/tests/test_config.py
+```
+
+- **Testing Base Handler:**
+To test the `BaseHandler` class and its functionality, run:
+```bash
+$ python src/handlers/base_handler.py
 ```
