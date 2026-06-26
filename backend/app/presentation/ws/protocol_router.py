@@ -24,6 +24,10 @@ def validate_message(raw_message: dict) -> ChatUserMessage | ChatAbort | ClientS
     if "type" not in raw_message:
         raise ValueError("Message missing 'type' field")
 
+    # Map "text" to "chat.user_message" for frontend compatibility
+    if raw_message["type"] == "text":
+        raw_message["type"] = "chat.user_message"
+
     # Use discriminated union to validate payload structure
     try:
         envelope = envelope_adapter.validate_python(raw_message)
@@ -88,6 +92,11 @@ class ProtocolRouter:
         if msg_type_str == "ws.ack":
             await self._handle_ws_ack(data)
             return
+
+        if msg_type_str == "text":
+            msg_type_str = "chat.user_message"
+            data["type"] = "chat.user_message"
+            raw = json.dumps(data)
 
         if "." in msg_type_str:
             await self._route_validated_message(raw)

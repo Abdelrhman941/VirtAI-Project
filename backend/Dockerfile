@@ -33,6 +33,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     gosu \
     tesseract-ocr \
     tesseract-ocr-eng \
+    tesseract-ocr-ara \
     poppler-utils && \
     tesseract --version
 

@@ -68,6 +68,7 @@ async def run_ingestion_task(
                 parser=None,
                 chunker=None,
                 embedder=None,
+                vision_provider=None,
                 db_session_factory=cast("Any", get_short_session),
                 crud_repo_factory=DocumentCrudRepository,
                 state_repo_factory=IngestionStateRepository,
@@ -116,6 +117,7 @@ async def run_ingestion_task(
                     parser=None,
                     chunker=None,
                     embedder=None,
+                    vision_provider=None,
                     db_session_factory=cast("Any", get_short_session),
                     crud_repo_factory=DocumentCrudRepository,
                     state_repo_factory=IngestionStateRepository,
@@ -241,12 +243,19 @@ async def _run_ingestion(
     settings = get_settings()
     chunker = SmartChunker(chunk_size=settings.CHUNK_SIZE, overlap_size=settings.CHUNK_OVERLAP)
 
+    if file_type.startswith("image/"):
+        from app.infrastructure.rag.image_markdown_extractor import ImageMarkdownExtractor
+        parser = ImageMarkdownExtractor(vision_provider=ctx.get("vision_provider"))
+    else:
+        parser = PDFMarkdownExtractor()
+
     # Instantiate use case
     use_case = IngestDocumentUseCase(
         storage=storage,
-        parser=PDFMarkdownExtractor(),
+        parser=parser,
         chunker=cast("Any", chunker),
         embedder=embedder,
+        vision_provider=ctx.get("vision_provider"),
         db_session_factory=cast("Any", get_short_session),
         crud_repo_factory=DocumentCrudRepository,
         state_repo_factory=IngestionStateRepository,

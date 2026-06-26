@@ -178,6 +178,7 @@ class DocumentChunk(Base):
             postgresql_with={"m": 16, "ef_construction": 64},
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
+        Index("ix_chunks_active_doc_scope", "is_active", "document_id", "scope_id"),
         UniqueConstraint(
             "document_id", "chunk_order", "chunk_version", name="uq_chunk_order_version"
         ),

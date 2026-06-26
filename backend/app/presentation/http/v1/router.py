@@ -264,30 +264,69 @@ async def explain_websocket_endpoint(
     URL: ws://localhost:8000/api/v1/rag/explain/{document_id}
     """
 
-    # Session Guard: Check if user has already sent a message on this document's session
+    # 1. Extract and validate token from subprotocols
+    token = None
+    subprotocols = websocket.scope.get("subprotocols", [])
+    if "access_token" in subprotocols:
+        try:
+            idx = subprotocols.index("access_token")
+            if idx + 1 < len(subprotocols):
+                token = subprotocols[idx + 1].strip()
+        except ValueError:
+            pass
+
+    if not token:
+        await websocket.close(code=4401, reason="Missing token")
+        return
+
+    from app.shared.security import decode_auth_token
+    from app.shared.ids import parse_uuid
+    try:
+        token_payload = decode_auth_token(token, expected_type="access")
+        user_id = token_payload.user_id
+    except Exception as e:
+        logger.warning(f"[ExplainWS] Invalid token: {e}")
+        await websocket.close(code=4401, reason="Invalid token")
+        return
+
+    parsed_user_id = parse_uuid(user_id)
+    if not parsed_user_id:
+        await websocket.close(code=4401, reason="Invalid token")
+        return
+
+    # 2. Session Guard & Document Ownership
     from sqlalchemy import select
 
     from app.infrastructure.db.models import ChatSession, Document
-    from app.shared.ids import parse_uuid
 
     doc_uuid = parse_uuid(document_id)
-    if doc_uuid:
-        doc = await db.scalar(select(Document).where(Document.id == doc_uuid))
-        if doc and doc.retrieval_scope == "SESSION" and doc.scope_id:
-            session_model = await db.scalar(
-                select(ChatSession).where(ChatSession.id == doc.scope_id)
+    if not doc_uuid:
+        await websocket.close(code=4000, reason="Invalid document ID format")
+        return
+
+    doc = await db.scalar(select(Document).where(Document.id == doc_uuid))
+    if not doc:
+        await websocket.close(code=4404, reason="Document not found")
+        return
+
+    # Security: Verify ownership!
+    if str(doc.user_id) != str(parsed_user_id):
+        logger.warning(f"[ExplainWS] Unauthorized access attempt: User {user_id} tried to access Doc {document_id}")
+        await websocket.close(code=4403, reason="Unauthorized")
+        return
+
+    if doc.retrieval_scope == "SESSION" and doc.scope_id:
+        session_model = await db.scalar(
+            select(ChatSession).where(ChatSession.id == doc.scope_id)
+        )
+        if session_model and session_model.message_count > 0:
+            await websocket.close(
+                code=1008, reason="Cannot present document: chat already started."
             )
-            if session_model and session_model.message_count > 0:
-                await websocket.close(
-                    code=1008, reason="Cannot present document: chat already started."
-                )
-                return
+            return
 
     # Accept the websocket
-    await websocket.accept()
-    user_id = (
-        "test_user"  # Mocked for simplicity since this is an isolated route for the assignment
-    )
+    await websocket.accept(subprotocol="access_token")
 
     handler = ExplainHandler(
         websocket=websocket,

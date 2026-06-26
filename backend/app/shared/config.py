@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Union
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -54,10 +54,9 @@ class Settings(BaseSettings):
                 return [origin.strip() for origin in v.split(",")]
         return v
 
-    # Groq
-    GROQ_API_KEY: str = ""
 
     # ASR
+    ASR_PROVIDER: Literal["groq", "disabled"] = "groq"
     ASR_MODEL: str = "whisper-large-v3"
     ASR_LANGUAGE: str = "en"
     ASR_RESPONSE_FORMAT: str = "verbose_json"
@@ -65,7 +64,7 @@ class Settings(BaseSettings):
     AUDIO_CHUNK_TIMEOUT: int = 30
 
     # LLM for chat
-    LLM_MODEL: str = "llama-3.3-70b-versatile"
+
     LLM_MAX_TOKENS: int = 512
     LLM_TEMPERATURE: float = 0.7
     LLM_SYSTEM_PROMPT: str = (
@@ -172,25 +171,36 @@ class Settings(BaseSettings):
     RAG_MIN_HYBRID_SCORE: float = 0.015
     RAG_MIN_DENSE_SCORE: float = 0.5
 
-    EMBEDDING_PROVIDER: Literal["openai", "cohere", "fastembed"] = "fastembed"
-    EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
-    EMBEDDING_DIMENSION: int = 384
+    EMBEDDING_PROVIDER: Literal["cohere", "openai", "fastembed"] = "cohere"
+    EMBEDDING_MODEL: str = Field(
+        default="embed-multilingual-v3.0",
+        validation_alias=AliasChoices("EMBEDDING_MODEL", "EMBEDDING_MODEL_ID")
+    )
+    EMBEDDING_DIMENSION: int = Field(
+        default=1024,
+        validation_alias=AliasChoices("EMBEDDING_DIMENSION", "EMBEDDING_MODEL_SIZE")
+    )
     FASTEMBED_CACHE_DIR: str = str(BASE_DIR / ".cache" / "fastembed")
     FASTEMBED_LAZY_LOAD: bool = False
 
-    GENERATION_PROVIDER: Literal["openai", "cohere"] = "openai"
-    GENERATION_MODEL: str = "gpt-3.5-turbo"
+    GENERATION_PROVIDER: Literal["cohere"] = "cohere"
+    GENERATION_MODEL: str = "command-a-03-2025"
     GENERATION_MAX_TOKENS: int = 1000
     GENERATION_TEMPERATURE: float = 0.3
 
     RERANKER_PROVIDER: Literal["cohere"] = "cohere"
-    RERANKER_MODEL: str = "rerank-english-v3.0"
+    RERANKER_MODEL: str = "rerank-multilingual-v3.0"
     CROSS_ENCODER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+    VISION_PROVIDER: Literal["gemini", "disabled"] = "gemini"
+    VISION_MODEL: str = "gemini-2.5-flash"
+    VISION_MAX_IMAGES_PER_DOC: int = 15
+    GOOGLE_API_KEY: str = ""
 
     OPENAI_API_KEY: str = ""
     COHERE_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
     HF_TOKEN: str = ""
-
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 200
     EMBEDDING_BATCH_SIZE: int = 32
@@ -251,6 +261,20 @@ class Settings(BaseSettings):
                 "Use DEBUG=true|false separately."
             )
         return v
+
+    @model_validator(mode="after")
+    def warn_legacy_env_vars(self) -> "Settings":
+        import os
+        from loguru import logger
+        legacy_map = {
+            "EMBEDDING_BACKEND": "EMBEDDING_PROVIDER",
+            "EMBEDDING_MODEL_ID": "EMBEDDING_MODEL",
+            "EMBEDDING_MODEL_SIZE": "EMBEDDING_DIMENSION",
+        }
+        for legacy, new in legacy_map.items():
+            if os.getenv(legacy):
+                logger.warning(f"[CONFIG] Legacy env var '{legacy}' detected. Use '{new}' instead.")
+        return self
 
     @model_validator(mode="after")
     def validate_production_safety(self):

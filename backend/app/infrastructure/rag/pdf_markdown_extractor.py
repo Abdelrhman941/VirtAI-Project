@@ -85,13 +85,13 @@ class PDFMarkdownExtractor(DocumentParser):
                 cleaned = self._clean_markdown_text(page_md)
 
                 # OCR fallback for scanned/image pages
-                if len(cleaned.strip()) < 50:
+                if len(cleaned.strip()) < 30:
                     if _HAS_OCR:
-                        logger.debug(f"Page {page_index + 1}: <50 chars — running OCR fallback")
+                        logger.debug(f"Page {page_index + 1}: <30 chars — running OCR fallback")
                         cleaned = self._extract_page_via_ocr(file_path, page_index + 1)
                     else:
                         logger.debug(
-                            f"Page {page_index + 1}: <50 chars — OCR unavailable, skipping"
+                            f"Page {page_index + 1}: <30 chars — OCR unavailable, skipping"
                         )
 
                 if not cleaned.strip():
@@ -123,7 +123,9 @@ class PDFMarkdownExtractor(DocumentParser):
         import os
         import tempfile
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        import mimetypes
+        ext = mimetypes.guess_extension(file_type) or ".pdf"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
             tmp.write(data)
             tmp_path = tmp.name
         try:
@@ -172,6 +174,26 @@ class PDFMarkdownExtractor(DocumentParser):
         for table_id, table_text in table_blocks:
             if table_id not in emitted_table_ids:
                 markdown_lines.extend(["", table_text.strip(), ""])
+
+        # Extract images
+        try:
+            image_list = page.get_images(full=True)
+            import base64
+            for img_info in image_list:
+                xref = img_info[0]
+                try:
+                    base_image = page.parent.extract_image(xref)
+                    image_bytes = base_image["image"]
+                    ext = base_image["ext"]
+                    # Filter out tiny images (logos/icons)
+                    if len(image_bytes) < 1024:
+                        continue
+                    b64 = base64.b64encode(image_bytes).decode("ascii")
+                    markdown_lines.append(f"\n![image_base64_extract](data:image/{ext};base64,{b64})\n")
+                except Exception as e:
+                    logger.debug(f"Failed to extract image xref {xref}: {e}")
+        except Exception:
+            pass
 
         return "\n".join(markdown_lines)
 
@@ -312,7 +334,11 @@ class PDFMarkdownExtractor(DocumentParser):
             return ""
         try:
             images = convert_from_path(file_path, first_page=page_number, last_page=page_number)
-            parts = [pytesseract.image_to_string(img, lang="eng") for img in images]
+            try:
+                parts = [pytesseract.image_to_string(img, lang="eng+ara") for img in images]
+            except Exception as e:
+                logger.warning(f"OCR failed for eng+ara on page {page_number}, falling back to eng: {e}")
+                parts = [pytesseract.image_to_string(img, lang="eng") for img in images]
             return "\n\n".join(p for p in parts if p.strip())
         except Exception as e:
             logger.warning(f"OCR failed for page {page_number}: {e}")

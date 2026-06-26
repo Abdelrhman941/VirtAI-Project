@@ -1,0 +1,5 @@
+queries:
+  - query: "What is VirtAI?"
+    expected_document: "virtai_overview.pdf"
+  - query: "How to setup the project?"
+    expected_document: "setup_guide.md"

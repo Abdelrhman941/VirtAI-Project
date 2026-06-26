@@ -12,6 +12,7 @@ from app.domain.rag.ports import (
     ChunkingStrategy,
     DocumentParser,
     EmbeddingProvider,
+    VisionPort,
 )
 from app.domain.storage.ports import StorageProvider
 from app.shared.config import get_settings
@@ -31,6 +32,7 @@ class IngestDocumentUseCase:
         parser: DocumentParser | None,
         chunker: ChunkingStrategy | None,
         embedder: EmbeddingProvider | None,
+        vision_provider: VisionPort | None,
         db_session_factory: Callable[[], AbstractAsyncContextManager[AsyncSession]],
         crud_repo_factory: Callable[[AsyncSession], Any],
         state_repo_factory: Callable[[AsyncSession], Any],
@@ -41,6 +43,7 @@ class IngestDocumentUseCase:
         self.parser = parser
         self.chunker = chunker
         self.embedder = embedder
+        self.vision_provider = vision_provider
         self.db_session_factory = db_session_factory
         self.crud_repo_factory = crud_repo_factory
         self.state_repo_factory = state_repo_factory
@@ -84,7 +87,45 @@ class IngestDocumentUseCase:
             raise ValueError("Parser is required for this stage")
         raw_text = await self.parser.parse_bytes(file_bytes, file_type)
 
+        # 2.5 VISION PROCESSING (MUST BE DONE BEFORE NORMALIZATION!)
+        import re
+        import base64
+        
+        # Regex to find ![image_base64_extract](data:image/ext;base64,...)
+        img_pattern = re.compile(r'!\[image_base64_extract\]\(data:image/[^;]+;base64,([^)]+)\)')
+        matches = img_pattern.findall(raw_text)
+        
+        if matches and self.vision_provider:
+            max_images = self.settings.VISION_MAX_IMAGES_PER_DOC
+            process_matches = matches[:max_images]
+                
+            image_bytes_list = []
+            for b64 in process_matches:
+                try:
+                    image_bytes_list.append(base64.b64decode(b64))
+                except Exception as e:
+                    logger.warning(f"Failed to decode base64 image: {e}")
+            
+            if image_bytes_list:
+                descriptions = await self.vision_provider.describe_batch(image_bytes_list)
+                
+                # Replace the matches in the raw string before normalization
+                def replace_img(match):
+                    b64 = match.group(1)
+                    if b64 in process_matches:
+                        idx = process_matches.index(b64)
+                        desc = descriptions[idx]
+                        return f"\n[Visual content: {desc}]\n"
+                    return "[Image omitted - exceeded max limit]"
+                
+                raw_text = img_pattern.sub(replace_img, raw_text)
+
+        # Remove any remaining raw base64 images that lacked provider or exceeded max
+        raw_text = img_pattern.sub("[Image omitted]", raw_text)
+        
+        # 3. NORMALIZATION (Safe to do now, no Base64 to corrupt or explode tokens)
         normalized = normalize_text(raw_text)
+
         if len(normalized.strip()) == 0:
             raise EmptyDocumentError("Document parsed to empty text")
 
@@ -158,13 +199,17 @@ class IngestDocumentUseCase:
             # Index batch in short transaction
             chunks_to_store = []
             for j, (text, emb) in enumerate(zip(batch_texts, embeddings, strict=False)):
+                chunk_metadata = {"source": filename}
+                if "[Visual content:" in text:
+                    chunk_metadata["source_type"] = "vision"
+                    
                 chunk = DocumentChunk(
                     id=None,
                     document_id=doc_uuid,
                     chunk_text=text,
                     chunk_order=i + j,
                     embedding=emb,
-                    metadata={"source": filename},
+                    metadata=chunk_metadata,
                     chunk_version=next_version,
                     is_active=False,  # Shadow indexing
                     retrieval_scope=retrieval_scope,

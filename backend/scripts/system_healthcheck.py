@@ -122,19 +122,26 @@ async def run_healthcheck() -> None:
 
             provider = FastEmbedProvider(model_name=settings.EMBEDDING_MODEL)
             test_vec = await provider.embed("Healthcheck test sentence for dimension verification.")
-            if test_vec is None:
-                raise RuntimeError("Embedding failed")
-            dim = len(test_vec)
-            if dim != settings.EMBEDDING_DIMENSION:
-                fail(
-                    f"Embedding dimension mismatch! Config={settings.EMBEDDING_DIMENSION}, model={dim}"
-                )
-            logger.info(f"  ✅ FastEmbed OK — dimension={dim}")
+        elif settings.EMBEDDING_PROVIDER == "cohere":
+            from app.infrastructure.rag.cohere_embedder import CohereEmbedder
+            if not settings.COHERE_API_KEY:
+                fail("COHERE_API_KEY is missing")
+            provider = CohereEmbedder(model_name=settings.EMBEDDING_MODEL, api_key=settings.COHERE_API_KEY)
+            test_vec = await provider.embed("Healthcheck test sentence for dimension verification.")
         else:
             logger.warning(
                 f"  ⚠ Skipping deep API verification for provider={settings.EMBEDDING_PROVIDER}"
             )
             test_vec = [0.0] * settings.EMBEDDING_DIMENSION
+
+        if test_vec is None:
+            raise RuntimeError("Embedding failed")
+        dim = len(test_vec)
+        if dim != settings.EMBEDDING_DIMENSION:
+            fail(
+                f"Embedding dimension mismatch! Config={settings.EMBEDDING_DIMENSION}, model={dim}"
+            )
+        logger.info(f"  ✅ {settings.EMBEDDING_PROVIDER} OK — dimension={dim}")
     except SystemExit:
         raise
     except Exception as e:
