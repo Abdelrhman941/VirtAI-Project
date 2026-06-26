@@ -7,4 +7,4 @@
 - [Hassan Zoghly]()
 - [Mostafa Nasser](https://www.linkedin.com/in/mostafa-nasser-876442322/)
 - [Mohamed sharaf]()
-- [Abdallah Alhesh]()
+- [Abdallah Alhesh](https://www.linkedin.com/in/abdallah-mohamed-alhesh/)
