@@ -98,6 +98,7 @@ class WSManager {
       }
       this.clearTimers();
       this.isConnecting = false;
+      this.isIntentionalClose = false; // confirm this exists
       // Reset session state ONLY (not auth state)
       resetSessionState(this.sessionState);
     }
@@ -115,8 +116,14 @@ class WSManager {
 
     const token = tokenOverride ?? useAuthStore.getState().accessToken;
     if (!token) {
-      this.clearReconnectTimer();
-      this.updateStatus(ConnectionState.DISCONNECTED);
+      this.isConnecting = false;
+      if (!this.isIntentionalClose) {
+        if (import.meta.env.DEV) console.warn('[WS] connect(): token not ready, scheduling retry');
+        this.scheduleReconnect('token-not-ready');
+      } else {
+        this.clearReconnectTimer();
+        this.updateStatus(ConnectionState.DISCONNECTED);
+      }
       return;
     }
 
