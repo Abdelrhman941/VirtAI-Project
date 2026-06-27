@@ -17,6 +17,7 @@ interface AvatarTopBarProps {
   onGenerateDiagram: () => void;
   onGenerateSummary: () => void;
   onStartExplain: () => void;
+  onStartQuiz: () => void;
   onOpenSettings?: () => void;
 }
 
@@ -31,9 +32,9 @@ export function AvatarTopBar({
   onGenerateDiagram,
   onGenerateSummary,
   onStartExplain,
+  onStartQuiz,
   onOpenSettings
 }: AvatarTopBarProps) {
-  const navigate = useNavigate();
 
   return (
     <header className="w-full pb-2 relative z-[60]">
@@ -74,7 +75,7 @@ export function AvatarTopBar({
           />
           
           <ToolbarButton
-            onClick={() => navigate('/quiz')}
+            onClick={onStartQuiz}
             disabled={!hasDocuments}
             title={!hasDocuments ? "Please upload syllabus or reference materials to generate a quiz" : "Start Knowledge Check"}
             icon={<FiEdit3 size={15} />}

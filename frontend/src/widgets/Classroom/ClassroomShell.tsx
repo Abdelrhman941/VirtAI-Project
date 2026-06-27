@@ -85,6 +85,7 @@ export default function ClassroomShell() {
   const { documents } = useDocumentList(currentSessionId);
   const [isDiagramOpen, setIsDiagramOpen] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
 
   const handleGenerateDiagram = () => {
     setIsDiagramOpen(true);
@@ -92,6 +93,10 @@ export default function ClassroomShell() {
 
   const handleGenerateSummary = () => {
     setIsSummaryOpen(true);
+  };
+
+  const handleGenerateQuiz = () => {
+    setIsQuizOpen(true);
   };
 
   const {
@@ -187,7 +192,7 @@ export default function ClassroomShell() {
   const desktopMessagesEndRef = useRef<HTMLDivElement>(null);
   const desktopChatScrollRef = useRef<HTMLDivElement>(null);
   const desktopTextareaRef = useRef<HTMLTextAreaElement>(null);
-  
+
   // Mobile Refs
   const mobileMessagesEndRef = useRef<HTMLDivElement>(null);
   const mobileChatScrollRef = useRef<HTMLDivElement>(null);
@@ -255,7 +260,7 @@ export default function ClassroomShell() {
     const { chatScrollRef } = getActiveRefs();
     const el = chatScrollRef.current;
     if (!el) return;
-    
+
     // Add a small 1px buffer to account for subpixel rendering issues
     const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_STICK_THRESHOLD_PX + 1;
     shouldStickToBottom.current = isAtBottom;
@@ -273,7 +278,7 @@ export default function ClassroomShell() {
     const currentLength = currentSession?.messages?.length || 0;
     const isNewMessage = currentLength > prevMessagesLength.current;
     const isNewThinkingState = conversationState.pipelineState === 'thinking' && prevPipelineState.current !== 'thinking';
-    
+
     prevMessagesLength.current = currentLength;
     prevPipelineState.current = conversationState.pipelineState;
 
@@ -285,7 +290,7 @@ export default function ClassroomShell() {
     if (shouldStickToBottom.current) {
       // Determine if we are actively streaming high-frequency chunks
       const isStreaming = !!conversationState.currentMessage || !!interimTranscript;
-      
+
       // Use 'auto' during streaming to prevent browser smooth-scroll cancellation (jitter/stuck).
       // Use 'smooth' for new message initialization or when thinking state starts for premium UX.
       const behavior = (isNewMessage || isNewThinkingState) && !isStreaming ? 'smooth' : 'auto';
@@ -293,9 +298,9 @@ export default function ClassroomShell() {
       endEl.scrollIntoView({ behavior, block: 'end' });
     }
   }, [
-    currentSession?.messages, 
-    conversationState.currentMessage, 
-    interimTranscript, 
+    currentSession?.messages,
+    conversationState.currentMessage,
+    interimTranscript,
     conversationState.pipelineState,
     getActiveRefs
   ]);
@@ -381,7 +386,7 @@ export default function ClassroomShell() {
           action={
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-2.5 rounded-full bg-gold text-[#0A0908] font-semibold text-sm hover:bg-gold-soft hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer shadow-lg"
+              className="px-6 py-2.5 rounded-full bg-gold text-[#0A0908] font-semibold text-sm hover:bg-gold-soft hover:scale-[1.02] active:scale-[0.98] transition-colors duration-200 cursor-pointer shadow-lg"
             >
               Reload Classroom
             </button>
@@ -452,6 +457,7 @@ export default function ClassroomShell() {
             onGenerateDiagram={handleGenerateDiagram}
             onGenerateSummary={handleGenerateSummary}
             onStartExplain={handleStartExplain}
+            onStartQuiz={handleGenerateQuiz}
             onOpenSettings={openSettings}
           />
 
@@ -459,7 +465,7 @@ export default function ClassroomShell() {
           <div className="hidden lg:flex flex-row w-full flex-1 min-h-0 gap-6">
 
             {/* Avatar Panel (Left) */}
-            <aside className="flex-[3] min-w-0 min-h-0 rounded-2xl bg-dark-secondary border border-white/5 relative overflow-hidden flex items-center justify-center shadow-xl">
+            <aside className="flex-[3] min-w-0 min-h-0 relative overflow-hidden flex items-center justify-center">
               <AvatarCanvasWrapper
                 avatarId={activeAvatarId}
                 pipelineState={conversationState.pipelineState}
@@ -473,7 +479,7 @@ export default function ClassroomShell() {
             </aside>
 
             {/* Chat Panel (Right) */}
-            <section className="flex-[7] min-w-0 min-h-0 rounded-2xl bg-dark-secondary border border-white/5 flex flex-col shadow-xl relative">
+            <section className="flex-[7] min-w-0 min-h-0 flex flex-col relative">
               <AssistantPanel
                 isExplainActive={isExplainActive}
                 isDiagramOpen={isDiagramOpen}
@@ -504,6 +510,8 @@ export default function ClassroomShell() {
                 onDiagramClose={() => setIsDiagramOpen(false)}
                 onSummaryClose={() => setIsSummaryOpen(false)}
                 onSummarizeDocument={handleSummarizeDocument}
+                isQuizOpen={isQuizOpen}
+                onQuizClose={() => setIsQuizOpen(false)}
                 currentSessionId={currentSessionId}
                 messages={currentSession?.messages}
                 currentMessage={conversationState.currentMessage}
@@ -532,7 +540,7 @@ export default function ClassroomShell() {
           <div className="flex lg:hidden flex-col w-full flex-1 min-h-0 gap-4 pb-16">
 
             {/* Avatar Container: exactly 40% of available height */}
-            <aside className="h-[40%] min-h-0 rounded-2xl bg-dark-secondary border border-white/5 relative overflow-hidden flex items-center justify-center shadow-xl">
+            <aside className="h-[40%] min-h-0 relative overflow-hidden flex items-center justify-center">
               <AvatarCanvasWrapper
                 avatarId={activeAvatarId}
                 pipelineState={conversationState.pipelineState}
@@ -546,7 +554,7 @@ export default function ClassroomShell() {
             </aside>
 
             {/* Chat Container: remaining 60% height */}
-            <section className="h-[60%] min-h-0 rounded-2xl bg-dark-secondary border border-white/5 flex flex-col relative shadow-xl">
+            <section className="h-[60%] min-h-0 flex flex-col relative">
               <AssistantPanel
                 isSummaryOpen={isSummaryOpen}
                 onSummaryClose={() => setIsSummaryOpen(false)}
@@ -577,6 +585,8 @@ export default function ClassroomShell() {
                 }}
                 onDiagramClose={() => setIsDiagramOpen(false)}
                 onSummarizeDocument={handleSummarizeDocument}
+                isQuizOpen={isQuizOpen}
+                onQuizClose={() => setIsQuizOpen(false)}
                 currentSessionId={currentSessionId}
                 messages={currentSession?.messages}
                 currentMessage={conversationState.currentMessage}
@@ -663,9 +673,13 @@ export default function ClassroomShell() {
 
             {/* Quiz Tab */}
             <button
-              onClick={() => navigate('/quiz')}
+              onClick={handleGenerateQuiz}
               disabled={!documents.length}
-              className="flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer text-gray-400 active:text-white transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${
+                isQuizOpen
+                  ? 'text-gold font-bold'
+                  : 'text-gray-400 active:text-white'
+              }`}
             >
               <FiEdit3 size={20} />
               <span className="text-[10px] font-semibold tracking-wide font-display">Quiz</span>

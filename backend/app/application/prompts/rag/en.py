@@ -118,7 +118,7 @@ quiz_footer_prompt = Template(
     "\n".join(
         [
             "Now generate exactly $num_questions MCQ questions following the JSON format above.",
-            "Return ONLY valid JSON array starting with [ and ending with ].",
+            "Return ONLY a valid JSON object containing the 'questions' array, starting with { and ending with }.",
         ]
     )
 )

@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { useMermaidRender } from '../hooks/useMermaidRender';
 import { DiagramData } from '../api/diagramApi';
-import { FiDownload, FiX } from 'react-icons/fi';
+import { FiDownload, FiX, FiZoomIn, FiZoomOut, FiMaximize } from 'react-icons/fi';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { LoadingState, ErrorState } from '@/shared/components/UIStates';
 
@@ -108,17 +108,54 @@ export function DiagramViewer({ diagramData, isLoading, onClose }: DiagramViewer
             maxScale={8}
             centerOnInit={true}
             centerZoomedOut={true}
-            limitToBounds={false}
-            wheel={{ step: 0.05 }}
-            panning={{ velocityDisabled: true }}
+            limitToBounds={true}
+            wheel={{ step: 0.1 }}
+            panning={{ velocityDisabled: false }}
             doubleClick={{ step: 0.5 }}
           >
-            <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ minWidth: "100%", minHeight: "100%", display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <div 
-                ref={containerRef} 
-                className="diagram-content-wrapper p-8 [&>svg]:!max-w-none"
-              />
-            </TransformComponent>
+            {({ zoomIn, zoomOut, resetTransform }) => (
+              <React.Fragment>
+                {/* Floating Zoom Controls */}
+                <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-50 bg-dark/60 backdrop-blur-md border border-gold/15 rounded-xl p-2 shadow-xl">
+                  <button 
+                    onClick={() => zoomIn()} 
+                    className="p-3 text-gold-soft hover:bg-gold/10 rounded-lg transition-colors" 
+                    title="Zoom In"
+                    aria-label="Zoom in"
+                  >
+                    <FiZoomIn size={20} />
+                  </button>
+                  <div className="w-full h-px bg-gold/10" />
+                  <button 
+                    onClick={() => resetTransform()} 
+                    className="p-3 text-gold-soft hover:bg-gold/10 rounded-lg transition-colors" 
+                    title="Reset Zoom"
+                    aria-label="Reset zoom"
+                  >
+                    <FiMaximize size={20} />
+                  </button>
+                  <div className="w-full h-px bg-gold/10" />
+                  <button 
+                    onClick={() => zoomOut()} 
+                    className="p-3 text-gold-soft hover:bg-gold/10 rounded-lg transition-colors" 
+                    title="Zoom Out"
+                    aria-label="Zoom out"
+                  >
+                    <FiZoomOut size={20} />
+                  </button>
+                </div>
+                
+                <TransformComponent 
+                  wrapperStyle={{ width: "100%", height: "100%" }} 
+                  contentStyle={{ minWidth: "100%", minHeight: "100%", display: "flex", justifyContent: "center", alignItems: "center" }}
+                >
+                  <div 
+                    ref={containerRef} 
+                    className="diagram-content-wrapper px-4 md:px-8 [&>svg]:!max-w-none"
+                  />
+                </TransformComponent>
+              </React.Fragment>
+            )}
           </TransformWrapper>
         )}
       </div>

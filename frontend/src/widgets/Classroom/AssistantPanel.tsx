@@ -2,6 +2,7 @@ import React, { RefObject } from 'react';
 import { ExplainSession } from '@/features/explain/components/ExplainSession';
 import { DiagramContainer } from '@/features/diagrams/components/DiagramContainer';
 import { DocumentPicker } from '@/features/diagrams/components/DocumentPicker';
+import { QuizContainer } from '@/features/quiz/components/QuizContainer';
 import { MessageList, ChatInput } from '@/features/chat';
 import { PresentationState } from '@/features/explain/hooks/useExplainWS';
 import { ISession } from '@/features/session/types';
@@ -13,6 +14,7 @@ export interface AssistantPanelProps {
   isExplainActive: boolean;
   isDiagramOpen: boolean;
   isSummaryOpen: boolean;
+  isQuizOpen?: boolean;
   
   // Explain Props
   explainDocumentId?: string;
@@ -31,6 +33,10 @@ export interface AssistantPanelProps {
   // Summary Props
   onSummaryClose: () => void;
   onSummarizeDocument?: (filename: string) => void;
+
+  // Quiz Props
+  onQuizClose?: () => void;
+  onStartQuizDocument?: (filename: string) => void;
 
   currentSessionId: string | null;
   
@@ -73,6 +79,8 @@ export function AssistantPanel({
   onDiagramClose,
   onSummaryClose,
   onSummarizeDocument,
+  isQuizOpen,
+  onQuizClose,
   currentSessionId,
   messages,
   currentMessage,
@@ -140,6 +148,16 @@ export function AssistantPanel({
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (isQuizOpen) {
+    return (
+      <QuizContainer 
+        isOpen={isQuizOpen} 
+        onClose={onQuizClose || (() => {})} 
+        sessionId={currentSessionId} 
+      />
     );
   }
 
