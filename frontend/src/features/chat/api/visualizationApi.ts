@@ -8,6 +8,6 @@ export interface VisualizationResponse {
 }
 
 export const getVisualization = async (messageId: string): Promise<VisualizationResponse> => {
-  const response = await apiClient.get<VisualizationResponse>(`/v1/rag/visualization/${messageId}`);
+  const response = await apiClient.post<VisualizationResponse>(`/rag/visualization/${messageId}`);
   return response.data;
 };

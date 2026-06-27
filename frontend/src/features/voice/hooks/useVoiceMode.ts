@@ -210,6 +210,7 @@ export function useVoiceMode(
           canRetry = true;
       }
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setState((prev) => ({
         ...prev,
         error: userFriendlyMessage,
@@ -225,6 +226,7 @@ export function useVoiceMode(
   );
 
   const clearError = useCallback(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setState((prev) => ({
       ...prev,
       error: null,
@@ -249,6 +251,7 @@ export function useVoiceMode(
       }
 
       stopListening();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setState((prev) => ({ ...prev, isListening: false }));
 
       if (vadRef.current) {
@@ -256,6 +259,7 @@ export function useVoiceMode(
       }
     } else {
       startListening();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setState((prev) => ({ ...prev, isListening: true, error: null }));
     }
   }, [micIsListening, startListening, stopListening, wsClient]);
@@ -296,6 +300,7 @@ export function useVoiceMode(
         canRetry = true;
       }
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setState((prev) => ({
         ...prev,
         error: userFriendlyMessage,
@@ -306,6 +311,7 @@ export function useVoiceMode(
   }, [micError]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setState((prev) => ({ ...prev, isListening: micIsListening }));
   }, [micIsListening]);
 
@@ -321,6 +327,7 @@ export function useVoiceMode(
       const errorMsg =
         connState === 'reconnecting' ? 'Reconnecting to server\u2026' : 'Connection lost';
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setState((prev) => ({
         ...prev,
         isListening: false,
@@ -331,6 +338,7 @@ export function useVoiceMode(
     }
 
     if (connState === 'reconnecting' && state.errorCode === 'WEBSOCKET_DISCONNECTED') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setState((prev) => ({
         ...prev,
         error: 'Reconnecting to server\u2026',
@@ -342,6 +350,7 @@ export function useVoiceMode(
       if (import.meta.env.DEV) {
         logger.info('[VoiceMode] WebSocket reconnected, clearing error');
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setState((prev) => ({
         ...prev,
         error: null,

@@ -16,7 +16,7 @@ export function useClassroomAudio() {
 
   const { enqueueAudioUrl, flushQueue, getAudioContext, playbackStartTimeRef, getIsAudioPlaying, getNextPlaybackTime } = useGaplessAudioQueue();
 
-  const tryPlayChunk = useCallback((baseId: string) => {
+  const tryPlayChunk = useCallback(function tryPlayChunkInner(baseId: string) {
     if (abortedMessageIdsRef.current.has(baseId)) {
       delete chunksRef.current[baseId];
       return;
@@ -72,7 +72,7 @@ export function useClassroomAudio() {
         console.warn(`[AudioSequence] Timeout waiting for chunk ${expected}. Skipping.`);
         expectedChunkRef.current[baseId]++;
         delete missingChunkTimeoutsRef.current[baseId];
-        tryPlayChunk(baseId);
+        tryPlayChunkInner(baseId);
       }, 3000);
     }
   }, [getAudioContext, enqueueAudioUrl]);

@@ -30,7 +30,7 @@ system_prompt = Template(
             "1. When a user requests an explanation of an algorithm or model (such as Autoencoders or VAE), **it is strictly prohibited** to oversimplify.",
             "2. **You must** include all mathematical equations, symbols (such as x, V, U), matrices, and loss functions mentioned in the documents.",
             "3. Explain how the model works step by step with the same technical depth as in the lecture.",
-            "4. Use LaTeX formatting for mathematical equations (e.g., $x$ or $$\\hat{x} = U V x$$) to ensure a professional appearance.",
+            "4. Use LaTeX formatting for mathematical equations (e.g., $$x$$ or $$$$\\hat{x} = U V x$$$$) to ensure a professional appearance.",
             "",
             "## 🎨 Visual Drawing & Representation:",
             "1. If the user asks you to 'draw', 'visualize', or 'represent' a tree, flowchart, or architecture, YOU MUST DO IT.",
@@ -169,7 +169,7 @@ summarize_system_prompt = Template(
             "2. <Step 2>",
             "",
             "## 🧮 Important Formulas",
-            "- <Formula 1 in LaTeX (e.g. $$\\hat{x} = UVx$$), followed by a plain-language explanation of every symbol>",
+            "- <Formula 1 in LaTeX (e.g. $$$$\\hat{x} = UVx$$$$), followed by a plain-language explanation of every symbol>",
             "- <Formula 2 ...>",
             "",
             "## 💡 Examples & Use Cases (if any)",
@@ -275,15 +275,16 @@ diagram_system_prompt = Template(
             "",
             "RULES:",
             "- Start the mermaid code with `flowchart TD` or `graph TD`.",
-            '- Do NOT use quotes (") or parentheses ( ) inside node labels to avoid breaking Mermaid syntax.',
-            "- If a label naturally has quotes or parentheses, remove them or replace them with safe characters.",
+            "- Node IDs must be alphanumeric with NO spaces (e.g., A1, B2).",
+            '- Node labels must be enclosed in double quotes (e.g., A1["Label Text"]). Escape internal quotes.',
+            "- Do not use parentheses (), square brackets [], or curly braces {} inside labels without escaping them.",
             "- Keep the diagram simple and hierarchical. Maximum 50 nodes.",
             "- You MUST include citations. Identify the chunks that justify the relationships.",
             "",
             "STRICT OUTPUT FORMAT (JSON ONLY):",
-            "You must return a valid JSON object. Do NOT include markdown code blocks or any other text.",
+            "You must return a valid JSON object. Output ONLY valid Mermaid.js code inside the JSON. Do NOT output any conversational text before or after.",
             "{",
-            '  "mermaid_code": "flowchart TD\\n  A[Concept 1] --> B[Concept 2]",',
+            '  "mermaid_code": "flowchart TD\\n  A1[\\"Concept 1\\"] --> B2[\\"Concept 2\\"]",',
             '  "citations": ["<chunk index>", "<another chunk index>"]',
             "}",
         ]
@@ -297,4 +298,30 @@ diagram_footer_prompt = Template(
             "Return ONLY valid JSON.",
         ]
     )
+)
+
+title_generation_prompt = Template("Generate a concise chat title from the user's first message. Return only the title, no quotes, no punctuation at the end, maximum 6 words. Preserve the user's language when possible.")
+system_warning_low_confidence_prompt = Template("SYSTEM WARNING: The retrieved context may not be highly relevant. Rely strictly on it only if it directly answers the user's question, otherwise state that you do not have enough information.\n\n")
+inject_context_system_prompt = Template("$original_system_prompt\n\nUse the following retrieved context to answer the query:\n$context")
+inject_context_user_prompt = Template("Use the following retrieved context to answer the user's query.\n\nContext:\n$context\n\nQuery: $query")
+
+walkthrough_system_prompt = Template(
+    "You are an expert Professor giving a continuous, engaging lecture.\n"
+    "You are currently explaining Slide $current_slide_number out of $total_slides.\n"
+    "Your explanation MUST strictly use transitional phrasing:\n"
+    "- If there is a previous slide, connect the new concepts to the previous ones (e.g. 'Building on the concept of X we just discussed...').\n"
+    "- If there is a next slide, briefly foreshadow what's coming up at the very end.\n"
+    "- EXPLICITLY mention the slide number so the student knows where they are.\n"
+    "Explain the 'Current Slide Content' thoroughly, focusing on building intuition, explaining math/equations clearly (using LaTeX $$ $$), and giving examples.\n"
+    "DO NOT just read the slide verbatim. Teach it."
+)
+
+walkthrough_footer_prompt = Template(
+    "--- PREVIOUS SLIDE (Context) ---\n"
+    "$previous_slide_summary\n\n"
+    "--- CURRENT SLIDE (Teach this deeply) ---\n"
+    "$current_slide_content\n\n"
+    "--- NEXT SLIDE (Preview) ---\n"
+    "$next_slide_preview\n\n"
+    "Please give your lecture for this slide now."
 )

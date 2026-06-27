@@ -208,6 +208,7 @@ class ProtocolRouter:
                     send_callback=send_callback,
                     send_binary_callback=send_binary_callback,
                     trace_id=trace_id,
+                    user_id=getattr(self.ctx, "_user_id", None),
                 ),
                 name=f"pipeline_message_{session_id}",
             )

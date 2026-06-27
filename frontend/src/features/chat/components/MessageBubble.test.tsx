@@ -33,11 +33,12 @@ describe('MessageBubble timestamps', () => {
     render(
       <MessageBubble
         msg={{
-          id: 'm1',
+          id: 'test-msg-1',
           role: 'user',
-          content: 'hello',
-          timestamp: '2026-06-25T09:00:00Z',
-        }}
+          content: 'Hello, world!',
+          created_at: '2026-06-25T09:00:00Z',
+          session_id: 'test-session',
+        } as IMessage}
         avatarName="Tutor"
       />
     );

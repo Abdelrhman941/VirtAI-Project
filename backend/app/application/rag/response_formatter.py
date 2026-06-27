@@ -3,7 +3,7 @@ from app.domain.chat.entities import ChatMessage, MessageRole
 from app.domain.rag.citation import build_citations, format_sources_block
 from app.domain.rag.entities import RetrievedDocument
 from app.domain.rag.task_types import TASK_MAX_TOKENS, Locale, TaskType
-from app.infrastructure.rag.prompts.registry import get_prompt_set
+from app.application.prompts.rag.registry import get_prompt_set
 
 
 class ResponseFormatterService:
@@ -33,10 +33,10 @@ class ResponseFormatterService:
         if task_type == TaskType.QUIZ:
             kwargs["num_questions"] = 10
 
-        system_str = prompt_set.system.safe_substitute(**kwargs)
-
-        kwargs["query"] = query
-        footer_str = prompt_set.footer.safe_substitute(**kwargs)
+        system_str = prompt_set.system.substitute(**kwargs)
+        if not system_str.endswith("\n\n"):
+            system_str += "\n\n"
+        footer_str = prompt_set.footer.substitute(**kwargs)
 
         # Safely fit chunks
         # TokenBudgetManager processes chunks in order. The retrieved chunks are already sorted by score (desc).
@@ -52,7 +52,7 @@ class ResponseFormatterService:
         # Format context block
         context_parts = []
         for i, chunk in enumerate(fitted_chunks, 1):
-            doc_str = prompt_set.document.safe_substitute(doc_num=i, chunk_text=chunk.chunk_text)
+            doc_str = prompt_set.document.substitute(doc_num=i, chunk_text=chunk.chunk_text)
             context_parts.append(doc_str)
 
         context_str = "\n\n".join(context_parts)

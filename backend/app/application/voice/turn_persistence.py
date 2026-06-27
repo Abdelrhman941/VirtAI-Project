@@ -12,7 +12,7 @@ class TurnPersistenceManager:
     def __init__(
         self,
         persist_turn: (
-            Callable[[str, str, str, str, str | None], Awaitable[ChatMessageDict | None]] | None
+            Callable[[str, str, str, str, str | None, str | None], Awaitable[ChatMessageDict | None]] | None
         ),
         context_cache: ChatContextCachePort | None,
     ):
@@ -20,7 +20,7 @@ class TurnPersistenceManager:
         self._context_cache = context_cache
 
     async def persist_user_input(
-        self, session_id: str, text: str, trace_id: str | None
+        self, session_id: str, text: str, trace_id: str | None, message_id: str | None = None
     ) -> ChatMessageDict | None:
         """Persist user message. Returns the saved ChatMessageDict (with
         canonical timestamp) so the caller can forward it to WS events.
@@ -29,7 +29,7 @@ class TurnPersistenceManager:
         saved: ChatMessageDict | None = None
         try:
             if self._persist_turn:
-                saved = await self._persist_turn(session_id, "user", text, "text", None)
+                saved = await self._persist_turn(session_id, "user", text, "text", None, message_id)
         except Exception as e:
             logger.warning(f"[Pipeline] Failed to persist user message: {e} | trace_id={trace_id}")
 
@@ -49,7 +49,7 @@ class TurnPersistenceManager:
                     history.add_assistant_message(msg["content"])
 
     async def persist_assistant_output(
-        self, session_id: str, text: str, tts_key: str | None, trace_id: str | None
+        self, session_id: str, text: str, tts_key: str | None, trace_id: str | None, message_id: str | None = None
     ) -> ChatMessageDict | None:
         """Persist assistant message. Returns the saved ChatMessageDict (with
         canonical timestamp) so the caller can forward it to WS events.
@@ -58,7 +58,7 @@ class TurnPersistenceManager:
         saved: ChatMessageDict | None = None
         try:
             if self._persist_turn:
-                saved = await self._persist_turn(session_id, "assistant", text, "text", tts_key)
+                saved = await self._persist_turn(session_id, "assistant", text, "text", tts_key, message_id)
         except Exception as e:
             logger.warning(
                 f"[Pipeline] Failed to persist assistant message: {e} | trace_id={trace_id}"

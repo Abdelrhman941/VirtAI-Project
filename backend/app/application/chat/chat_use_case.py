@@ -5,7 +5,8 @@ from app.application.rag.intent_classifier import IntentClassifier
 from app.application.rag.retrieval_use_case import RetrievalUseCase
 from app.domain.chat.policies import build_conversation
 from app.domain.chat.ports import BaseLLMProvider, ChatContextCachePort
-from app.domain.rag.task_types import classify_task_type
+from app.domain.rag.task_types import classify_task_type, detect_locale, Locale
+from app.application.prompts.rag.registry import get_utility_template, PromptKey
 
 
 class ChatUseCase:
@@ -30,6 +31,7 @@ class ChatUseCase:
         session_id: str | None = None,
         document_id: str | None = None,
         metadata_filter: dict[str, Any] | None = None,
+        locale: Locale | None = None,
     ) -> str:
         # Retrieve context
         low_confidence = False
@@ -70,13 +72,12 @@ class ChatUseCase:
                 context = "\n".join(context_parts)
 
         # Build prompt
-        prompt = PromptBuilder.build_user_prompt_with_context(query, context)
+        if locale is None:
+            locale = detect_locale(query)
+        prompt = PromptBuilder.build_user_prompt_with_context(query, context, locale)
         if low_confidence and context:
-            prompt = (
-                "SYSTEM WARNING: The retrieved context may not be highly relevant. "
-                "Rely strictly on it only if it directly answers the user's question, "
-                "otherwise state that you do not have enough information.\n\n"
-            ) + prompt
+            warning = get_utility_template(PromptKey.SYSTEM_WARNING_LOW_CONFIDENCE, locale).substitute()
+            prompt = warning + prompt
 
         history = build_conversation("avatar1")
 

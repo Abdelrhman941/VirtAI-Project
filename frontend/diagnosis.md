@@ -1,0 +1,5 @@
+### Diagnosis
+
+1. **Re-mount vs Re-render:** The component completely **re-mounts**. When streaming ends, `MessageList.tsx` drops the standalone `<ChatBubble>` containing `StreamingMessageRenderer`, and simultaneously mounts a new `<MessageBubble>` from the `messages` array for the finalized message.
+2. **Structural Difference:** Yes, there is a structural difference. The streaming message uses `<StreamingMessageRenderer>` which wraps `.md-root` in a `<div className="streaming-message-container is-streaming">`. The finalized message uses `<MessageBubble>` which renders `<MarkdownRenderer>` directly without that container.
+3. **Visual Difference:** Yes. During streaming, the `.is-streaming` class disables ligatures and uses `text-rendering: optimizeSpeed`. When the finalized message mounts without this class, ligatures are restored and `text-rendering` reverts to legibility, which instantly shifts the text bounds, causing a "visual pop". Additionally, the missing `.streaming-message-container` wrapper causes subtle layout shifts.

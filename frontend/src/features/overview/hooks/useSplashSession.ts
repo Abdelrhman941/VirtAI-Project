@@ -21,6 +21,7 @@ export function useSplashSession({ isNavbarReady, prefersReducedMotion }: Splash
     } catch {
       // ignore
     } finally {
+       
       setShowSplash(false);
     }
   };

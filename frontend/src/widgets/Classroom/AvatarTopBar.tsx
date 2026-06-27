@@ -1,6 +1,6 @@
 import React from 'react';
 import { PiWifiSlashFill, PiList } from 'react-icons/pi';
-import { FiMonitor, FiShare2, FiEdit3, FiUser } from 'react-icons/fi';
+import { FiMonitor, FiShare2, FiEdit3, FiUser, FiFileText } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { ConnectionState } from '@/core/realtime/useWSClient';
 import { ConnectionBadge } from '@/shared/components/ConnectionBadge';
@@ -15,6 +15,7 @@ interface AvatarTopBarProps {
   hasDocuments: boolean;
   hasMessages: boolean;
   onGenerateDiagram: () => void;
+  onGenerateSummary: () => void;
   onStartExplain: () => void;
   onOpenSettings?: () => void;
 }
@@ -28,6 +29,7 @@ export function AvatarTopBar({
   hasDocuments,
   hasMessages,
   onGenerateDiagram,
+  onGenerateSummary,
   onStartExplain,
   onOpenSettings
 }: AvatarTopBarProps) {
@@ -88,6 +90,14 @@ export function AvatarTopBar({
               label="Explain Slide"
             />
           )}
+          
+          <ToolbarButton
+            onClick={onGenerateSummary}
+            disabled={!hasDocuments}
+            title={!hasDocuments ? "Please upload syllabus or reference materials to generate a summary" : "Generate Summary"}
+            icon={<FiFileText size={15} />}
+            label="Summarize"
+          />
           
           <ToolbarButton
             onClick={onGenerateDiagram}

@@ -80,6 +80,8 @@ We enforce strict linting, type-checking, security scanning, and architectural l
 To clean development caches, compilation artifacts, and reports safely:
 
 ```bash
+bash scripts/clean.sh
+bash scripts/clean.sh --full
 python scripts/clean.py          # Safe Cache Clean
 python scripts/clean.py --full   # Clean Caches + Reports + Logs
 ```

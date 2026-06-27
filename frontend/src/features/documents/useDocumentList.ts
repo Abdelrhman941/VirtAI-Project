@@ -115,13 +115,13 @@ export function useDocumentList(sessionId: string | null = null) {
         }
 
         if (isPolling.current) {
-          timeoutId = setTimeout(pollActive, 3000);
+          timeoutId = setTimeout(pollActive, 5000);
         }
 
       } catch {
         consecutiveFailures.current++;
-        const maxDelay = 12000;
-        const baseDelay = 3000;
+        const maxDelay = 20000;
+        const baseDelay = 5000;
         const retryDelay = Math.min(baseDelay * Math.pow(2, consecutiveFailures.current), maxDelay);
 
         if (isPolling.current) {

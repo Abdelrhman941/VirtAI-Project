@@ -4,6 +4,8 @@ from loguru import logger
 
 from app.domain.chat.entities import ConversationHistory
 from app.domain.chat.ports import BaseLLMProvider
+from app.application.prompts.rag.registry import get_utility_template, PromptKey
+from app.domain.rag.task_types import detect_locale, Locale
 
 
 class GenerateTitleUseCase:
@@ -29,16 +31,14 @@ class GenerateTitleUseCase:
             return self._fallback_title(original_message)
         return title[:60].strip(" .,:;!?") or self._fallback_title(original_message)
 
-    async def execute(self, message: str) -> str:
+    async def execute(self, message: str, locale: Locale | None = None) -> str:
         """Generate a concise title for a chat session based on the first message."""
         title = self._fallback_title(message)
         try:
+            locale = locale or detect_locale(message)
+            sys_prompt = get_utility_template(PromptKey.TITLE_GENERATION, locale).substitute()
             history = ConversationHistory(
-                system_prompt=(
-                    "Generate a concise chat title from the user's first message. "
-                    "Return only the title, no quotes, no punctuation at the end, "
-                    "maximum 6 words. Preserve the user's language when possible."
-                ),
+                system_prompt=sys_prompt,
                 max_messages=1,
             )
             history.add_user_message(message)

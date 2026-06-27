@@ -151,7 +151,7 @@ export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) 
         <div className="upload-header">
           <h2 className="setup-section-title">Upload Curriculum Documents</h2>
           <p className="setup-section-subtitle">
-            Provide syllabus, textbooks, or course notes to inform your virtual teaching assistant's curriculum awareness (Maximum 10 files per session).
+            Provide syllabus, textbooks, or course notes to inform your virtual teaching assistant&apos;s curriculum awareness (Maximum 10 files per session).
           </p>
         </div>
 

@@ -1,6 +1,7 @@
 import React, { RefObject } from 'react';
 import { ExplainSession } from '@/features/explain/components/ExplainSession';
 import { DiagramContainer } from '@/features/diagrams/components/DiagramContainer';
+import { SummaryContainer } from '@/features/summary/components/SummaryContainer';
 import { MessageList, ChatInput } from '@/features/chat';
 import { PresentationState } from '@/features/explain/hooks/useExplainWS';
 import { ISession } from '@/features/session/types';
@@ -11,6 +12,7 @@ export interface AssistantPanelProps {
   // Mode states
   isExplainActive: boolean;
   isDiagramOpen: boolean;
+  isSummaryOpen: boolean;
   
   // Explain Props
   explainDocumentId?: string;
@@ -25,6 +27,10 @@ export interface AssistantPanelProps {
   
   // Diagram Props
   onDiagramClose: () => void;
+
+  // Summary Props
+  onSummaryClose: () => void;
+
   currentSessionId: string | null;
   
   // Chat Props
@@ -52,6 +58,7 @@ export interface AssistantPanelProps {
 export function AssistantPanel({
   isExplainActive,
   isDiagramOpen,
+  isSummaryOpen,
   explainDocumentId,
   explainState,
   explainSlide,
@@ -62,6 +69,7 @@ export function AssistantPanel({
   onExplainPauseOrStop,
   onExplainClose,
   onDiagramClose,
+  onSummaryClose,
   currentSessionId,
   messages,
   currentMessage,
@@ -104,6 +112,16 @@ export function AssistantPanel({
       <DiagramContainer
         isOpen={isDiagramOpen}
         onClose={onDiagramClose}
+        sessionId={currentSessionId}
+      />
+    );
+  }
+
+  if (isSummaryOpen) {
+    return (
+      <SummaryContainer
+        isOpen={isSummaryOpen}
+        onClose={onSummaryClose}
         sessionId={currentSessionId}
       />
     );

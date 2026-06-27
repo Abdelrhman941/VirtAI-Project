@@ -14,7 +14,9 @@ interface VisualizeButtonProps {
 export function VisualizeButton({ messageId, locale = 'en', onExpand }: VisualizeButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [svgContent, setSvgContent] = useState<string | null>(null);
   const [isHidden, setIsHidden] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const lastRequestTime = useRef<number>(0);
 
   const t = getVisualizationTranslations(locale);
@@ -31,20 +33,39 @@ export function VisualizeButton({ messageId, locale = 'en', onExpand }: Visualiz
     setIsLoading(true);
 
     try {
-      const response = await getVisualization(messageId);
+      // Strip UI suffixes to provide a pure UUID to the backend
+      const cleanId = messageId.replace('-assistant', '').replace('-user', '');
+      const response = await getVisualization(cleanId);
       
       if (response.unavailable) {
         if (response.reason === 'not_configured') {
           setIsHidden(true);
-        } else if (response.reason === 'quota_exceeded') {
-          toast.error('Visualization Failed', t.quota_exceeded);
-        } else if (response.reason === 'timeout') {
-          toast.error('Visualization Failed', t.timeout);
+        } else if (response.reason && response.reason in t) {
+          toast.error('Visualization Failed', t[response.reason as keyof typeof t]);
         } else {
           toast.error('Visualization Failed', t.unknown_error);
         }
       } else if (response.image_url) {
-        setImageUrl(response.image_url);
+        let finalUrl = response.image_url as any;
+        if (typeof finalUrl === 'string' && finalUrl.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(finalUrl);
+            finalUrl = parsed.url || parsed.image_url || parsed.src || finalUrl;
+          } catch(e) {}
+        }
+        if (typeof finalUrl === 'object' && finalUrl !== null) {
+          finalUrl = finalUrl.url || finalUrl.image_url || finalUrl.src || '';
+        }
+        
+        if (typeof finalUrl === 'string') {
+          const trimmed = finalUrl.trim();
+          if (trimmed.includes('<svg')) {
+            setSvgContent(trimmed);
+          } else {
+            setImageUrl(trimmed);
+          }
+          setImageError(false);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -56,14 +77,30 @@ export function VisualizeButton({ messageId, locale = 'en', onExpand }: Visualiz
 
   if (isHidden) return null;
 
-  if (imageUrl) {
+  if (svgContent) {
     return (
-      <div className="visualize-result mt-2">
+      <div 
+        className="visualize-result w-full mt-4" 
+        dangerouslySetInnerHTML={{ __html: svgContent }} 
+      />
+    );
+  }
+
+  if (imageUrl) {
+    if (imageError) {
+      return (
+        <span className="flex items-center text-red-500 text-xs px-2 h-full">Failed to load image</span>
+      );
+    }
+
+    return (
+      <div className="visualize-result mt-4 w-full">
         <img 
           src={imageUrl} 
           alt="Message Visualization" 
           className="visualize-image rounded-md border border-white/10 max-w-full"
           onLoad={onExpand}
+          onError={() => setImageError(true)}
         />
       </div>
     );

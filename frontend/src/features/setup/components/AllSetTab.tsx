@@ -33,10 +33,12 @@ export default function AllSetTab({
       return;
     }
 
+     
     setIsSaving(true);
 
     try {
       const updatedUser = await updateSetupStatus(true);
+       
       setUser(updatedUser);
 
       saveSetup({
@@ -53,6 +55,7 @@ export default function AllSetTab({
     } catch {
       toast.error('Unable to Save Configuration', { description: 'We were unable to save your assistant configuration because of a temporary connection error. Please try clicking the button again.' });
     } finally {
+       
       setIsSaving(false);
     }
   };

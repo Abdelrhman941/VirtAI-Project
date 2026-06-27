@@ -1,7 +1,7 @@
 import { clearBrowserAuthState } from '@/features/auth/services/authStateCleanup';
 import { refreshAccessTokenSingleFlight } from '@/features/auth/services/refreshService';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ConnectionState, RECONNECT_PAUSE_MESSAGE, WS_CLOSE_NORMAL, WS_CLOSE_SESSION_INVALID, WS_CLOSE_TOKEN_EXPIRED, WS_CLOSE_UNAUTHORIZED } from './wsConstants';
 import { EventRouter } from './wsEventRouter';
 import { createReconnectPolicy, ReconnectPolicy } from './wsReconnectPolicy';
@@ -328,7 +328,9 @@ export function useWSConnectionManager(deps: ConnectionManagerDeps) {
   // and the token-refresh callback always call the current closure.
   // This is an intentional pattern — assigning to a ref in render is safe
   // because the assignment itself has no observable side-effects.
-  connectRef.current = connect;
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   const disconnect = useCallback(() => {
     isIntentionalCloseRef.current = true;

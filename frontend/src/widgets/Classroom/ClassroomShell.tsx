@@ -7,7 +7,7 @@ import { PresentationState, useExplainWS } from '@/features/explain/hooks/useExp
 import { SettingsDrawer, useSessionManager } from '@/features/session';
 import { PCMRecorder } from '@/features/voice/audio/pcmRecorder';
 import { toast } from '@/shared/utils/toast';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -19,7 +19,7 @@ import { useClassroomAudio } from './hooks/useClassroomAudio';
 import { useClassroomChat } from './hooks/useClassroomChat';
 import { useClassroomState } from './hooks/useClassroomState';
 import { WSContext } from '@/core/realtime/WSContext';
-import { FiMonitor, FiShare2, FiEdit3, FiMessageSquare } from 'react-icons/fi';
+import { FiMonitor, FiShare2, FiEdit3, FiMessageSquare, FiFileText } from 'react-icons/fi';
 import { ErrorState } from '@/shared/components/UIStates';
 
 export interface AudioVisemePacket {
@@ -84,9 +84,14 @@ export default function ClassroomShell() {
 
   const { documents } = useDocumentList(currentSessionId);
   const [isDiagramOpen, setIsDiagramOpen] = useState(false);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
 
   const handleGenerateDiagram = () => {
     setIsDiagramOpen(true);
+  };
+
+  const handleGenerateSummary = () => {
+    setIsSummaryOpen(true);
   };
 
   const {
@@ -173,10 +178,33 @@ export default function ClassroomShell() {
     await session.deleteSession(sessionId);
   }, [disconnect, session, currentSessionId]);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatScrollRef = useRef<HTMLDivElement>(null);
+  // Desktop Refs
+  const desktopMessagesEndRef = useRef<HTMLDivElement>(null);
+  const desktopChatScrollRef = useRef<HTMLDivElement>(null);
+  const desktopTextareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Mobile Refs
+  const mobileMessagesEndRef = useRef<HTMLDivElement>(null);
+  const mobileChatScrollRef = useRef<HTMLDivElement>(null);
+  const mobileTextareaRef = useRef<HTMLTextAreaElement>(null);
+
   const shouldStickToBottom = useRef<boolean>(true);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Helper to get currently active/visible refs
+  const getActiveRefs = useCallback(() => {
+    if (desktopChatScrollRef.current && desktopChatScrollRef.current.clientHeight > 0) {
+      return {
+        chatScrollRef: desktopChatScrollRef,
+        messagesEndRef: desktopMessagesEndRef,
+        textareaRef: desktopTextareaRef
+      };
+    }
+    return {
+      chatScrollRef: mobileChatScrollRef,
+      messagesEndRef: mobileMessagesEndRef,
+      textareaRef: mobileTextareaRef
+    };
+  }, []);
   const scrollPositionsRef = useRef<Map<string | null, number>>(new Map());
   const prevSessionIdRef = useRef<string | null>(currentSessionId);
   const isCreatingSessionRef = useRef<boolean>(false);
@@ -187,13 +215,15 @@ export default function ClassroomShell() {
     if (prevId !== nextId) {
       resetAvatarAudio();
 
+      const { chatScrollRef } = getActiveRefs();
       if (chatScrollRef.current) {
         scrollPositionsRef.current.set(prevId, chatScrollRef.current.scrollTop);
       }
       requestAnimationFrame(() => {
         const saved = scrollPositionsRef.current.get(nextId);
-        if (chatScrollRef.current && saved !== null && saved !== undefined) {
-          chatScrollRef.current.scrollTop = saved;
+        const { chatScrollRef: activeRef } = getActiveRefs();
+        if (activeRef.current && saved !== null && saved !== undefined) {
+          activeRef.current.scrollTop = saved;
           shouldStickToBottom.current = false;
         } else {
           shouldStickToBottom.current = true;
@@ -201,7 +231,7 @@ export default function ClassroomShell() {
       });
       prevSessionIdRef.current = nextId;
     }
-  }, [currentSessionId, resetAvatarAudio]);
+  }, [currentSessionId, resetAvatarAudio, getActiveRefs]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -217,15 +247,53 @@ export default function ClassroomShell() {
   }, [openSettings]);
 
   const handleChatScroll = useCallback(() => {
+    const { chatScrollRef } = getActiveRefs();
     const el = chatScrollRef.current;
     if (!el) return;
-    shouldStickToBottom.current =
-      el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_STICK_THRESHOLD_PX;
-  }, []);
+    
+    // Add a small 1px buffer to account for subpixel rendering issues
+    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_STICK_THRESHOLD_PX + 1;
+    shouldStickToBottom.current = isAtBottom;
+  }, [getActiveRefs]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentSession?.messages, conversationState.currentMessage, interimTranscript]);
+  const prevMessagesLength = useRef(currentSession?.messages?.length || 0);
+  const prevPipelineState = useRef(conversationState.pipelineState);
+
+  useLayoutEffect(() => {
+    const { chatScrollRef, messagesEndRef } = getActiveRefs();
+    const el = chatScrollRef.current;
+    const endEl = messagesEndRef.current;
+    if (!el || !endEl) return;
+
+    const currentLength = currentSession?.messages?.length || 0;
+    const isNewMessage = currentLength > prevMessagesLength.current;
+    const isNewThinkingState = conversationState.pipelineState === 'thinking' && prevPipelineState.current !== 'thinking';
+    
+    prevMessagesLength.current = currentLength;
+    prevPipelineState.current = conversationState.pipelineState;
+
+    // Force stick to bottom when a new message block or thinking bubble appears
+    if (isNewMessage || isNewThinkingState) {
+      shouldStickToBottom.current = true;
+    }
+
+    if (shouldStickToBottom.current) {
+      // Determine if we are actively streaming high-frequency chunks
+      const isStreaming = !!conversationState.currentMessage || !!interimTranscript;
+      
+      // Use 'auto' during streaming to prevent browser smooth-scroll cancellation (jitter/stuck).
+      // Use 'smooth' for new message initialization or when thinking state starts for premium UX.
+      const behavior = (isNewMessage || isNewThinkingState) && !isStreaming ? 'smooth' : 'auto';
+
+      endEl.scrollIntoView({ behavior, block: 'end' });
+    }
+  }, [
+    currentSession?.messages, 
+    conversationState.currentMessage, 
+    interimTranscript, 
+    conversationState.pipelineState,
+    getActiveRefs
+  ]);
 
   const handleStop = useCallback(() => {
     safeSend({
@@ -250,16 +318,20 @@ export default function ClassroomShell() {
     const text = inputValue.trim();
     if (!text) return;
 
+    // Force scroll to bottom when user explicitly sends a message
+    shouldStickToBottom.current = true;
+
     commitAndSend(text);
     setInputValue('');
 
+    const { textareaRef } = getActiveRefs();
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
     if (!isConnected && currentSessionId !== null) {
       toast.warning('Offline', 'Message queued. Will send when connected.', 3000);
     }
-  }, [inputValue, isConnected, currentSessionId, commitAndSend, setInputValue]);
+  }, [inputValue, isConnected, currentSessionId, commitAndSend, setInputValue, getActiveRefs]);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -375,6 +447,7 @@ export default function ClassroomShell() {
             hasDocuments={documents.length > 0}
             hasMessages={currentSession?.messages?.length ? currentSession.messages.length > 0 : false}
             onGenerateDiagram={handleGenerateDiagram}
+            onGenerateSummary={handleGenerateSummary}
             onStartExplain={handleStartExplain}
             onOpenSettings={openSettings}
           />
@@ -401,6 +474,7 @@ export default function ClassroomShell() {
               <AssistantPanel
                 isExplainActive={isExplainActive}
                 isDiagramOpen={isDiagramOpen}
+                isSummaryOpen={isSummaryOpen}
                 explainDocumentId={documents.length > 0 ? documents[0].id : undefined}
                 explainState={explainState}
                 explainSlide={explainSlide}
@@ -425,21 +499,22 @@ export default function ClassroomShell() {
                   resetAvatarAudio();
                 }}
                 onDiagramClose={() => setIsDiagramOpen(false)}
+                onSummaryClose={() => setIsSummaryOpen(false)}
                 currentSessionId={currentSessionId}
                 messages={currentSession?.messages}
                 currentMessage={conversationState.currentMessage}
                 interimTranscript={interimTranscript}
                 chatError={conversationState.error}
                 avatarName={avatarName}
-                chatScrollRef={chatScrollRef}
-                messagesEndRef={messagesEndRef}
+                chatScrollRef={desktopChatScrollRef}
+                messagesEndRef={desktopMessagesEndRef}
                 onChatScroll={handleChatScroll}
                 pipelineState={conversationState.pipelineState as any}
                 inputValue={inputValue}
                 onInputChange={setInputValue}
                 onSendMessage={handleSendMessage}
                 onKeyDown={onKeyDown}
-                textareaRef={textareaRef}
+                textareaRef={desktopTextareaRef}
                 onToggleDocuments={toggleDocuments}
                 onBeforeVoiceStart={ensureVoiceSession}
                 onStop={handleStop}
@@ -468,6 +543,8 @@ export default function ClassroomShell() {
             {/* Chat Container: remaining 60% height */}
             <section className="h-[60%] min-h-0 rounded-2xl bg-dark-secondary border border-white/5 flex flex-col relative shadow-xl">
               <AssistantPanel
+                isSummaryOpen={isSummaryOpen}
+                onSummaryClose={() => setIsSummaryOpen(false)}
                 isExplainActive={isExplainActive}
                 isDiagramOpen={isDiagramOpen}
                 explainDocumentId={documents.length > 0 ? documents[0].id : undefined}
@@ -500,15 +577,15 @@ export default function ClassroomShell() {
                 interimTranscript={interimTranscript}
                 chatError={conversationState.error}
                 avatarName={avatarName}
-                chatScrollRef={chatScrollRef}
-                messagesEndRef={messagesEndRef}
+                chatScrollRef={mobileChatScrollRef}
+                messagesEndRef={mobileMessagesEndRef}
                 onChatScroll={handleChatScroll}
                 pipelineState={conversationState.pipelineState as any}
                 inputValue={inputValue}
                 onInputChange={setInputValue}
                 onSendMessage={handleSendMessage}
                 onKeyDown={onKeyDown}
-                textareaRef={textareaRef}
+                textareaRef={mobileTextareaRef}
                 onToggleDocuments={toggleDocuments}
                 onBeforeVoiceStart={ensureVoiceSession}
                 onStop={handleStop}
@@ -561,6 +638,20 @@ export default function ClassroomShell() {
             >
               <FiShare2 size={20} />
               <span className="text-[10px] font-semibold tracking-wide font-sans">Diagram</span>
+            </button>
+
+            {/* Summary Tab */}
+            <button
+              onClick={handleGenerateSummary}
+              disabled={!documents.length}
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${
+                isSummaryOpen
+                  ? 'text-gold font-bold'
+                  : 'text-gray-400 active:text-white'
+              }`}
+            >
+              <FiFileText size={20} />
+              <span className="text-[10px] font-semibold tracking-wide font-sans">Summary</span>
             </button>
 
             {/* Quiz Tab */}

@@ -57,7 +57,9 @@ export function useMicrophoneStream(
   const pcmRecorderRef = useRef<PCMRecorder | null>(null);
 
   const callbackRef = useRef(onAudioChunk);
-  callbackRef.current = onAudioChunk;
+  useEffect(() => {
+    callbackRef.current = onAudioChunk;
+  }, [onAudioChunk]);
   const isMountedRef = useRef(true);
 
   /**

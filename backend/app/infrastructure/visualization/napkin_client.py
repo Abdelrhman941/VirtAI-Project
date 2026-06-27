@@ -32,11 +32,9 @@ class NapkinClient(VisualizationProviderPort):
 
             # Step 1: Submit job
             try:
-                # We need to assume the API creates a generation task.
-                # Since the actual API schema isn't provided, I'll mock a generic pattern:
-                payload = {"text": text, "format": "image/png"}
+                payload = {"content": text, "format": "png"}
                 response = await client.post(
-                    f"{self.base_url}/generate", json=payload, headers=headers, timeout=10.0
+                    f"{self.base_url}/visual", json=payload, headers=headers, timeout=20.0
                 )
 
                 if response.status_code == 429:
@@ -44,18 +42,15 @@ class NapkinClient(VisualizationProviderPort):
 
                 response.raise_for_status()
                 task_data = response.json()
-                task_id = task_data.get("id") or task_data.get("task_id")
+                task_id = task_data.get("id")
 
                 if not task_id:
-                    # Maybe it's synchronous?
-                    if "image_url" in task_data:
-                        return {"image_url": task_data["image_url"]}
                     return {"unavailable": True, "reason": "unknown_format"}
 
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:
                     return {"unavailable": True, "reason": "quota_exceeded"}
-                logger.error(f"Napkin API error: {e}")
+                logger.error(f"Napkin API error: {e.response.text}")
                 return {"unavailable": True, "reason": "api_error"}
             except Exception as e:
                 logger.error(f"Napkin request failed: {e}")
@@ -65,7 +60,7 @@ class NapkinClient(VisualizationProviderPort):
             while time.time() - start_time < self.timeout_seconds:
                 try:
                     poll_res = await client.get(
-                        f"{self.base_url}/tasks/{task_id}", headers=headers, timeout=5.0
+                        f"{self.base_url}/visual/{task_id}/status", headers=headers, timeout=10.0
                     )
 
                     if poll_res.status_code == 429:
@@ -75,10 +70,13 @@ class NapkinClient(VisualizationProviderPort):
                     poll_data = poll_res.json()
 
                     status = poll_data.get("status")
-                    if status == "completed" or status == "succeeded":
-                        img_url = poll_data.get("image_url") or poll_data.get("url")
-                        if img_url:
-                            return {"image_url": img_url}
+                    if status == "completed":
+                        generated_files = poll_data.get("generated_files", [])
+                        if generated_files and len(generated_files) > 0:
+                            # In MINI-RAG we fetched base64, but VirtAI caches image_url directly
+                            img_url = generated_files[0].get("url")
+                            if img_url:
+                                return {"image_url": img_url}
                         return {"unavailable": True, "reason": "missing_image_url"}
                     elif status in ("failed", "error"):
                         return {"unavailable": True, "reason": "generation_failed"}
@@ -86,7 +84,7 @@ class NapkinClient(VisualizationProviderPort):
                 except httpx.HTTPStatusError as e:
                     if e.response.status_code == 429:
                         return {"unavailable": True, "reason": "quota_exceeded"}
-                    logger.error(f"Napkin polling error: {e}")
+                    logger.error(f"Napkin polling error: {e.response.text}")
                 except Exception as e:
                     logger.error(f"Napkin polling failed: {e}")
 

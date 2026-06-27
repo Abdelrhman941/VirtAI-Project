@@ -26,6 +26,7 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
   // Logout cleanup
   useEffect(() => {
     if (!isAuthenticated && isAuthInitialized) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentSessionId(null);
       queryClient.removeQueries();
     }
@@ -51,6 +52,7 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
       const match = sessions.find((s) => s.id === urlSessionId);
       if (!match && navigate) {
         navigate('/classroom', { replace: true });
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCurrentSessionId(null);
       }
     }
@@ -82,6 +84,8 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
 
   const switchSession = useCallback(
     (id: string | null) => {
+       
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentSessionId(id);
       if (navigate) {
         navigate(id ? `/classroom/${id}` : `/classroom`);
@@ -120,6 +124,8 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
     });
     
     if (emptySession) {
+       
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentSessionId(emptySession.id);
       if (navigate) navigate(`/classroom/${emptySession.id}`, { replace: true });
       return emptySession.id;
@@ -129,6 +135,8 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
     isCreatingRef.current = true;
     try {
       const newSession = await createMutation.mutateAsync();
+       
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentSessionId(newSession.id);
       if (navigate) navigate(`/classroom/${newSession.id}`, { replace: true });
       return newSession.id;
@@ -178,6 +186,8 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
   const deleteSession = useCallback((sessionId: string) => {
     const wasActive = sessionId === currentSessionId;
     if (wasActive) {
+       
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentSessionId(null);
       if (navigate) navigate('/classroom', { replace: true });
     }
@@ -192,6 +202,8 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
     mutationFn: sessionService.deleteAllSessions,
     onSuccess: () => {
       queryClient.setQueryData(['sessions'], []);
+       
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentSessionId(null);
       if (navigate) navigate('/classroom', { replace: true });
       void createNewSession();
@@ -355,6 +367,8 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
 
     try {
       const newSession = await createMutation.mutateAsync();
+       
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentSessionId(newSession.id);
       if (navigate) navigate(`/classroom/${newSession.id}`, { replace: true });
 

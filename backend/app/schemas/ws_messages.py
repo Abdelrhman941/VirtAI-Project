@@ -459,6 +459,7 @@ def make_chat_final(
     text: str,
     emotion: str | None = None,
     created_at: str | None = None,
+    db_message_id: str | None = None,
 ) -> ChatFinal:
     """Create a ChatFinal message."""
     return ChatFinal(
@@ -467,6 +468,7 @@ def make_chat_final(
         text=text,
         emotion=emotion,
         created_at=created_at,
+        db_message_id=db_message_id,
     )
 
 

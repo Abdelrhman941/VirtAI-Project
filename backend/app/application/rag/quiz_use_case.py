@@ -10,7 +10,7 @@ from app.domain.chat.entities import ConversationHistory
 from app.domain.chat.ports import BaseLLMProvider
 from app.domain.rag.task_types import Locale, TaskType
 from app.infrastructure.db.models import DocumentChunk, Quiz, QuizQuestion
-from app.infrastructure.rag.prompts.registry import get_prompt_set
+from app.application.prompts.rag.registry import get_prompt_set
 from app.shared.errors import RAGException
 
 
@@ -120,8 +120,8 @@ class QuizUseCase:
         lecture_text = "\n\n".join(selected_blocks)
 
         prompt_set = get_prompt_set(TaskType.QUIZ, locale)
-        sys_prompt = prompt_set.system.safe_substitute(num_questions=num_questions)
-        footer = prompt_set.footer.safe_substitute(num_questions=num_questions)
+        sys_prompt = prompt_set.system.substitute(num_questions=num_questions)
+        footer = prompt_set.footer.substitute(num_questions=num_questions)
 
         user_text = f"--- Document Content ---\n\n{lecture_text}\n\n{footer}"
 

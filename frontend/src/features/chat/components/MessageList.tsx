@@ -1,8 +1,7 @@
 import React from 'react';
 import { PiLightbulbFilament, PiClockFill } from 'react-icons/pi';
 import { Bot, User } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { StreamingMessageRenderer } from './StreamingMessageRenderer';
 import MessageBubble from './MessageBubble';
 import { ChatBubble, MessageStatus } from '../../../shared/components/ChatPrimitives';
 import { IMessage } from '../../session/types';
@@ -81,12 +80,7 @@ const MessageList = React.memo(function MessageList({
           {/* Show streaming message if present */}
           {currentMessage && (
             <ChatBubble role="assistant" avatarName={avatarName} ariaLabel="Assistant is typing">
-              <div className="markdown-body">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {currentMessage}
-                </ReactMarkdown>
-                <span className="streaming-cursor"></span>
-              </div>
+              <StreamingMessageRenderer content={currentMessage} isStreaming={true} />
             </ChatBubble>
           )}
           <div ref={messagesEndRef} />

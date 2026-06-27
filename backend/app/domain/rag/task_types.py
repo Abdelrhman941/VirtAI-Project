@@ -32,11 +32,11 @@ TASK_RETRIEVAL_SIZES: dict[TaskType, RetrievalSizing] = {
 }
 
 TASK_MAX_TOKENS: dict[TaskType, int] = {
-    TaskType.SIMPLE_QA: 1500,
-    TaskType.EXPLANATION: 3000,
-    TaskType.QUIZ: 2500,
-    TaskType.SUMMARY: 4000,
-    TaskType.DIAGRAM: 4000,
+    TaskType.SIMPLE_QA: 16000,
+    TaskType.EXPLANATION: 24000,
+    TaskType.QUIZ: 20000,
+    TaskType.SUMMARY: 32000,
+    TaskType.DIAGRAM: 32000,
 }
 
 _SUMMARY_KEYWORDS = {
@@ -90,6 +90,19 @@ _EXPLANATION_KEYWORDS = {
     "خطوة بخطوة",
 }
 
+_DIAGRAM_KEYWORDS = {
+    "diagram",
+    "visualize",
+    "flowchart",
+    "draw",
+    "architecture",
+    "رسم",
+    "مخطط",
+    "شكل",
+    "ارسم",
+    "تصور",
+}
+
 _LONG_QUERY_WORD_THRESHOLD = 12
 
 
@@ -102,6 +115,9 @@ def classify_task_type(query: str, route_hint: str | None = None) -> TaskType:
 
     if route_lower == TaskType.QUIZ.value or any(kw in query_lower for kw in _QUIZ_KEYWORDS):
         return TaskType.QUIZ
+        
+    if route_lower == TaskType.DIAGRAM.value or any(kw in query_lower for kw in _DIAGRAM_KEYWORDS):
+        return TaskType.DIAGRAM
 
     if (
         route_lower == "reasoning"

@@ -183,6 +183,7 @@ class SessionManager:
         content: str,
         input_type: str,
         tts_cache_key: str | None = None,
+        message_id: str | None = None,
     ) -> ChatMessageDict | None:
         """Persist a conversation turn to the database.
 
@@ -196,6 +197,7 @@ class SessionManager:
                 content=content,
                 input_type=input_type,
                 tts_cache_key=tts_cache_key,
+                message_id=message_id,
             )
 
     async def create_session(

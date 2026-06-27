@@ -102,6 +102,7 @@ class ConversationPipeline:
         send_callback: Callable[[Any], Any],
         send_binary_callback: Callable[..., Any] | None = None,
         trace_id: str | None = None,
+        user_id: str | None = None,
     ) -> None:
         """Sequential processing using decoupled stages."""
         from app.schemas.ws_messages import (
@@ -122,6 +123,7 @@ class ConversationPipeline:
             send_callback=send_callback,
             send_binary_callback=send_binary_callback,
             tts_voice=self.tts_voice,
+            user_id=user_id,
         )
         self._current_context = context
 
@@ -140,7 +142,7 @@ class ConversationPipeline:
             # Phase 2: persist_user_input now returns the saved ChatMessageDict.
             # We forward its timestamp as `created_at` in the echo so the
             # client receives the canonical server time instead of Date.now().
-            saved_user_msg = await self._persistence.persist_user_input(session_id, text, trace_id)
+            saved_user_msg = await self._persistence.persist_user_input(session_id, text, trace_id, message_id)
             user_created_at: str | None = (
                 saved_user_msg.get("created_at") if saved_user_msg else None
             )
@@ -248,7 +250,7 @@ class ConversationPipeline:
                 # Phase 2: persist first, then send chat.final so the canonical
                 # timestamp from the DB row is available in the WS event.
                 saved_asst_msg = await self._persistence.persist_assistant_output(
-                    session_id, context.llm_full_response, tts_key, trace_id
+                    session_id, context.llm_full_response, tts_key, trace_id, None
                 )
                 context.assistant_created_at = (
                     saved_asst_msg.get("created_at") if saved_asst_msg else None
@@ -263,6 +265,7 @@ class ConversationPipeline:
                             text=context.llm_full_response,
                             emotion=context.llm_emotion,
                             created_at=context.assistant_created_at,
+                            db_message_id=saved_asst_msg.get('id') if saved_asst_msg else None,
                         )
                     )
 

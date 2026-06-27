@@ -156,7 +156,6 @@ export function useGaplessAudioQueue() {
                 source.disconnect();
               }
               // Defensive GC: Nullify buffer to prevent memory leaks from retained audio buffers
-              // @ts-ignore - intentional memory release
               source.buffer = null;
             } catch (e) {
               console.warn('[GaplessAudio] Failed to cleanup activeSourceNode onended:', e);

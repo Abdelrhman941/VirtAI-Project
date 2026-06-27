@@ -79,10 +79,17 @@ class CohereLLMProvider(BaseLLMProvider):
             
             text = response.message.content[0].text
             
+            total_tokens = 0
+            if getattr(response, "usage", None) and getattr(response.usage, "tokens", None):
+                total_tokens = (
+                    getattr(response.usage.tokens, "input_tokens", 0) + 
+                    getattr(response.usage.tokens, "output_tokens", 0)
+                )
+            
             return LLMResult(
                 full_text=text,
                 model=self.model,
-                total_tokens=response.meta.billed_units.input_tokens + response.meta.billed_units.output_tokens if response.meta and response.meta.billed_units else 0,
+                total_tokens=total_tokens,
                 duration_ms=latency_ms,
             )
         except Exception as e:

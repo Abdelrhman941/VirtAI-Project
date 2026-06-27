@@ -72,7 +72,7 @@ export function useClassroomState() {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isDocumentsOpen, setIsDocumentsOpen] = useState<boolean>(false);
-  const [sidebarWidth, setSidebarWidth] = useState<number>(320);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(400);
 
   const openSettings = useCallback(() => setIsSettingsOpen(true), []);
   const closeSettings = useCallback(() => setIsSettingsOpen(false), []);

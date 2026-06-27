@@ -1,5 +1,5 @@
 from app.domain.rag.task_types import Locale, TaskType
-from app.infrastructure.rag.prompts.registry import get_prompt_set
+from app.application.prompts.rag.registry import get_prompt_set
 
 
 def test_all_combinations_exist():

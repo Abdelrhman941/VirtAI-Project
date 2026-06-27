@@ -1,3 +1,4 @@
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +14,7 @@ from app.domain.rag.task_types import Locale
 from app.domain.user.entities import UserEntity
 from app.infrastructure.db.database import get_db
 from app.infrastructure.db.repositories.ingestion_state_repository import IngestionStateRepository
-from app.infrastructure.external.napkin_client import NapkinClient
+from app.infrastructure.visualization.napkin_client import NapkinClient
 from app.presentation.http.v1.dependencies import _current_user
 from app.shared.ids import parse_uuid
 
@@ -145,21 +146,19 @@ async def get_diagram(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.get("/visualization/{message_id}")
+@router.post("/visualization/{message_id}")
 async def get_visualization(
-    message_id: str,
+    message_id: UUID,
     user: UserEntity = Depends(_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Request Napkin.ai visualization for a specific message."""
-    msg_uuid = parse_uuid(message_id)
-    if not msg_uuid:
-        raise HTTPException(status_code=400, detail="Invalid message ID")
+    msg_uuid = message_id
 
     provider = NapkinClient()
     use_case = VisualizationUseCase(provider=provider)
     try:
-        viz_data = await use_case.get_visualization(db, message_id, str(user.id))
+        viz_data = await use_case.get_visualization(db, str(message_id), str(user.id))
         return viz_data
     except VisualizationDomainException as e:
         raise HTTPException(status_code=403, detail=str(e))
