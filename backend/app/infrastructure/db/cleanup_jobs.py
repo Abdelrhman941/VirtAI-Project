@@ -56,7 +56,24 @@ async def cleanup_orphaned_and_stuck_documents(db: AsyncSession, stuck_timeout_m
             deleted_stuck_count = len(stuck_ids)
             logger.info(f"Deleted {deleted_stuck_count} stuck documents: {stuck_ids}")
             
+        # 3. Delete orphaned sessions (0 messages and older than 7 days)
+        session_cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+        empty_session_stmt = select(ChatSession.id).where(
+            ChatSession.message_count == 0,
+            ChatSession.created_at < session_cutoff
+        )
+        empty_result = await db.execute(empty_session_stmt)
+        empty_ids = [row[0] for row in empty_result.all()]
+        
+        deleted_sessions_count = 0
+        if empty_ids:
+            del_session_stmt = delete(ChatSession).where(ChatSession.id.in_(empty_ids))
+            await db.execute(del_session_stmt)
+            deleted_sessions_count = len(empty_ids)
+            logger.info(f"Deleted {deleted_sessions_count} orphaned sessions: {empty_ids}")
+
     return {
         "orphans_deleted": deleted_orphans_count,
-        "stuck_deleted": deleted_stuck_count
+        "stuck_deleted": deleted_stuck_count,
+        "sessions_deleted": deleted_sessions_count
     }

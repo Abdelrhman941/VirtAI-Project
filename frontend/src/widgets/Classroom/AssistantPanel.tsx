@@ -53,6 +53,7 @@ export interface AssistantPanelProps {
   onToggleDocuments: () => void;
   onBeforeVoiceStart: () => Promise<boolean>;
   onStop: () => void;
+  wsClient?: any;
 }
 
 export function AssistantPanel({
@@ -87,7 +88,8 @@ export function AssistantPanel({
   textareaRef,
   onToggleDocuments,
   onBeforeVoiceStart,
-  onStop
+  onStop,
+  wsClient
 }: AssistantPanelProps) {
   if (isExplainActive) {
     return (
@@ -151,6 +153,7 @@ export function AssistantPanel({
           onToggleDocuments={onToggleDocuments}
           onBeforeVoiceStart={onBeforeVoiceStart}
           onStop={onStop}
+          wsClient={wsClient}
         />
       </div>
     </>

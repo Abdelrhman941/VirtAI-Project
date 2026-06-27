@@ -83,13 +83,30 @@ class WSManager {
   }
 
   public connect(url: string | null = this.url, tokenOverride: string | null = null) {
-    if (!url) {
-      this.clearReconnectTimer();
-      this.updateStatus(ConnectionState.DISCONNECTED);
-      return;
+    if (!url) return;
+    
+    // If connecting to a new URL (e.g. new session), disconnect old and reset state
+    if (this.url && this.url !== url) {
+      // Close old socket but don't reset token state
+      if (this.ws) {
+        this.ws.onopen = null;
+        this.ws.onmessage = null;
+        this.ws.onerror = null;
+        this.ws.onclose = null; // prevent reconnect loop
+        this.ws.close(1000, 'session-change');
+        this.ws = null;
+      }
+      this.clearTimers();
+      this.isConnecting = false;
+      // Reset session state ONLY (not auth state)
+      resetSessionState(this.sessionState);
     }
-
+    
     this.url = url;
+    
+    // Don't connect if already connecting or open
+    if (this.ws && this.ws.readyState === WebSocket.CONNECTING) return;
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
 
     if (this.reconnectPolicy.isPaused || this.reconnectPolicy.shouldPause()) {
       if (this.reconnectPolicy.shouldPause()) this.pauseReconnect();
@@ -103,9 +120,8 @@ class WSManager {
       return;
     }
 
-    if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) {
-      return;
-    }
+    if (this.ws && this.ws.readyState === WebSocket.CONNECTING) return;
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
     
     if (this.isConnecting) return;
     this.isConnecting = true;
@@ -121,20 +137,26 @@ class WSManager {
       
       socket.onopen = () => {
         if (this.ws !== socket) return;
+
+        // Re-evaluate token at the exact moment of connection
+        const currentToken = tokenOverride ?? useAuthStore.getState().accessToken;
+        if (!currentToken) {
+          if (import.meta.env.DEV) console.warn('[WS] onopen: token null, scheduling retry');
+          socket.close(WS_CLOSE_NORMAL, 'Token expired during connection handshake');
+          this.ws = null;
+          this.isConnecting = false;
+          this.scheduleReconnect('Token expired during connection handshake');
+          return;
+        }
+
         this.isConnecting = false;
         this.updateStatus(ConnectionState.CONNECTING);
         
         this.reconnectPolicy.reset();
         this.authRefreshAttempts = 0;
 
-        // First-message auth
-        socket.send(JSON.stringify({ type: 'auth', token: token }));
-        
-        if (this.sessionState.sessionId) {
-          socket.send(JSON.stringify({ type: 'session_restore', session_id: this.sessionState.sessionId }));
-        } else {
-          socket.send(JSON.stringify({ type: 'session_new' }));
-        }
+        // ONLY the auth message - session_id already in URL
+        socket.send(JSON.stringify({ type: 'auth', token: currentToken }));
       };
       
       socket.onmessage = (event: MessageEvent) => {
@@ -239,6 +261,7 @@ class WSManager {
 
   public disconnect(intentional = true) {
     this.isIntentionalClose = intentional;
+    this.isConnecting = false;
     if (intentional) {
       this.reconnectPolicy.reset();
     }
@@ -259,6 +282,13 @@ class WSManager {
       if (typeof window !== 'undefined') localStorage.removeItem('virt_session_id');
     }
     this.authRefreshAttempts = 0;
+  }
+  
+  public reconnectTo(url: string) {
+    this.isIntentionalClose = false;
+    this.isConnecting = false;
+    this.reconnectPolicy.reset();
+    this.connect(url);
   }
   
   public reconnect() {

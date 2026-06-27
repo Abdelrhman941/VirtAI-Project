@@ -155,15 +155,16 @@ class WebSocketHandler:
                         break
                     try:
                         await self.ws.send_text(payload)
-                    except Exception:
+                    except Exception as e:
+                        logger.warning(f"[WS] Failed to replay message: {e}")
                         break
         except Exception as e:
             logger.error(f"[WS] Failed to send ready message: {e}")
             self._connected = False
             try:
                 await self.ws.close(code=1011, reason="Internal server error")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[WS] Failed to close cleanly after error: {e}")
             return
 
         self._heartbeat_task = asyncio.create_task(self.connection_lifecycle.heartbeat_loop())

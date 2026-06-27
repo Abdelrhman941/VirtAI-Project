@@ -2,7 +2,6 @@ import React, { KeyboardEvent, useCallback, useEffect, useRef, useMemo } from 'r
 import { FiSquare } from 'react-icons/fi';
 import { PiPaperclip, PiPaperPlaneTiltFill } from 'react-icons/pi';
 import VoiceModeButton from '../../voice/components/VoiceModeButton';
-import { useWS } from '@/core/realtime/WSContext';
 import { ConnectionState } from '@/core/realtime/wsConstants';
 
 const MAX_CHARS = 2000;
@@ -17,6 +16,13 @@ interface ChatInputProps {
   onToggleDocuments: () => void;
   onBeforeVoiceStart?: () => Promise<boolean> | boolean;
   onStop?: () => void;
+  wsClient?: {
+    connectionState: ConnectionState;
+    isConnected: boolean;
+    send: (data: string) => void;
+    onMessage: (handler: (msg: unknown) => void) => () => void;
+    currentSessionId: string | null;
+  };
 }
 
 export default function ChatInput({
@@ -29,11 +35,13 @@ export default function ChatInput({
   onToggleDocuments,
   onBeforeVoiceStart,
   onStop,
+  wsClient,
 }: ChatInputProps) {
   const requestRef = useRef<number>(0);
   const lastActionTime = useRef<number>(0);
 
-  const { connectionState, isConnected, send, onMessage, currentSessionId } = useWS();
+  const connectionState = wsClient?.connectionState ?? ConnectionState.DISCONNECTED;
+  const currentSessionId = wsClient?.currentSessionId ?? null;
 
   const isOnline = connectionState === ConnectionState.CONNECTED;
   const isOffline = connectionState === ConnectionState.DISCONNECTED || connectionState === ConnectionState.FAILED;
@@ -126,6 +134,7 @@ export default function ChatInput({
             className="flex items-center justify-center"
             pipelineState={pipelineState}
             onBeforeStart={onBeforeVoiceStart}
+            wsClient={wsClient}
           />
           <button
             className="w-[52px] h-[52px] rounded-full bg-dark-secondary hover:bg-dark-tertiary flex items-center justify-center transition-colors text-white/70 hover:text-white"

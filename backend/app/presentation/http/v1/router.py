@@ -129,16 +129,28 @@ async def websocket_endpoint(
         auth_msg = json.loads(auth_msg_raw)
         if auth_msg.get("type") != "auth" or not auth_msg.get("token"):
             logger.warning("[WS] Missing or invalid auth message format")
-            await websocket.close(code=4001, reason="Missing or invalid auth message")
+            try:
+                await websocket.close(code=4001, reason="Missing or invalid auth message")
+            except Exception:
+                pass
             return
         token = auth_msg["token"]
     except asyncio.TimeoutError:
         logger.warning("[WS] Auth timeout")
-        await websocket.close(code=4001, reason="Auth timeout")
+        try:
+            await websocket.close(code=4001, reason="Auth timeout")
+        except Exception:
+            pass
+        return
+    except WebSocketDisconnect:
+        logger.info("[WS] Client disconnected before auth")
         return
     except Exception as e:
         logger.warning(f"[WS] Invalid auth message payload: {e}")
-        await websocket.close(code=4001, reason="Invalid auth payload")
+        try:
+            await websocket.close(code=4001, reason="Invalid auth payload")
+        except Exception:
+            pass
         return
 
     try:
@@ -240,6 +252,8 @@ async def websocket_endpoint(
         logger.info(
             f"[WS] Starting handler | session={session.session_id if session else 'pending'}"
         )
+        await websocket.send_json({"type": "ready"})
+        logger.info("[WS] Ready sent | session=%s", session_id)
         await handler.run()
     except WebSocketDisconnect:
         logger.info(f"[WS] Client disconnected | session={handler.session.session_id or 'pending'}")
@@ -257,93 +271,3 @@ async def websocket_endpoint(
             )
 
 
-@router.websocket("/rag/explain/{document_id}")
-async def explain_websocket_endpoint(
-    websocket: WebSocket,
-    document_id: str,
-    db: AsyncSession = Depends(get_db),
-    chat_use_case: ChatUseCase = Depends(get_chat_use_case),
-):
-    """
-    WebSocket endpoint for Slide-by-Slide Explanation.
-    URL: ws://localhost:8000/api/v1/rag/explain/{document_id}
-    """
-
-    # 1. Extract and validate token from subprotocols
-    token = None
-    subprotocols = websocket.scope.get("subprotocols", [])
-    if "access_token" in subprotocols:
-        try:
-            idx = subprotocols.index("access_token")
-            if idx + 1 < len(subprotocols):
-                token = subprotocols[idx + 1].strip()
-        except ValueError:
-            pass
-
-    if not token:
-        await websocket.close(code=4401, reason="Missing token")
-        return
-
-    from app.shared.security import decode_auth_token
-    from app.shared.ids import parse_uuid
-    try:
-        token_payload = decode_auth_token(token, expected_type="access")
-        user_id = token_payload.user_id
-    except Exception as e:
-        logger.warning(f"[ExplainWS] Invalid token: {e}")
-        await websocket.close(code=4401, reason="Invalid token")
-        return
-
-    parsed_user_id = parse_uuid(user_id)
-    if not parsed_user_id:
-        await websocket.close(code=4401, reason="Invalid token")
-        return
-
-    # 2. Session Guard & Document Ownership
-    from sqlalchemy import select
-
-    from app.infrastructure.db.models import ChatSession, Document
-
-    doc_uuid = parse_uuid(document_id)
-    if not doc_uuid:
-        await websocket.close(code=4000, reason="Invalid document ID format")
-        return
-
-    doc = await db.scalar(select(Document).where(Document.id == doc_uuid))
-    if not doc:
-        await websocket.close(code=4404, reason="Document not found")
-        return
-
-    # Security: Verify ownership!
-    if str(doc.user_id) != str(parsed_user_id):
-        logger.warning(f"[ExplainWS] Unauthorized access attempt: User {user_id} tried to access Doc {document_id}")
-        await websocket.close(code=4403, reason="Unauthorized")
-        return
-
-    if doc.retrieval_scope == "SESSION" and doc.scope_id:
-        session_model = await db.scalar(
-            select(ChatSession).where(ChatSession.id == doc.scope_id)
-        )
-        if session_model and session_model.message_count > 0:
-            await websocket.close(
-                code=1008, reason="Cannot present document: chat already started."
-            )
-            return
-
-    # Accept the websocket
-    await websocket.accept(subprotocol="access_token")
-
-    handler = ExplainHandler(
-        websocket=websocket,
-        document_id=document_id,
-        db=db,
-        user_id=user_id,
-        chat_use_case=chat_use_case,
-    )
-
-    try:
-        await handler.run()
-    except Exception as e:
-        logger.error(f"[ExplainWS] Handler error: {e}")
-    finally:
-        pass

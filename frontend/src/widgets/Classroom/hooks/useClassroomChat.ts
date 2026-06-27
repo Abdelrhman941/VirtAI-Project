@@ -124,7 +124,7 @@ export function useClassroomChat({
               newId
             );
             // The message will be queued by the core WS queue until connection is established.
-            send({ type: 'chat.user_message', data: { message_id, text } });
+            send({ type: 'chat.user_message', message_id, text });
           }
         }).catch((err: unknown) => {
           isCreatingSessionRef.current = false;
@@ -141,7 +141,7 @@ export function useClassroomChat({
           { id: message_id, role: 'user', content: text, status: 'pending' },
           activeId
         );
-        send({ type: 'chat.user_message', data: { message_id, text } });
+        send({ type: 'chat.user_message', message_id, text });
       }
     },
     [dispatch, send, currentSessionId, resetAvatarAudio, getAudioContext]

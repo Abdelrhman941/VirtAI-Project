@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { UploadService } from '../../services/uploadService';
 
+const globalUploadService = new UploadService();
+
 export function useDocumentList(sessionId: string | null = null) {
-  // Instantiate per-component to preserve WS cleanup on unmount
-  const uploadService = useMemo(() => new UploadService(), []);
+  const uploadService = globalUploadService;
   const [state, setState] = useState(uploadService.getState());
 
   useEffect(() => {
@@ -12,7 +13,6 @@ export function useDocumentList(sessionId: string | null = null) {
     
     return () => {
       unsub();
-      uploadService.destroy(); // Clean up WS subscriptions
     };
   }, [sessionId, uploadService]);
 

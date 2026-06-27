@@ -47,8 +47,9 @@ export default function useWSClient(url: string | null) {
   }, []);
 
   const reconnect = useCallback(() => {
-    wsManager.reconnect();
-  }, []);
+    if (!url) return;
+    wsManager.reconnectTo(url);
+  }, [url]);
 
   return {
     connectionState,

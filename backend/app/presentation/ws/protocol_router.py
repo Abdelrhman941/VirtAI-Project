@@ -13,6 +13,7 @@ from app.schemas.ws_messages import (
     WSMessageEnvelope,
     make_pipeline_state,
 )
+from app.presentation.ws.pipeline_bridge import _pipeline_task_done_callback
 
 incoming_msg_adapter = TypeAdapter(IncomingWSMessage)
 
@@ -41,6 +42,10 @@ class ProtocolRouter:
             return False
         self._message_timestamps.append(now)
         return True
+
+    def cleanup(self) -> None:
+        """Clear rate limiter state on disconnect to avoid memory leaks."""
+        self._message_timestamps.clear()
 
     async def route_message(self, raw: str) -> None:
         if not self._check_rate_limit():

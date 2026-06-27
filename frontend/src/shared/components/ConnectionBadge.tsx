@@ -8,11 +8,13 @@ import wsManager from '@/services/wsManager';
 export interface ConnectionBadgeProps {
   currentSessionId: string | null;
   size?: 'sm' | 'md';
+  onReconnect?: () => void;
 }
 
 export function ConnectionBadge({
   currentSessionId,
-  size = 'md'
+  size = 'md',
+  onReconnect
 }: ConnectionBadgeProps) {
   const { status, retryCount, nextRetryIn } = useWsStatus();
   
@@ -104,9 +106,9 @@ export function ConnectionBadge({
         {statusText}
       </span>
       
-      {showReconnectButton && (
+      {showReconnectButton && onReconnect && (
         <button
-          onClick={() => wsManager.reconnect()}
+          onClick={onReconnect}
           title="Reconnect"
           className={buttonClasses}
         >

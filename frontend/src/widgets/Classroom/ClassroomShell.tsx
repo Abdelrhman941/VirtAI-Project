@@ -18,7 +18,7 @@ import { SCROLL_STICK_THRESHOLD_PX } from './constants';
 import { useClassroomAudio } from './hooks/useClassroomAudio';
 import { useClassroomChat } from './hooks/useClassroomChat';
 import { useClassroomState } from './hooks/useClassroomState';
-import { WSContext } from '@/core/realtime/WSContext';
+
 import { FiMonitor, FiShare2, FiEdit3, FiMessageSquare, FiFileText } from 'react-icons/fi';
 import { ErrorState } from '@/shared/components/UIStates';
 
@@ -388,18 +388,16 @@ export default function ClassroomShell() {
 
   const isSidebarOpen = isSettingsOpen || isDocumentsOpen;
 
+  const chatWsClient = {
+    connectionState,
+    isConnected,
+    send: safeSend,
+    onMessage,
+    currentSessionId,
+  };
+
   return (
-    <WSContext.Provider
-      value={{
-        connectionState,
-        isConnected,
-        send: safeSend,
-        reconnect,
-        disconnect,
-        currentSessionId,
-        onMessage,
-      }}
-    >
+    <>
       <Helmet>
         <title>{avatarName} — VirtAI Classroom</title>
       </Helmet>
@@ -518,6 +516,7 @@ export default function ClassroomShell() {
                 onToggleDocuments={toggleDocuments}
                 onBeforeVoiceStart={ensureVoiceSession}
                 onStop={handleStop}
+                wsClient={chatWsClient}
               />
             </section>
 
@@ -589,6 +588,7 @@ export default function ClassroomShell() {
                 onToggleDocuments={toggleDocuments}
                 onBeforeVoiceStart={ensureVoiceSession}
                 onStop={handleStop}
+                wsClient={chatWsClient}
               />
             </section>
 
@@ -667,6 +667,6 @@ export default function ClassroomShell() {
 
         </main>
       </div>
-    </WSContext.Provider>
+    </>
   );
 }

@@ -52,13 +52,13 @@ export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChang
   const sendQuestion = useCallback((text: string) => {
     setCurrentState('ANSWERING');
     onStateChange('ANSWERING');
-    send({ type: 'chat.user_message', data: { text } });
+    send({ type: 'chat.user_message', text });
   }, [send, onStateChange]);
 
   const sendContinue = useCallback(() => {
     setCurrentState('EXPLAINING');
     onStateChange('EXPLAINING');
-    send({ type: 'chat.user_message', data: { text: 'continue' } });
+    send({ type: 'chat.user_message', text: 'continue' });
   }, [send, onStateChange]);
 
   const sendPauseOrStop = useCallback(() => {

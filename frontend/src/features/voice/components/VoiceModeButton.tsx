@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { PiMicrophone, PiPauseFill, PiWarningCircleFill } from 'react-icons/pi';
 import { useRealtimeASR } from '../hooks/useRealtimeASR';
-import { useWS } from '@/core/realtime/WSContext';
+
 import { VoiceIndicator } from '@/shared/components/VoiceIndicator';
 import './VoiceModeButton.css';
 
@@ -15,6 +15,7 @@ interface VoiceModeButtonProps {
   className?: string;
   /** Optional guard used to prepare a session before microphone capture starts */
   onBeforeStart?: () => Promise<boolean> | boolean;
+  wsClient?: any;
 }
 
 /**
@@ -33,9 +34,8 @@ export default function VoiceModeButton({
   pipelineState,
   className = '',
   onBeforeStart,
+  wsClient,
 }: VoiceModeButtonProps) {
-  // Consume the WebSocket Single Source of Truth context directly
-  const wsClient = useWS();
 
   // Use realtime ASR hook for voice + transcript state (Requirement 1.1, 1.4)
   const { isListening, isPaused, isProcessing, interimText, error, startListening, stopListening } =

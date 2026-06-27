@@ -43,6 +43,7 @@ export function AvatarTopBar({
         <ConnectionBadge
           currentSessionId={currentSessionId}
           size="md"
+          onReconnect={reconnect}
         />
 
         {/* Right Section (Action Buttons) */}
@@ -97,6 +98,7 @@ export function AvatarTopBar({
         <ConnectionBadge
           currentSessionId={currentSessionId}
           size="sm"
+          onReconnect={reconnect}
         />
 
         {/* Far Right: Setup Profile Icon */}

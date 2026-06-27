@@ -24,6 +24,8 @@ class ConnectionLifecycle:
         if self.handler._voice_mode_handler:
             await self.handler._voice_mode_handler.shutdown()
 
+        self.handler.protocol_router.cleanup()
+
         try:
             from starlette.websockets import WebSocketState
 
