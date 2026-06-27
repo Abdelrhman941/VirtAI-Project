@@ -73,10 +73,17 @@ class NapkinClient(VisualizationProviderPort):
                     if status == "completed":
                         generated_files = poll_data.get("generated_files", [])
                         if generated_files and len(generated_files) > 0:
-                            # In MINI-RAG we fetched base64, but VirtAI caches image_url directly
                             img_url = generated_files[0].get("url")
                             if img_url:
-                                return {"image_url": img_url}
+                                try:
+                                    img_res = await client.get(img_url, headers=headers, timeout=15.0)
+                                    img_res.raise_for_status()
+                                    import base64
+                                    b64_img = base64.b64encode(img_res.content).decode("utf-8")
+                                    return {"image_url": f"data:image/png;base64,{b64_img}"}
+                                except Exception as e:
+                                    logger.error(f"Failed to fetch image from Napkin URL: {e}")
+                                    return {"unavailable": True, "reason": "image_download_failed"}
                         return {"unavailable": True, "reason": "missing_image_url"}
                     elif status in ("failed", "error"):
                         return {"unavailable": True, "reason": "generation_failed"}

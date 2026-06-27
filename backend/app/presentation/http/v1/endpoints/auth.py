@@ -270,26 +270,43 @@ async def login(
     request: Request,
     repo: UserRepositoryDep,
 ) -> dict:
-    auth_login_attempts.labels(status="attempt", provider="local").inc()
-    await _assert_rate_limit_login(request)
-    await _check_account_lockout(body.email)
-    user = await authenticate_user(repo, body.email, body.password)
-    if user is None:
-        await _record_login_failure(body.email)
-        auth_login_failures.labels(reason="invalid_credentials").inc()
+    from app.application.auth.auth_use_cases import (
+        LoginUseCase,
+        RateLimitExceededError,
+        AccountLockedError,
+        InvalidCredentialsError,
+        InactiveAccountError,
+    )
+
+    use_case = LoginUseCase(repo)
+    try:
+        result = await use_case.execute(
+            email=body.email,
+            password=body.password,
+            client_ip=_extract_client_ip(request),
+            user_agent=request.headers.get("user-agent", "unknown"),
+        )
+    except RateLimitExceededError as e:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many login attempts",
+            headers={"Retry-After": str(e.retry_after)},
+        )
+    except AccountLockedError:
+        raise HTTPException(
+            status_code=423,
+            detail="Account temporarily locked due to repeated failed attempts",
+        )
+    except InvalidCredentialsError:
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    if not user.is_active:
-        auth_login_failures.labels(reason="inactive_account").inc()
+    except InactiveAccountError:
         raise HTTPException(status_code=403, detail="User account is inactive")
-    access, refresh, family_id = _issue_tokens(user)
-    await _store_initial_refresh(user, refresh, family_id, request)
-    await cache_auth_session(str(user.id), _serialize_user_for_cache(user))
-    _set_refresh_cookie(response, refresh)
-    auth_login_attempts.labels(status="success", provider="local").inc()
+
+    _set_refresh_cookie(response, result.refresh_token)
     return {
-        "access_token": access,
+        "access_token": result.access_token,
         "token_type": "bearer",
-        "user": _user_response(user).model_dump(by_alias=True),
+        "user": _user_response(result.user).model_dump(by_alias=True),
     }
 
 
@@ -300,19 +317,35 @@ async def signup(
     request: Request,
     repo: UserRepositoryDep,
 ) -> dict:
-    await _assert_rate_limit_signup(request)
-    existing = await get_user_by_email(repo, body.email)
-    if existing is not None:
+    from app.application.auth.auth_use_cases import (
+        SignupUseCase,
+        RateLimitExceededError,
+        EmailAlreadyRegisteredError,
+    )
+
+    use_case = SignupUseCase(repo)
+    try:
+        result = await use_case.execute(
+            full_name=body.full_name,
+            email=body.email,
+            password=body.password,
+            client_ip=_extract_client_ip(request),
+            user_agent=request.headers.get("user-agent", "unknown"),
+        )
+    except RateLimitExceededError as e:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many signup attempts",
+            headers={"Retry-After": str(e.retry_after)},
+        )
+    except EmailAlreadyRegisteredError:
         raise HTTPException(status_code=409, detail="Email already registered")
-    user = await register_user(repo, body.full_name, body.email, body.password)
-    access, refresh, family_id = _issue_tokens(user)
-    await _store_initial_refresh(user, refresh, family_id, request)
-    await cache_auth_session(str(user.id), _serialize_user_for_cache(user))
-    _set_refresh_cookie(response, refresh)
+
+    _set_refresh_cookie(response, result.refresh_token)
     return {
-        "access_token": access,
+        "access_token": result.access_token,
         "token_type": "bearer",
-        "user": _user_response(user).model_dump(by_alias=True),
+        "user": _user_response(result.user).model_dump(by_alias=True),
     }
 
 
@@ -386,29 +419,37 @@ async def google_callback(
     request: Request,
     repo: UserRepositoryDep,
 ) -> dict:
-    auth_login_attempts.labels(status="attempt", provider="google").inc()
-    await _assert_rate_limit_google_callback(request)
-    redis_client: AsyncRedis = get_redis()
-    state_key = f"oauth:state:{body.state}"
-    is_valid_state: bytes | None = await redis_client.execute_command("GET", state_key)
-    if not is_valid_state:
-        auth_login_failures.labels(reason="invalid_oauth_state").inc()
+    from app.application.auth.auth_use_cases import (
+        GoogleLoginUseCase,
+        RateLimitExceededError,
+        InvalidOAuthStateError,
+        InactiveAccountError,
+    )
+
+    use_case = GoogleLoginUseCase(repo)
+    try:
+        result = await use_case.execute(
+            code=body.code,
+            state=body.state,
+            client_ip=_extract_client_ip(request),
+            user_agent=request.headers.get("user-agent", "unknown"),
+        )
+    except RateLimitExceededError as e:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many login attempts",
+            headers={"Retry-After": str(e.retry_after)},
+        )
+    except InvalidOAuthStateError:
         raise HTTPException(status_code=400, detail="Invalid or expired state parameter")
-    await redis_client.execute_command("DEL", state_key)
-    google_info = await exchange_google_code(body.code)
-    user = await get_or_create_google_user(repo, google_info)
-    if not user.is_active:
-        auth_login_failures.labels(reason="inactive_account").inc()
+    except InactiveAccountError:
         raise HTTPException(status_code=403, detail="User account is inactive")
-    access, refresh, family_id = _issue_tokens(user)
-    await _store_initial_refresh(user, refresh, family_id, request)
-    await cache_auth_session(str(user.id), _serialize_user_for_cache(user))
-    _set_refresh_cookie(response, refresh)
-    auth_login_attempts.labels(status="success", provider="google").inc()
+
+    _set_refresh_cookie(response, result.refresh_token)
     return {
-        "access_token": access,
+        "access_token": result.access_token,
         "token_type": "bearer",
-        "user": _user_response(user).model_dump(by_alias=True),
+        "user": _user_response(result.user).model_dump(by_alias=True),
     }
 
 
