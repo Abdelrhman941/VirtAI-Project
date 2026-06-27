@@ -48,6 +48,80 @@ const REHYPE_PLUGINS = [rehypeKatex];
 // Public component
 // ---------------------------------------------------------------------------
 
+const PROSE_CLASSES = [
+  'prose',
+  'prose-invert',
+  'max-w-none',
+  // Text & Colors
+  'text-gray-300',
+  'prose-p:leading-relaxed',
+  'prose-p:my-4',
+  'prose-strong:text-white',
+  'prose-strong:font-semibold',
+  // Headings
+  'prose-headings:text-white',
+  'prose-headings:font-bold',
+  'prose-headings:tracking-tight',
+  'prose-h1:text-3xl',
+  'prose-h1:mt-10',
+  'prose-h1:mb-6',
+  'prose-h1:border-b',
+  'prose-h1:border-white/10',
+  'prose-h1:pb-4',
+  'prose-h2:text-2xl',
+  'prose-h2:mt-10',
+  'prose-h2:mb-4',
+  'prose-h3:text-xl',
+  'prose-h3:mt-8',
+  'prose-h3:mb-3',
+  'prose-h4:text-lg',
+  // Links
+  'prose-a:text-gold-soft',
+  'prose-a:no-underline',
+  'hover:prose-a:underline',
+  'hover:prose-a:text-gold',
+  // Lists (CRITICAL FOR GAPS)
+  'prose-ul:my-4',
+  'prose-ol:my-4',
+  'prose-li:my-0.5',
+  '[&_li>p]:my-0', // Extremely important: removes huge gaps in nested lists
+  'prose-ul:list-disc',
+  'prose-ol:list-decimal',
+  '[&_li::marker]:text-white/40',
+  // Blockquotes
+  'prose-blockquote:border-l-4',
+  'prose-blockquote:border-gold-soft/40',
+  'prose-blockquote:bg-white/5',
+  'prose-blockquote:py-1',
+  'prose-blockquote:px-5',
+  'prose-blockquote:rounded-r-lg',
+  'prose-blockquote:not-italic',
+  'prose-blockquote:text-gray-300',
+  'prose-blockquote:my-6',
+  // Tables
+  'prose-table:w-full',
+  'prose-table:border-collapse',
+  'prose-table:my-6',
+  'prose-th:border',
+  'prose-th:border-white/20',
+  'prose-th:bg-white/10',
+  'prose-th:p-3',
+  'prose-th:text-left',
+  'prose-th:font-semibold',
+  'prose-td:border',
+  'prose-td:border-white/10',
+  'prose-td:p-3',
+  // Code Blocks & Inline Code
+  'prose-pre:p-0',
+  'prose-pre:m-0',
+  'prose-pre:bg-transparent',
+  'prose-code:before:content-none',
+  'prose-code:after:content-none',
+  // Misc
+  'prose-hr:border-white/10',
+  'prose-hr:my-10',
+].join(' ');
+
 export interface MarkdownRendererProps {
   content: string;
   streaming?: boolean;
@@ -100,7 +174,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     <div 
       ref={rootRef}
       dir="auto"
-      className={`prose prose-invert prose-p:leading-relaxed prose-headings:font-semibold prose-a:text-blue-400 hover:prose-a:text-blue-300 prose-hr:border-white/20 prose-hr:my-8 prose-li:my-1 prose-ul:my-2 prose-ol:my-2 prose-pre:p-0 prose-pre:bg-transparent max-w-none ${className}`.trim()} 
+      className={`${PROSE_CLASSES} ${className}`.trim()} 
     >
       <ReactMarkdown
         remarkPlugins={REMARK_PLUGINS}

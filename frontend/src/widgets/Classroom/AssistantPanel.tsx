@@ -1,7 +1,7 @@
 import React, { RefObject } from 'react';
 import { ExplainSession } from '@/features/explain/components/ExplainSession';
 import { DiagramContainer } from '@/features/diagrams/components/DiagramContainer';
-import { SummaryContainer } from '@/features/summary/components/SummaryContainer';
+import { DocumentPicker } from '@/features/diagrams/components/DocumentPicker';
 import { MessageList, ChatInput } from '@/features/chat';
 import { PresentationState } from '@/features/explain/hooks/useExplainWS';
 import { ISession } from '@/features/session/types';
@@ -30,6 +30,7 @@ export interface AssistantPanelProps {
 
   // Summary Props
   onSummaryClose: () => void;
+  onSummarizeDocument?: (filename: string) => void;
 
   currentSessionId: string | null;
   
@@ -71,6 +72,7 @@ export function AssistantPanel({
   onExplainClose,
   onDiagramClose,
   onSummaryClose,
+  onSummarizeDocument,
   currentSessionId,
   messages,
   currentMessage,
@@ -121,11 +123,23 @@ export function AssistantPanel({
 
   if (isSummaryOpen) {
     return (
-      <SummaryContainer
-        isOpen={isSummaryOpen}
-        onClose={onSummaryClose}
-        sessionId={currentSessionId}
-      />
+      <div className="w-full h-full flex flex-col relative bg-dark-tertiary overflow-hidden min-w-0">
+        <div className="w-full h-full overflow-y-auto p-6 flex flex-col items-center justify-center">
+          <div className="w-full max-w-2xl w-[600px] max-w-[90vw]">
+            <DocumentPicker 
+              title="Select Document to Summarize"
+              buttonText="Summarize Document"
+              sessionId={currentSessionId} 
+              onSelect={(docId, filename) => {
+                if (onSummarizeDocument) {
+                  onSummarizeDocument(filename);
+                }
+              }} 
+              onCancel={onSummaryClose} 
+            />
+          </div>
+        </div>
+      </div>
     );
   }
 

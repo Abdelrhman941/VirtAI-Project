@@ -171,6 +171,11 @@ export default function ClassroomShell() {
     await session.clearAllSessions();
   }, [disconnect, session]);
 
+  const handleSummarizeDocument = useCallback((filename: string) => {
+    setIsSummaryOpen(false);
+    commitAndSend(`Please summarize the document: ${filename}`);
+  }, [commitAndSend]);
+
   const handleDeleteSession = useCallback(async (sessionId: string) => {
     if (sessionId === currentSessionId) {
       disconnect();
@@ -498,6 +503,7 @@ export default function ClassroomShell() {
                 }}
                 onDiagramClose={() => setIsDiagramOpen(false)}
                 onSummaryClose={() => setIsSummaryOpen(false)}
+                onSummarizeDocument={handleSummarizeDocument}
                 currentSessionId={currentSessionId}
                 messages={currentSession?.messages}
                 currentMessage={conversationState.currentMessage}
@@ -570,6 +576,7 @@ export default function ClassroomShell() {
                   resetAvatarAudio();
                 }}
                 onDiagramClose={() => setIsDiagramOpen(false)}
+                onSummarizeDocument={handleSummarizeDocument}
                 currentSessionId={currentSessionId}
                 messages={currentSession?.messages}
                 currentMessage={conversationState.currentMessage}
