@@ -63,7 +63,6 @@ export function createEventRouter(): EventRouter {
 
         if (message.type === 'ready') {
           callbacks.onReady(message);
-          return;
         }
 
         if (message.type === 'pong') {
@@ -74,7 +73,7 @@ export function createEventRouter(): EventRouter {
         }
 
         const typeHandlers = handlers[message.type];
-        const ignoredTypes = ['chat.abort'];
+        const ignoredTypes = ['chat.abort', 'ready'];
 
         if (typeHandlers && typeHandlers.size > 0) {
           const data: EventRouterPayload = message.data || ({} as EventRouterPayload);

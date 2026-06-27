@@ -191,14 +191,15 @@ class SessionManager:
         the canonical `timestamp` (exposed as `created_at`) to WS events.
         """
         async with self._repo_factory() as repo:
-            return await repo.save_message(
-                session_id=session_id,
-                role=role,
-                content=content,
-                input_type=input_type,
-                tts_cache_key=tts_cache_key,
-                message_id=message_id,
-            )
+            async with repo.db.begin():
+                return await repo.save_message(
+                    session_id=session_id,
+                    role=role,
+                    content=content,
+                    input_type=input_type,
+                    tts_cache_key=tts_cache_key,
+                    message_id=message_id,
+                )
 
     async def create_session(
         self,

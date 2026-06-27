@@ -256,6 +256,7 @@ async def list_statuses(
                 "processed_chunks": d.processed_chunks,
                 "total_chunks": d.total_chunks,
                 "error_message": d.error_message,
+                "file_size": d.file_size,
             }
         )
 
@@ -332,6 +333,7 @@ async def list_documents(
             "upload_date": d.upload_date.isoformat(),
             "chunk_count": d.chunk_count,
             "file_type": d.file_type,
+            "file_size": d.file_size,
         }
         for d in docs
         if d.current_stage not in {IngestionStage.FAILED, IngestionStage.CANCELLED}

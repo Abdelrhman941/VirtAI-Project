@@ -82,12 +82,12 @@ export function useClassroomChat({
   }, [currentSessionId, dispatch, resetAvatarAudio, resetStream]);
 
   useEffect(() => {
-    if (connectionState === ConnectionState.RECONNECTING || connectionState === ConnectionState.OFFLINE) { // RECONNECTING or OFFLINE
+    if (connectionState === ConnectionState.RECONNECTING || connectionState === ConnectionState.DISCONNECTED || connectionState === ConnectionState.FAILED) { // RECONNECTING or OFFLINE
       if (conversationState.pipelineState === 'thinking' || conversationState.pipelineState === 'speaking') {
         dispatch({ type: 'ERROR', payload: { message: 'Connection interrupted' } });
         resetAvatarAudio(conversationState.activeMessageId);
       }
-    } else if (connectionState === ConnectionState.ONLINE) { // ONLINE
+    } else if (connectionState === ConnectionState.CONNECTED) { // ONLINE
       if (conversationState.pipelineState === 'error') {
         dispatch({ type: 'CLEAR_ERROR' });
       }

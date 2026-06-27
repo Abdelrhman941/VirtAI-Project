@@ -103,20 +103,42 @@ async def websocket_endpoint(
         await websocket.close(code=4004, reason="Invalid avatar ID")
         return
 
-    # WebSocket Auth (S1-01)
-    token = None
-    subprotocols = websocket.scope.get("subprotocols", [])
-    if "access_token" in subprotocols:
-        try:
-            idx = subprotocols.index("access_token")
-            if idx + 1 < len(subprotocols):
-                token = subprotocols[idx + 1].strip()
-        except ValueError:
-            pass
+    parsed_session_id = None
+    if session_id:
+        parsed_session_id = parse_uuid(session_id)
+        if parsed_session_id is None:
+            logger.warning("[WS] Invalid session_id")
+            await websocket.close(code=4400, reason="Invalid session ID")
+            return
+        session_id = str(parsed_session_id)
 
-    if not token:
-        logger.warning("[WS] Missing token")
-        await websocket.close(code=4401, reason="Missing token")
+    # WebSocket Auth (S1-01) - Moved to first message
+    # Accept connection immediately without subprotocols
+    try:
+        await websocket.accept()
+        logger.info(f"[WS] Connection accepted | avatar={avatar_id} | client={websocket.client}")
+    except Exception as e:
+        logger.error(f"[WS] Failed to accept connection: {e}")
+        return
+
+    # Wait for first message to be auth
+    try:
+        import asyncio
+        import json
+        auth_msg_raw = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
+        auth_msg = json.loads(auth_msg_raw)
+        if auth_msg.get("type") != "auth" or not auth_msg.get("token"):
+            logger.warning("[WS] Missing or invalid auth message format")
+            await websocket.close(code=4001, reason="Missing or invalid auth message")
+            return
+        token = auth_msg["token"]
+    except asyncio.TimeoutError:
+        logger.warning("[WS] Auth timeout")
+        await websocket.close(code=4001, reason="Auth timeout")
+        return
+    except Exception as e:
+        logger.warning(f"[WS] Invalid auth message payload: {e}")
+        await websocket.close(code=4001, reason="Invalid auth payload")
         return
 
     try:
@@ -153,23 +175,6 @@ async def websocket_endpoint(
         logger.error(f"[WS] DB/Redis error during connection: {e}")
         with suppress(Exception):
             await websocket.close(code=1011, reason="Internal server error")
-        return
-
-    parsed_session_id = None
-    if session_id:
-        parsed_session_id = parse_uuid(session_id)
-        if parsed_session_id is None:
-            logger.warning("[WS] Invalid session_id")
-            await websocket.close(code=4400, reason="Invalid session ID")
-            return
-        session_id = str(parsed_session_id)
-
-    # Accept connection
-    try:
-        await websocket.accept(subprotocol="access_token")
-        logger.info(f"[WS] Connection accepted | avatar={avatar_id} | client={websocket.client}")
-    except Exception as e:
-        logger.error(f"[WS] Failed to accept connection: {e}")
         return
 
     user_id = str(parsed_user_id)

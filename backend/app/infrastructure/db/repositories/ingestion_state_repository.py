@@ -18,6 +18,33 @@ class IngestionStateRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def _emit_doc_status(self, doc_uuid: Any) -> None:
+        from app.infrastructure.cache.redis_client import get_redis_or_none
+        import json
+        redis = get_redis_or_none()
+        if not redis: return
+
+        stmt = select(Document).where(Document.id == doc_uuid)
+        result = await self.db.execute(stmt)
+        doc = result.scalar_one_or_none()
+        if not doc or not doc.scope_id: return
+
+        payload = {
+            "event": "doc_status",
+            "session_id": str(doc.scope_id),
+            "data": {
+                "document_id": str(doc.id),
+                "status": doc.status,
+                "current_stage": doc.current_stage,
+                "progress_pct": doc.progress_pct,
+                "processed_chunks": doc.processed_chunks,
+                "total_chunks": doc.total_chunks,
+                "error_message": doc.error_message,
+                "filename": doc.filename,
+            }
+        }
+        await redis.publish("virtai:ws:events:doc_status", json.dumps(payload))
+
     async def update_status(
         self, document_id: str, status: str, chunk_count: int = 0
     ) -> DomainDocument | None:
@@ -30,6 +57,8 @@ class IngestionStateRepository:
         result = await self.db.execute(stmt)
         await self.db.flush()
         doc = result.scalar_one_or_none()
+        if doc:
+            await self._emit_doc_status(doc.id)
         return _to_domain(doc) if doc else None
 
     async def update_progress(
@@ -57,6 +86,8 @@ class IngestionStateRepository:
             )
         )
         await self.db.execute(stmt)
+        await self.db.flush()
+        await self._emit_doc_status(doc_uuid)
 
     async def mark_failed(self, document_id: str, error_msg: str, is_retryable: bool) -> None:
         doc_uuid = require_uuid(document_id, field_name="document_id")
@@ -79,6 +110,8 @@ class IngestionStateRepository:
             )
         )
         await self.db.execute(stmt)
+        await self.db.flush()
+        await self._emit_doc_status(doc_uuid)
 
     async def mark_cancelled(self, document_id: str) -> None:
         doc_uuid = require_uuid(document_id, field_name="document_id")
@@ -99,6 +132,8 @@ class IngestionStateRepository:
             )
         )
         await self.db.execute(stmt)
+        await self.db.flush()
+        await self._emit_doc_status(doc_uuid)
 
     async def mark_completed(self, document_id: str) -> None:
         stmt = (
@@ -107,6 +142,8 @@ class IngestionStateRepository:
             .values(completed_at=_now())
         )
         await self.db.execute(stmt)
+        await self.db.flush()
+        await self._emit_doc_status(require_uuid(document_id, field_name="document_id"))
 
     async def get_status(self, document_id: str, user_id: str) -> DocumentStatusDict | None:
         stmt = select(Document).where(

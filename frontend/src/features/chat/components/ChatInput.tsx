@@ -35,10 +35,10 @@ export default function ChatInput({
 
   const { connectionState, isConnected, send, onMessage, currentSessionId } = useWS();
 
-  const isOnline = connectionState === ConnectionState.ONLINE;
-  const isOffline = connectionState === ConnectionState.OFFLINE;
+  const isOnline = connectionState === ConnectionState.CONNECTED;
+  const isOffline = connectionState === ConnectionState.DISCONNECTED || connectionState === ConnectionState.FAILED;
   const isReconnecting = connectionState === ConnectionState.RECONNECTING;
-  const isInitializing = connectionState === ConnectionState.INITIALIZING;
+  const isInitializing = connectionState === ConnectionState.CONNECTING;
 
 
   // Derive state group from the Single Source of Truth (SSOT)

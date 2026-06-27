@@ -130,23 +130,24 @@ class WebSocketHandler:
             )
 
         try:
-            await self.outbound_sender.send_protocol_message(
-                ServerReady(
-                    session_id=self.session.session_id or None,
-                    avatar_id=self.session.avatar_id,
-                    message="Connected and ready",
-                    resumed=self.resumed,
-                    last_seq=(
-                        self.connection_manager.latest_sequence(self.session.session_id)
-                        if self.session.session_id
-                        else 0
+            if not self._session_pending:
+                await self.outbound_sender.send_protocol_message(
+                    ServerReady(
+                        session_id=self.session.session_id or None,
+                        avatar_id=self.session.avatar_id,
+                        message="Connected and ready",
+                        resumed=self.resumed,
+                        last_seq=(
+                            self.connection_manager.latest_sequence(self.session.session_id)
+                            if self.session.session_id
+                            else 0
+                        ),
+                        timestamp=time.time(),
                     ),
-                    timestamp=time.time(),
-                ),
-                self.session.session_id,
-                self._session_pending,
-                self._connected,
-            )
+                    self.session.session_id,
+                    self._session_pending,
+                    self._connected,
+                )
 
             if self.resumed:
                 for payload in replay_batch:

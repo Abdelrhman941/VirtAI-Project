@@ -36,9 +36,8 @@ describe('MessageBubble timestamps', () => {
           id: 'test-msg-1',
           role: 'user',
           content: 'Hello, world!',
-          created_at: '2026-06-25T09:00:00Z',
           session_id: 'test-session',
-        } as IMessage}
+        } as any}
         avatarName="Tutor"
       />
     );

@@ -209,10 +209,24 @@ class WSConnectionManager:
                                         await ws.close(code=4001, reason="Session invalidated")
                                     except Exception:
                                         pass
-                                    logger.info(
-                                        f"[WSManager] Closed connection | user={uid} | session_id={sid or 'all'} | "
-                                        f"reason=Session invalidated via PubSub"
-                                    )
+                                        logger.info(
+                                            f"[WSManager] Closed connection | user={uid} | session_id={sid or 'all'} | "
+                                            f"reason=Session invalidated via PubSub"
+                                        )
+                            elif event == "doc_status":
+                                sid = data.get("session_id")
+                                if sid:
+                                    async with self._lock:
+                                        ws = self._active.get(sid)
+                                        if ws:
+                                            payload = {
+                                                "type": "doc_status",
+                                                "data": data.get("data", {})
+                                            }
+                                            try:
+                                                await ws.send_text(json.dumps(payload))
+                                            except Exception:
+                                                pass
                         except Exception as e:
                             logger.error(f"[WSManager] Error processing pubsub message: {e}")
 

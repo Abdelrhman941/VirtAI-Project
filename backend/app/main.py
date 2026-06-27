@@ -281,6 +281,28 @@ async def lifespan(app: FastAPI):
     background_tasks.add(task)
     task.add_done_callback(background_tasks.discard)
 
+    # ── Background task: orphan cleanup ─────────────────────────────────────
+    async def orphan_cleanup_task():
+        try:
+            while True:
+                await asyncio.sleep(30 * 60) # 30 minutes
+                from app.infrastructure.db.database import AsyncSessionLocal
+                from app.infrastructure.db.cleanup_jobs import cleanup_orphaned_and_stuck_documents
+                logger.info("Starting cleanup_orphaned_and_stuck_documents")
+                async with AsyncSessionLocal() as db:
+                    try:
+                        result = await cleanup_orphaned_and_stuck_documents(db)
+                        logger.info(f"Cleanup job finished: {result}")
+                    except Exception as e:
+                        logger.error(f"Cleanup job failed: {e}")
+        except asyncio.CancelledError:
+            logger.info("Orphan cleanup task cancelled")
+            raise
+
+    orphan_task = asyncio.create_task(orphan_cleanup_task(), name="orphan_cleanup")
+    background_tasks.add(orphan_task)
+    orphan_task.add_done_callback(background_tasks.discard)
+
     # ── Background task: stale queue recovery ──────────────────────────────
     async def stale_queue_recovery_task():
         try:

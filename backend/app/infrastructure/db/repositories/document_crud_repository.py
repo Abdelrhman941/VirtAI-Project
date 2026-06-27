@@ -73,28 +73,28 @@ class DocumentCrudRepository:
 
         scope = "SESSION" if session_id else "GLOBAL"
         s_id = require_uuid(session_id, field_name="session_id") if session_id else None
-
         doc_id = require_uuid(id, field_name="id") if id else None
 
-        doc = Document(
-            id=doc_id,
-            user_id=require_uuid(user_id, field_name="user_id"),
-            filename=filename,
-            file_type=file_type,
-            status="QUEUED",
-            current_stage="QUEUED",
-            upload_date=_now(),
-            started_at=_now(),
-            retrieval_scope=scope,
-            scope_id=s_id,
-            document_sha256=document_sha256,
-            file_size=file_size,
-            storage_key=storage_key,
-        )
-        self.db.add(doc)
-        await self.db.flush()
-        await self.db.refresh(doc)
-        return _to_domain(doc)
+        async with self.db.begin():
+            doc = Document(
+                id=doc_id,
+                user_id=require_uuid(user_id, field_name="user_id"),
+                filename=filename,
+                file_type=file_type,
+                status="QUEUED",
+                current_stage="QUEUED",
+                upload_date=_now(),
+                started_at=_now(),
+                retrieval_scope=scope,
+                scope_id=s_id,
+                document_sha256=document_sha256,
+                file_size=file_size,
+                storage_key=storage_key,
+            )
+            self.db.add(doc)
+            await self.db.flush()
+            await self.db.refresh(doc)
+            return _to_domain(doc)
 
     async def get(self, document_id: str) -> DomainDocument | None:
         stmt = select(Document).where(
@@ -126,30 +126,32 @@ class DocumentCrudRepository:
         return [_to_domain(d) for d in result.scalars().all()]
 
     async def delete(self, document_id: str) -> bool:
-        stmt = select(Document).where(
-            Document.id == require_uuid(document_id, field_name="document_id")
-        )
-        result = await self.db.execute(stmt)
-        doc = result.scalar_one_or_none()
-        if doc:
-            await self.db.delete(doc)
-            await self.db.flush()
-            return True
-        return False
+        async with self.db.begin():
+            stmt = select(Document).where(
+                Document.id == require_uuid(document_id, field_name="document_id")
+            )
+            result = await self.db.execute(stmt)
+            doc = result.scalar_one_or_none()
+            if doc:
+                await self.db.delete(doc)
+                await self.db.flush()
+                return True
+            return False
 
     async def delete_with_cascade(self, document_id: str, user_id: str) -> str | None:
         """Deletes a document explicitly. Returns the storage_key to be deleted from storage."""
-        stmt = select(Document).where(
-            Document.id == require_uuid(document_id, field_name="document_id"),
-            Document.user_id == require_uuid(user_id, field_name="user_id"),
-        )
-        result = await self.db.execute(stmt)
-        doc = result.scalar_one_or_none()
-        if not doc:
-            return None
-        storage_key = doc.storage_key
-        await self.db.delete(doc)
-        return storage_key
+        async with self.db.begin():
+            stmt = select(Document).where(
+                Document.id == require_uuid(document_id, field_name="document_id"),
+                Document.user_id == require_uuid(user_id, field_name="user_id"),
+            )
+            result = await self.db.execute(stmt)
+            doc = result.scalar_one_or_none()
+            if not doc:
+                return None
+            storage_key = doc.storage_key
+            await self.db.delete(doc)
+            return storage_key
 
     async def find_by_sha256(
         self, user_id: str, sha256: str, session_id: str | None = None
@@ -168,12 +170,13 @@ class DocumentCrudRepository:
         return result.scalars().first()
 
     async def update_content_hash(self, document_id: str, content_hash: str) -> None:
-        stmt = (
-            update(Document)
-            .where(Document.id == require_uuid(document_id, field_name="document_id"))
-            .values(normalized_content_hash=content_hash)
-        )
-        await self.db.execute(stmt)
+        async with self.db.begin():
+            stmt = (
+                update(Document)
+                .where(Document.id == require_uuid(document_id, field_name="document_id"))
+                .values(normalized_content_hash=content_hash)
+            )
+            await self.db.execute(stmt)
 
     async def list_active(self, user_id: str, session_id: str | None = None) -> list[Document]:
         terminal = ["COMPLETE", "FAILED", "CANCELLED"]

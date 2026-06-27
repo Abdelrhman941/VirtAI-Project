@@ -56,3 +56,63 @@ class SessionBootstrap:
         )
         logger.info(f"[WS] Session registered | session={session.session_id}")
         return session, False
+
+    async def handle_session_restore(self, session_id: str, ctx) -> None:
+        session = await self.session_manager.connect_existing_session(
+            session_id=session_id,
+            user_id=ctx._user_id,
+            avatar_id=ctx._avatar_id,
+            voice_id=ctx._voice_id,
+        )
+        if session:
+            resumed = True
+            last_seq = self.connection_manager.latest_sequence(session.session_id)
+        else:
+            session = await self.session_manager.create_session(
+                user_id=ctx._user_id,
+                session_id=session_id,
+                avatar_id=ctx._avatar_id,
+                voice_id=ctx._voice_id,
+            )
+            resumed = False
+            last_seq = 0
+
+        session.on_cleanup = lambda sid=session.session_id: asyncio.create_task(
+            self.connection_manager.cleanup_session(sid)
+        )
+        await self.connection_manager.register(
+            session.session_id, ctx.ws, user_id=ctx._user_id, family_id=ctx._family_id
+        )
+        ctx.session = session
+        ctx.pipeline = session.pipeline
+        ctx._session_pending = False
+        
+        await ctx.outbound_sender.send_protocol_message(
+            {"type": "ready", "data": {"session_id": session.session_id, "resumed": resumed, "last_seq": last_seq}},
+            session.session_id,
+            False,
+            ctx._connected
+        )
+
+    async def handle_session_new(self, ctx) -> None:
+        session = await self.session_manager.create_session(
+            user_id=ctx._user_id,
+            avatar_id=ctx._avatar_id,
+            voice_id=ctx._voice_id,
+        )
+        session.on_cleanup = lambda sid=session.session_id: asyncio.create_task(
+            self.connection_manager.cleanup_session(sid)
+        )
+        await self.connection_manager.register(
+            session.session_id, ctx.ws, user_id=ctx._user_id, family_id=ctx._family_id
+        )
+        ctx.session = session
+        ctx.pipeline = session.pipeline
+        ctx._session_pending = False
+
+        await ctx.outbound_sender.send_protocol_message(
+            {"type": "ready", "data": {"session_id": session.session_id, "resumed": False, "last_seq": 0}},
+            session.session_id,
+            False,
+            ctx._connected
+        )

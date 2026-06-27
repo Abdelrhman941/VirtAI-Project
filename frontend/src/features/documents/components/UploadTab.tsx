@@ -20,7 +20,7 @@ function validateSelectedFile(file: File): string | null {
 interface UploadTabProps {
   onUploaded?: () => void;
   onSkip?: () => void;
-  enqueueUpload: (file: File, tempId: string, fileHash: string) => void;
+  enqueueUpload: (file: File, tempId: string, fileHash: string, confirmedDuplicate?: boolean) => { isDuplicate: boolean } | void;
   documents: Document[];
 }
 
@@ -131,7 +131,16 @@ export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) 
         // Generate UUID tempId for optimistic UI tracking
         const tempId = crypto.randomUUID();
 
-        enqueueUpload(file, tempId, hashResult.hash!);
+        const result = enqueueUpload(file, tempId, hashResult.hash!);
+        if (result?.isDuplicate) {
+          if (window.confirm(`A file named "${file.name}" with the exact same size already exists. Are you sure you want to upload it again?`)) {
+            enqueueUpload(file, tempId, hashResult.hash!, true);
+          } else {
+            removeFile(file.name);
+            continue;
+          }
+        }
+        
         removeFile(file.name);
 
       } catch (err: unknown) {

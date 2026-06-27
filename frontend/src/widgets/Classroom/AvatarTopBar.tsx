@@ -35,48 +35,13 @@ export function AvatarTopBar({
 }: AvatarTopBarProps) {
   const navigate = useNavigate();
 
-  const isOnline = connectionState === ConnectionState.ONLINE;
-  const isOffline = connectionState === ConnectionState.OFFLINE;
-  const isReconnecting = connectionState === ConnectionState.RECONNECTING;
-  const isInitializing = connectionState === ConnectionState.INITIALIZING;
-
-  // Derive unified state group from the single source of truth
-  let stateGroup: 'ready' | 'connecting' | 'offline' = 'offline';
-  if (!currentSessionId || isOnline) {
-    stateGroup = 'ready';
-  } else if (isReconnecting || isInitializing) {
-    stateGroup = 'connecting';
-  } else {
-    stateGroup = 'offline';
-  }
-
-  // Exact UI mappings as requested
-  let dotColor = '';
-  let statusText = '';
-  if (stateGroup === 'ready') {
-    dotColor = 'bg-green-500';
-    statusText = 'Assistant Connected';
-  } else if (stateGroup === 'connecting') {
-    dotColor = 'bg-yellow-500';
-    statusText = 'Establishing Connection...';
-  } else {
-    dotColor = 'bg-red-500';
-    statusText = 'Disconnected';
-  }
-
-  const isConnecting = stateGroup === 'connecting';
-  const pulseClass = (stateGroup === 'ready' || isConnecting) ? 'animate-pulse' : '';
-
   return (
     <header className="w-full pb-2 relative z-[60]">
       {/* Desktop Header Layout */}
       <div className="hidden lg:flex items-center justify-between w-full">
         {/* Left Section (Status) */}
         <ConnectionBadge
-          stateGroup={stateGroup}
           currentSessionId={currentSessionId}
-          statusText={statusText}
-          onReconnect={reconnect}
           size="md"
         />
 
@@ -130,10 +95,7 @@ export function AvatarTopBar({
 
         {/* Center: "AI Tutor Online" status indicator */}
         <ConnectionBadge
-          stateGroup={stateGroup}
           currentSessionId={currentSessionId}
-          statusText={statusText}
-          onReconnect={reconnect}
           size="sm"
         />
 
