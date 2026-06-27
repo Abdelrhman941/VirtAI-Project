@@ -75,15 +75,7 @@ class NapkinClient(VisualizationProviderPort):
                         if generated_files and len(generated_files) > 0:
                             img_url = generated_files[0].get("url")
                             if img_url:
-                                try:
-                                    img_res = await client.get(img_url, headers=headers, timeout=15.0)
-                                    img_res.raise_for_status()
-                                    import base64
-                                    b64_img = base64.b64encode(img_res.content).decode("utf-8")
-                                    return {"image_url": f"data:image/png;base64,{b64_img}"}
-                                except Exception as e:
-                                    logger.error(f"Failed to fetch image from Napkin URL: {e}")
-                                    return {"unavailable": True, "reason": "image_download_failed"}
+                                return {"image_url": img_url}
                         return {"unavailable": True, "reason": "missing_image_url"}
                     elif status in ("failed", "error"):
                         return {"unavailable": True, "reason": "generation_failed"}

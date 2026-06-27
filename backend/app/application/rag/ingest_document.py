@@ -271,12 +271,15 @@ class IngestDocumentUseCase:
             await state_repo.mark_completed(doc_id)
             await db.commit()
 
-    async def cleanup_failed_job(self, doc_id: str, version: int, storage_key: str) -> None:
+    async def cleanup_failed_job(self, doc_id: str, version: int | None, storage_key: str) -> None:
         """Cleans up completely on cancellation or permanent failure (zero retrieval pollution)."""
         has_other_chunks = False
         async with self.db_session_factory() as db:
             integrity_repo = self.integrity_repo_factory(db)
-            await integrity_repo.delete_chunks_by_version(doc_id, version)
+            if version is not None:
+                await integrity_repo.delete_chunks_by_version(doc_id, version)
+            else:
+                await integrity_repo.delete_all_chunks(doc_id)
             has_other_chunks = await integrity_repo.has_any_chunks(doc_id)
             await db.commit()
 

@@ -28,5 +28,8 @@ services:
       - ./frontend:/app
       - frontend-node-modules:/app/node_modules
 
+  tts:
+    pull_policy: never
+
 volumes:
   frontend-node-modules:

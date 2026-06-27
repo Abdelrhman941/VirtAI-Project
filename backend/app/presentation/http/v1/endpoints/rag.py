@@ -149,6 +149,7 @@ async def get_diagram(
 @router.post("/visualization/{message_id}")
 async def get_visualization(
     message_id: UUID,
+    force: bool = False,
     user: UserEntity = Depends(_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -158,7 +159,37 @@ async def get_visualization(
     provider = NapkinClient()
     use_case = VisualizationUseCase(provider=provider)
     try:
-        viz_data = await use_case.get_visualization(db, str(message_id), str(user.id))
+        viz_data = await use_case.get_visualization(db, str(message_id), str(user.id), force)
         return viz_data
     except VisualizationDomainException as e:
         raise HTTPException(status_code=403, detail=str(e))
+
+@router.get("/visualization/{message_id}/image")
+async def get_visualization_image(
+    message_id: UUID,
+    user: UserEntity = Depends(_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Serve the generated image securely by proxying the Napkin URL."""
+    from app.infrastructure.db.models import VisualizationCache
+    from sqlalchemy import select
+    import httpx
+    import os
+    from fastapi.responses import Response
+
+    existing_query = await db.execute(
+        select(VisualizationCache).where(VisualizationCache.message_id == message_id)
+    )
+    cached = existing_query.scalar_one_or_none()
+
+    if not cached or not cached.image_url:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    async with httpx.AsyncClient() as client:
+        headers = {"Authorization": f"Bearer {os.getenv('NAPKIN_API_KEY')}"}
+        try:
+            res = await client.get(cached.image_url, headers=headers, timeout=15.0)
+            res.raise_for_status()
+            return Response(content=res.content, media_type="image/png")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail="Failed to fetch image from provider")

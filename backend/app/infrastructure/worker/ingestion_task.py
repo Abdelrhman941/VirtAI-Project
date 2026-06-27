@@ -75,7 +75,7 @@ async def run_ingestion_task(
                 integrity_repo_factory=DocumentIntegrityService,
                 vector_store_factory=PGVectorStore,
             )
-            await use_case.cleanup_failed_job(doc_id, storage_key)
+            await use_case.cleanup_failed_job(doc_id, None, storage_key)
         except Exception as cleanup_err:
             logger.error({**log_ctx, "event": "cleanup_failed", "error": str(cleanup_err)})
 
@@ -124,7 +124,7 @@ async def run_ingestion_task(
                     integrity_repo_factory=DocumentIntegrityService,
                     vector_store_factory=PGVectorStore,
                 )
-                await use_case.cleanup_failed_job(doc_id, storage_key)
+                await use_case.cleanup_failed_job(doc_id, None, storage_key)
             except Exception as cleanup_err:
                 logger.error({**log_ctx, "event": "cleanup_failed", "error": str(cleanup_err)})
 
@@ -135,6 +135,14 @@ async def run_ingestion_task(
 
         if is_retryable:
             # Handle rate limiting / backoff explicitly
+            if reason == "Rate_Limit_Retry":
+                import random
+                job_try = ctx.get("job_try", 1)
+                # Exponential backoff: min(300, 15 * (2 ** (job_try - 1))) + jitter
+                base_defer = min(300, 15 * (2 ** (job_try - 1)))
+                jitter = random.uniform(0, 5)
+                defer = int(base_defer + jitter)
+                raise Retry(defer=defer) from e
             if isinstance(e, httpx.HTTPStatusError) and e.response.status_code in (429, 503):
                 retry_after = e.response.headers.get("retry-after")
                 defer = int(retry_after) if retry_after and retry_after.isdigit() else 30
@@ -221,6 +229,8 @@ async def _run_ingestion(
 
         queue_wait_ms = int((datetime.now(timezone.utc) - doc.upload_date).total_seconds() * 1000)
         logger.info({**log_ctx, "event": "job_started", "queue_wait_ms": queue_wait_ms})
+        
+        scope_id_str = str(doc.scope_id) if doc.scope_id else None
 
     t0 = time.monotonic()
 
@@ -232,6 +242,9 @@ async def _run_ingestion(
             state_repo = IngestionStateRepository(db)
             await state_repo.update_progress(doc_id, stage, pct, processed, total)
             await db.commit()
+            
+        from app.infrastructure.cache.pubsub import publish_doc_progress
+        await publish_doc_progress(user_id, scope_id_str, doc_id, stage, pct)
 
     # Cancellation Check
     async def cancellation_check() -> bool:

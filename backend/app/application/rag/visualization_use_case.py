@@ -19,7 +19,7 @@ class VisualizationUseCase:
         self.provider = provider
 
     async def get_visualization(
-        self, db: AsyncSession, message_id: str, user_id: str
+        self, db: AsyncSession, message_id: str, user_id: str, force: bool = False
     ) -> dict[str, Any]:
         msg_uuid = uuid.UUID(message_id)
         user_uuid = uuid.UUID(user_id)
@@ -29,10 +29,10 @@ class VisualizationUseCase:
             select(VisualizationCache).where(VisualizationCache.message_id == msg_uuid)
         )
         cached = existing_query.scalar_one_or_none()
-        if cached:
+        if cached and not force:
             return {
                 "message_id": message_id,
-                "image_url": cached.image_url,
+                "image_url": f"/api/v1/rag/visualization/{message_id}/image" if cached.image_url else None,
                 "unavailable": cached.unavailable,
                 "reason": cached.reason,
             }
@@ -58,18 +58,25 @@ class VisualizationUseCase:
         # 4. Save Cache
         is_unavailable = result.get("unavailable", False)
 
-        cache_entry = VisualizationCache(
-            message_id=msg_uuid,
-            image_url=result.get("image_url"),
-            unavailable=is_unavailable,
-            reason=result.get("reason"),
-        )
-        db.add(cache_entry)
+        if cached:
+            cached.image_url = result.get("image_url")
+            cached.unavailable = is_unavailable
+            cached.reason = result.get("reason")
+            cache_entry = cached
+        else:
+            cache_entry = VisualizationCache(
+                message_id=msg_uuid,
+                image_url=result.get("image_url"),
+                unavailable=is_unavailable,
+                reason=result.get("reason"),
+            )
+            db.add(cache_entry)
+            
         await db.commit()
 
         return {
             "message_id": message_id,
-            "image_url": cache_entry.image_url,
+            "image_url": f"/api/v1/rag/visualization/{message_id}/image" if cache_entry.image_url else None,
             "unavailable": cache_entry.unavailable,
             "reason": cache_entry.reason,
         }

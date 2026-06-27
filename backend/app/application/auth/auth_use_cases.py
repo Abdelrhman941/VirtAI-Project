@@ -256,7 +256,8 @@ class LoginUseCase:
         from app.infrastructure.cache.rate_limiter import check_rate_limit
         from app.shared.config import get_settings
         from app.infrastructure.cache.redis_client import get_redis
-        from redis.asyncio.client import AsyncRedis, Pipeline
+        from redis.asyncio import Redis as AsyncRedis
+        from redis.asyncio.client import Pipeline
         from app.shared.security import create_access_token, create_refresh_token, decode_auth_token
         from app.shared.errors import InvalidAuthStateError
         from app.infrastructure.cache.refresh_token_family import store_initial_refresh_token

@@ -39,12 +39,8 @@ class GeminiVisionProvider(VisionPort):
             )
             return response.text or ""
         except Exception as e:
-            error_msg = str(e).lower()
-            if "429" in error_msg or "resource exhausted" in error_msg or "quota" in error_msg:
-                logger.warning(f"Gemini quota exhausted: {e}")
-                return "[Image skipped due to quota limits]"
             logger.error(f"Gemini describe failed: {e}")
-            return f"[Vision extraction failed: {e}]"
+            raise
 
     async def describe_batch(self, images: list[bytes]) -> list[str]:
         if not images:
@@ -65,12 +61,8 @@ class GeminiVisionProvider(VisionPort):
                     )
                     return idx, response.text or ""
                 except Exception as e:
-                    error_msg = str(e).lower()
-                    if "429" in error_msg or "resource exhausted" in error_msg or "quota" in error_msg:
-                        logger.warning(f"Gemini quota exhausted for image {idx}: {e}")
-                        return idx, "[Image skipped due to quota limits]"
                     logger.error(f"Gemini vision failed for image {idx}: {e}")
-                    return idx, f"[Vision extraction failed: {e}]"
+                    raise
                     
         tasks = [process_image(idx, img) for idx, img in enumerate(images)]
         results = await asyncio.gather(*tasks)

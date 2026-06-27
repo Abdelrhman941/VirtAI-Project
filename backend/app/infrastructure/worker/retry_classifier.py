@@ -41,6 +41,15 @@ def classify(exc: Exception) -> tuple[bool, str]:
         else:
             return True, f"HTTP_{exc.response.status_code}_Server_Error"
 
+    exc_name = type(exc).__name__
+    if exc_name in ("ResourceExhausted", "APIError"):
+        code = getattr(exc, "code", None)
+        if code == 429 or exc_name == "ResourceExhausted":
+            msg = str(exc).lower()
+            if "quota" in msg:
+                return False, "Quota_Exhausted_Fatal"
+            return True, "Rate_Limit_Retry"
+
     if isinstance(exc, RETRYABLE_TYPES):
         return True, type(exc).__name__
     if isinstance(exc, NON_RETRYABLE_TYPES):

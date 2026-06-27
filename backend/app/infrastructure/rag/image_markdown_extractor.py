@@ -16,13 +16,18 @@ class ImageMarkdownExtractor(DocumentParser):
         # 1. OCR text extraction
         try:
             import pytesseract
+            import anyio
             from PIL import Image
             img = Image.open(io.BytesIO(file_bytes))
             try:
-                ocr_text = pytesseract.image_to_string(img, lang="eng+ara")
+                ocr_text = await anyio.to_thread.run_sync(
+                    lambda: pytesseract.image_to_string(img, lang="eng+ara")
+                )
             except Exception as e:
                 logger.warning(f"OCR eng+ara failed, falling back to eng: {e}")
-                ocr_text = pytesseract.image_to_string(img, lang="eng")
+                ocr_text = await anyio.to_thread.run_sync(
+                    lambda: pytesseract.image_to_string(img, lang="eng")
+                )
                 
             if ocr_text.strip():
                 markdown.append(ocr_text.strip())

@@ -37,6 +37,15 @@ export class UploadService {
   private currentSessionId: string | null = null;
   private unsubDocStatus?: () => void;
   private unsubReady?: () => void;
+  private watchdogInterval: ReturnType<typeof setInterval> | null = null;
+  private handleVisibilityChange = () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      const hasActive = this.state.documents.some(doc => doc.status === 'PENDING' || doc.status === 'PROCESSING');
+      if (hasActive) {
+        this.checkActiveDocuments();
+      }
+    }
+  };
 
   constructor() {
     this.unsubDocStatus = wsManager.on('doc_status', (activeDoc: any) => {
@@ -98,6 +107,58 @@ export class UploadService {
     this.unsubReady = wsManager.on('ready', () => {
       this.fetchDocuments();
     });
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.handleVisibilityChange);
+    }
+    this.startWatchdog();
+  }
+
+  private startWatchdog() {
+    if (this.watchdogInterval) return;
+    this.watchdogInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        const hasActive = this.state.documents.some(doc => doc.status === 'PENDING' || doc.status === 'PROCESSING');
+        if (hasActive) {
+          this.checkActiveDocuments();
+        }
+      }
+    }, 10000);
+  }
+
+  private async checkActiveDocuments() {
+    if (this.isFetching) return;
+    try {
+      const activeDocs = await documentApi.listActive(this.currentSessionId);
+      let changed = false;
+      const fetchTime = Date.now();
+      
+      const newDocs = this.state.documents.map(doc => {
+        const updated = activeDocs.find(d => d.id === doc.id);
+        if (updated) {
+          const lastWsPatch = this.wsPatchTimes.get(updated.id) || 0;
+          if (lastWsPatch > fetchTime - 2000) {
+            return doc;
+          }
+          if (
+            doc.current_stage !== updated.current_stage ||
+            doc.progress_pct !== updated.progress_pct ||
+            doc.status !== updated.status ||
+            doc.chunks_processed !== updated.chunks_processed
+          ) {
+            changed = true;
+            return { ...doc, ...updated };
+          }
+        }
+        return doc;
+      });
+      
+      if (changed) {
+        this.setState({ documents: newDocs });
+      }
+    } catch (err) {
+      console.error("[Watchdog] Failed to fetch active documents", err);
+    }
   }
 
   public initSession(sessionId: string | null) {
@@ -267,6 +328,10 @@ export class UploadService {
 
   public destroy() {
     if (this.docStatusTimer) clearTimeout(this.docStatusTimer);
+    if (this.watchdogInterval) clearInterval(this.watchdogInterval);
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    }
     if (this.unsubDocStatus) this.unsubDocStatus();
     if (this.unsubReady) this.unsubReady();
     this.cancelAllUploads();

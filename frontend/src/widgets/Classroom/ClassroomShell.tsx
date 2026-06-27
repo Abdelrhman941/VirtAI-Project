@@ -609,7 +609,7 @@ export default function ClassroomShell() {
               }`}
             >
               <FiMessageSquare size={20} />
-              <span className="text-[10px] font-semibold tracking-wide font-sans">Chat</span>
+              <span className="text-[10px] font-semibold tracking-wide font-display">Chat</span>
             </button>
 
             {/* Explain Tab */}
@@ -623,7 +623,7 @@ export default function ClassroomShell() {
               }`}
             >
               <FiMonitor size={20} />
-              <span className="text-[10px] font-semibold tracking-wide font-sans">Explain</span>
+              <span className="text-[10px] font-semibold tracking-wide font-display">Explain</span>
             </button>
 
             {/* Diagram Tab */}
@@ -637,7 +637,7 @@ export default function ClassroomShell() {
               }`}
             >
               <FiShare2 size={20} />
-              <span className="text-[10px] font-semibold tracking-wide font-sans">Diagram</span>
+              <span className="text-[10px] font-semibold tracking-wide font-display">Diagram</span>
             </button>
 
             {/* Summary Tab */}
@@ -651,7 +651,7 @@ export default function ClassroomShell() {
               }`}
             >
               <FiFileText size={20} />
-              <span className="text-[10px] font-semibold tracking-wide font-sans">Summary</span>
+              <span className="text-[10px] font-semibold tracking-wide font-display">Summary</span>
             </button>
 
             {/* Quiz Tab */}
@@ -661,7 +661,7 @@ export default function ClassroomShell() {
               className="flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer text-gray-400 active:text-white transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <FiEdit3 size={20} />
-              <span className="text-[10px] font-semibold tracking-wide font-sans">Quiz</span>
+              <span className="text-[10px] font-semibold tracking-wide font-display">Quiz</span>
             </button>
           </nav>
 

@@ -80,8 +80,8 @@ export function ConnectionBadge({
   const dotClasses = isSmall ? `w-2 h-2 rounded-full ${dotColor} ${pulseClass}` : `w-2.5 h-2.5 rounded-full ${dotColor} ${pulseClass}`;
   const pingClasses = isSmall ? `absolute w-2 h-2 rounded-full ${dotColor} animate-ping opacity-75` : `absolute w-2.5 h-2.5 rounded-full ${dotColor} animate-ping opacity-75`;
   const textClasses = isSmall 
-    ? "text-xs font-semibold text-white/95 tracking-wide font-sans truncate max-w-[120px]"
-    : "text-sm font-semibold text-white/90 tracking-wide font-sans truncate max-w-[150px] lg:max-w-[200px]";
+    ? "text-xs font-semibold text-white/95 tracking-wide font-display truncate max-w-[120px]"
+    : "text-sm font-semibold text-white/90 tracking-wide font-display truncate max-w-[150px] lg:max-w-[200px]";
   const buttonClasses = isSmall
     ? "flex items-center justify-center text-gray-400 hover:text-white active:text-white transition-colors ml-0.5 cursor-pointer"
     : "flex items-center justify-center text-gray-400 hover:text-white transition-colors cursor-pointer ml-1";
