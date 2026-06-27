@@ -15,14 +15,35 @@ export function DiagramViewer({ diagramData, isLoading, onClose }: DiagramViewer
   const { containerRef, svgContent, error, isLoading: isRenderLoading } = useMermaidRender(diagramData?.mermaid_code);
 
   const handleDownloadPNG = useCallback(() => {
-    if (!svgContent) return;
+    if (!containerRef.current) return;
+    const originalSvg = containerRef.current.querySelector('svg');
+    if (!originalSvg) return;
+    
+    // Clone to avoid mutating the live DOM
+    const svgEl = originalSvg.cloneNode(true) as SVGSVGElement;
+    
+    // Force absolute dimensions so the canvas knows how big to draw
+    const viewBox = originalSvg.viewBox?.baseVal;
+    const width = viewBox?.width || originalSvg.getBoundingClientRect().width || 800;
+    const height = viewBox?.height || originalSvg.getBoundingClientRect().height || 600;
+    
+    svgEl.setAttribute('width', `${width}px`);
+    svgEl.setAttribute('height', `${height}px`);
+    
+    const serializer = new XMLSerializer();
+    let source = serializer.serializeToString(svgEl);
+    
+    // Ensure XML namespace
+    if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+      source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+    }
     
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const img = new Image();
     
-    const svgBlob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
+    // Safely encode the SVG to bypass Blob/XML parsing limitations in img src
+    const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source);
     
     img.onload = () => {
       canvas.width = img.width;
@@ -36,16 +57,15 @@ export function DiagramViewer({ diagramData, isLoading, onClose }: DiagramViewer
         const pngUrl = canvas.toDataURL('image/png');
         const link = document.createElement('a');
         link.href = pngUrl;
-        link.download = `diagram-${diagramData?.id || 'export'}.png`;
+        link.download = `tree-map-${diagramData?.id || 'export'}.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
       }
-      URL.revokeObjectURL(url);
     };
     
     img.src = url;
-  }, [svgContent, diagramData?.id]);
+  }, [diagramData?.id]);
 
   return (
     <div className="w-full h-full relative flex flex-col bg-dark overflow-hidden">
@@ -57,14 +77,14 @@ export function DiagramViewer({ diagramData, isLoading, onClose }: DiagramViewer
           className="flex items-center gap-2 px-4 py-2 rounded-full bg-dark/60 backdrop-blur-md border border-gold/15 text-sm font-medium text-gold-soft hover:bg-gold/5 hover:border-gold/30 hover:scale-[1.02] transition-[background-color,border-color,transform] duration-300 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FiDownload size={16} />
-          <span>Download Diagram</span>
+          <span>Download Tree Map</span>
         </button>
         <button
           onClick={onClose}
           className="flex items-center gap-2 px-4 py-2 rounded-full bg-dark/60 backdrop-blur-md border border-gold/15 text-sm font-medium text-gold-soft hover:bg-gold/5 hover:border-gold/30 hover:scale-[1.02] transition-[background-color,border-color,transform] duration-300 shadow-xl"
         >
           <FiX size={16} />
-          <span>Close Diagram</span>
+          <span>Close Tree Map</span>
         </button>
       </div>
 
@@ -84,30 +104,25 @@ export function DiagramViewer({ diagramData, isLoading, onClose }: DiagramViewer
         {!error && !isLoading && (
           <TransformWrapper
             initialScale={1}
-            minScale={0.2}
-            maxScale={4}
+            minScale={0.1}
+            maxScale={8}
             centerOnInit={true}
+            centerZoomedOut={true}
+            limitToBounds={false}
+            wheel={{ step: 0.05 }}
+            panning={{ velocityDisabled: true }}
+            doubleClick={{ step: 0.5 }}
           >
-            <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full flex items-center justify-center">
+            <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ minWidth: "100%", minHeight: "100%", display: "flex", justifyContent: "center", alignItems: "center" }}>
               <div 
                 ref={containerRef} 
-                className="w-full h-full flex items-center justify-center p-8 diagram-content-wrapper"
+                className="diagram-content-wrapper p-8 [&>svg]:!max-w-none"
               />
             </TransformComponent>
           </TransformWrapper>
         )}
       </div>
 
-      {diagramData?.citations && diagramData.citations.length > 0 && (
-        <div className="absolute bottom-4 left-4 right-4 bg-dark-secondary/80 backdrop-blur-md border border-gold/15 rounded-2xl p-4 z-40 max-h-32 overflow-y-auto shadow-2xl">
-          <h4 className="text-xs font-semibold text-gold/70 mb-2 uppercase tracking-wider">Academic Source Citations</h4>
-          <ul className="flex flex-col gap-1">
-            {diagramData.citations.map((cite, idx) => (
-              <li key={idx} className="text-sm text-offwhite/70">"{cite}"</li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }

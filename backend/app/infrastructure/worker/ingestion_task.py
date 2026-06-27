@@ -97,13 +97,20 @@ async def run_ingestion_task(
         from app.application.rag.ingest_document import IngestDocumentUseCase
 
         is_retryable, reason = classify(e)
+
+        error_msg = str(e)
+        if reason == "Quota_Exhausted_Fatal":
+            error_msg = "AI Quota Exhausted (Limit Reached). Please try again later."
+        elif reason == "Invalid_PDF_Format":
+            error_msg = "The file appears to be corrupted, empty, or not a valid PDF. Please check the file and try again."
+
         logger.error(
             {
                 **log_ctx,
                 "event": "ingestion_failed",
                 "retryable": is_retryable,
                 "reason": reason,
-                "error": str(e),
+                "error": error_msg,
             }
         )
 
@@ -130,7 +137,7 @@ async def run_ingestion_task(
 
         async with get_short_session() as db:
             state_repo = IngestionStateRepository(db)
-            await state_repo.mark_failed(doc_id, str(e), is_retryable)
+            await state_repo.mark_failed(doc_id, error_msg, is_retryable)
             await db.commit()
 
         if is_retryable:
@@ -229,7 +236,7 @@ async def _run_ingestion(
 
         queue_wait_ms = int((datetime.now(timezone.utc) - doc.upload_date).total_seconds() * 1000)
         logger.info({**log_ctx, "event": "job_started", "queue_wait_ms": queue_wait_ms})
-        
+
         scope_id_str = str(doc.scope_id) if doc.scope_id else None
 
     t0 = time.monotonic()
@@ -242,7 +249,7 @@ async def _run_ingestion(
             state_repo = IngestionStateRepository(db)
             await state_repo.update_progress(doc_id, stage, pct, processed, total)
             await db.commit()
-            
+
         from app.infrastructure.cache.pubsub import publish_doc_progress
         await publish_doc_progress(user_id, scope_id_str, doc_id, stage, pct)
 
@@ -256,9 +263,12 @@ async def _run_ingestion(
     settings = get_settings()
     chunker = SmartChunker(chunk_size=settings.CHUNK_SIZE, overlap_size=settings.CHUNK_OVERLAP)
 
-    if file_type.startswith("image/"):
+    if file_type in ("png", "jpg", "jpeg", "webp"):
         from app.infrastructure.rag.image_markdown_extractor import ImageMarkdownExtractor
         parser = ImageMarkdownExtractor(vision_provider=ctx.get("vision_provider"))
+    elif file_type in ("txt", "md", "csv", "json"):
+        from app.infrastructure.rag.text_extractor import TextExtractor
+        parser = TextExtractor()
     else:
         parser = PDFMarkdownExtractor()
 

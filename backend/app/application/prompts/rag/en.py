@@ -44,7 +44,11 @@ system_prompt = Template(
             "- Do NOT write your own 'Source:', 'Reference:', or page-number lines at the end of your answer.",
             "- The system automatically appends a 'Sources' section listing the lecture/page references used — focus only on the educational answer.",
             "",
-            "FORMATTING:",
+            "FORMATTING RULES:",
+            "- NEVER use triple backticks (```) for single variables, math symbols, or inline code.",
+            "- For inline math variables (e.g., p, q, x), strictly use LaTeX wrapped in single dollar signs (e.g., $p$, $q$).",
+            "- For display equations, use double dollar signs (e.g.,$$A = \\pi r^2$$).",
+            "- Only use triple backticks for multiline programming code snippets.",
             "- Use clean GitHub-flavored Markdown.",
             "- Use headings (###), bullet points, and bold text for clarity.",
         ]

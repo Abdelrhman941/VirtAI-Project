@@ -70,7 +70,7 @@ export function AvatarTopBar({
             disabled={!hasDocuments}
             title={!hasDocuments ? "Please upload syllabus or reference materials to generate a diagram" : "Synthesize Relationship Diagram"}
             icon={<FiShare2 size={15} />}
-            label="Synthesize Diagram"
+            label="Synthesize Tree Map"
           />
           
           <ToolbarButton

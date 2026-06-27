@@ -153,15 +153,19 @@
 .md-ol { list-style-type: decimal; }
 
 .md-li {
-  margin-block-start: var(--md-list-gap);
-  margin-block-end: var(--md-list-gap);
+  margin-block-start: 0.3em;
+  margin-block-end: 0.3em;
   line-height: var(--md-line-height);
 }
 
 /* Fix nested paragraphs inside list items */
 .md-li > .md-p {
-  margin-block-start: 0.4em;
-  margin-block-end: 0.4em;
+  margin-block-start: 0;
+  margin-block-end: 0;
+}
+
+.md-li > .md-p + .md-p {
+  margin-block-start: 0.5em;
 }
 
 .md-li > :first-child { margin-block-start: 0; }
@@ -409,9 +413,9 @@
 
 .md-hr {
   border: none;
-  height: 1px;
-  background-color: var(--md-divider);
-  margin-block: calc(var(--md-spacing-unit) * 8); /* 32px breathing room */
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  height: 0;
+  margin-block: 2em;
   width: 100%;
 }
 

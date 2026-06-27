@@ -35,7 +35,7 @@ export function DocumentPicker({ sessionId, onSelect, onCancel }: DocumentPicker
   return (
     <div className="p-8 flex flex-col relative">
       <h2 className="text-2xl font-bold font-display text-white/90 tracking-wide mb-6 text-center">
-        Select Document for Diagram
+        Select Document for Tree Map
       </h2>
 
       {documents.length === 0 ? (

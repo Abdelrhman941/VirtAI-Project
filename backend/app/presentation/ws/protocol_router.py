@@ -18,7 +18,7 @@ from app.presentation.ws.pipeline_bridge import _pipeline_task_done_callback
 incoming_msg_adapter = TypeAdapter(IncomingWSMessage)
 
 RATE_LIMIT_WINDOW_SECONDS = 10.0
-RATE_LIMIT_MAX_MESSAGES = 20
+RATE_LIMIT_MAX_MESSAGES = 1000
 
 class ProtocolRouter:
     """Routes incoming WebSocket messages to appropriate handlers."""
