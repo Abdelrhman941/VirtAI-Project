@@ -43,7 +43,8 @@ class WebSocketHandler:
         self.ws = websocket
         self.session_manager = global_session_manager
         self.user_id = user_id
-        self.session_id: str | None = None
+        self.session = kwargs.get("session")
+        self.session_id: str | None = self.session.session_id if getattr(self.session, "session_id", None) else None
 
     async def run(self) -> None:
         try:
@@ -57,7 +58,7 @@ class WebSocketHandler:
             self._teardown()
 
     async def _accept_and_register(self) -> None:
-        await self.ws.accept()
+        # Connection is already accepted by the router before handler.run()
         outbound = FastAPIOutboundSender(self.ws)
         self.session_id = await self.session_manager.register_connection(self.user_id, outbound)
         logger.info(f"[WS] Connection registered for user {self.user_id}, session {self.session_id}")

@@ -112,45 +112,32 @@ async def websocket_endpoint(
             return
         session_id = str(parsed_session_id)
 
-    # WebSocket Auth (S1-01) - Moved to first message
-    # Accept connection immediately without subprotocols
-    try:
-        await websocket.accept()
-        logger.info(f"[WS] Connection accepted | avatar={avatar_id} | client={websocket.client}")
-    except Exception as e:
-        logger.error(f"[WS] Failed to accept connection: {e}")
-        return
-
-    # Wait for first message to be auth
-    try:
-        import asyncio
-        import json
-        auth_msg_raw = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
-        auth_msg = json.loads(auth_msg_raw)
-        if auth_msg.get("type") != "auth" or not auth_msg.get("token"):
-            logger.warning("[WS] Missing or invalid auth message format")
+    # Extract token from subprotocols
+    token = None
+    if "sec-websocket-protocol" in websocket.headers:
+        protocols = websocket.headers["sec-websocket-protocol"].split(",")
+        protocols = [p.strip() for p in protocols]
+        if "access_token" in protocols:
             try:
-                await websocket.close(code=4001, reason="Missing or invalid auth message")
-            except Exception:
+                idx = protocols.index("access_token")
+                if idx + 1 < len(protocols):
+                    token = protocols[idx + 1]
+            except ValueError:
                 pass
-            return
-        token = auth_msg["token"]
-    except asyncio.TimeoutError:
-        logger.warning("[WS] Auth timeout")
-        try:
-            await websocket.close(code=4001, reason="Auth timeout")
-        except Exception:
-            pass
-        return
-    except WebSocketDisconnect:
-        logger.info("[WS] Client disconnected before auth")
-        return
-    except Exception as e:
-        logger.warning(f"[WS] Invalid auth message payload: {e}")
-        try:
-            await websocket.close(code=4001, reason="Invalid auth payload")
-        except Exception:
-            pass
+    
+    if not token and "subprotocols" in websocket.scope:
+        subprotocols = websocket.scope.get("subprotocols", [])
+        if "access_token" in subprotocols:
+            try:
+                idx = subprotocols.index("access_token")
+                if idx + 1 < len(subprotocols):
+                    token = subprotocols[idx + 1]
+            except ValueError:
+                pass
+
+    if not token:
+        logger.warning("[WS] Connection rejected: Missing token in subprotocols")
+        await websocket.close(code=4001, reason="Missing auth token")
         return
 
     try:
@@ -158,6 +145,20 @@ async def websocket_endpoint(
     except (ExpiredTokenError, InvalidAuthStateError, InvalidTokenError, InvalidUserIdError) as e:
         logger.warning(f"[WS] Invalid token: {e}")
         await websocket.close(code=4401, reason="Invalid token")
+        return
+    except Exception as e:
+        logger.warning(f"[WS] Invalid token: {e}")
+        await websocket.close(code=4401, reason="Invalid token")
+        return
+
+    # WebSocket Auth (S1-01) - Decoded and validated BEFORE accept
+    try:
+        # We must return the same subprotocol list that the client sent, or at least "access_token"
+        accepted_subprotocol = "access_token"
+        await websocket.accept(subprotocol=accepted_subprotocol)
+        logger.info(f"[WS] Connection accepted | avatar={avatar_id} | client={websocket.client}")
+    except Exception as e:
+        logger.error(f"[WS] Failed to accept connection: {e}")
         return
 
     try:
