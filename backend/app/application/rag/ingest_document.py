@@ -87,41 +87,8 @@ class IngestDocumentUseCase:
             raise ValueError("Parser is required for this stage")
         raw_text = await self.parser.parse_bytes(file_bytes, file_type)
 
-        # 2.5 VISION PROCESSING (MUST BE DONE BEFORE NORMALIZATION!)
-        import re
-        import base64
-        
-        # Regex to find ![image_base64_extract](data:image/ext;base64,...)
-        img_pattern = re.compile(r'!\[image_base64_extract\]\(data:image/[^;]+;base64,([^)]+)\)')
-        matches = img_pattern.findall(raw_text)
-        
-        if matches and self.vision_provider:
-            max_images = self.settings.VISION_MAX_IMAGES_PER_DOC
-            process_matches = matches[:max_images]
-                
-            image_bytes_list = []
-            for b64 in process_matches:
-                try:
-                    image_bytes_list.append(base64.b64decode(b64))
-                except Exception as e:
-                    logger.warning(f"Failed to decode base64 image: {e}")
-            
-            if image_bytes_list:
-                descriptions = await self.vision_provider.describe_batch(image_bytes_list)
-                
-                # Replace the matches in the raw string before normalization
-                def replace_img(match):
-                    b64 = match.group(1)
-                    if b64 in process_matches:
-                        idx = process_matches.index(b64)
-                        desc = descriptions[idx]
-                        return f"\n[Visual content: {desc}]\n"
-                    return "[Image omitted - exceeded max limit]"
-                
-                raw_text = img_pattern.sub(replace_img, raw_text)
-
-        # Remove any remaining raw base64 images that lacked provider or exceeded max
-        raw_text = img_pattern.sub("[Image omitted]", raw_text)
+        # Vision processing for standalone images is handled by ImageMarkdownExtractor.
+        # For PDFs, embedded images are completely ignored to save API costs and prevent rate limits.
         
         # 3. NORMALIZATION (Safe to do now, no Base64 to corrupt or explode tokens)
         normalized = normalize_text(raw_text)

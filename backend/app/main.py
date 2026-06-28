@@ -136,7 +136,9 @@ async def lifespan(app: FastAPI):
 
         logger.info("[IntentClassifier] Preloading Semantic Router V2.0...")
         app.state.intent_classifier = IntentClassifier(embedder)
-        await app.state.intent_classifier.initialize()
+        task = asyncio.create_task(app.state.intent_classifier.initialize())
+        background_tasks.add(task)
+        task.add_done_callback(background_tasks.discard)
     except Exception as e:
         logger.error(
             f"[IntentClassifier] CRITICAL ERROR: Preload crashed ({type(e).__name__}: {e}). "

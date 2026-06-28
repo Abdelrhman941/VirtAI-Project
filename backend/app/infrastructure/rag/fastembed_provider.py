@@ -38,8 +38,11 @@ class FastEmbedProvider(EmbeddingProvider):
         settings = get_settings()
         self.model_name = model_name or settings.EMBEDDING_MODEL
         self.cache_dir = cache_dir or settings.FASTEMBED_CACHE_DIR
+        self.lazy_load = settings.FASTEMBED_LAZY_LOAD
         Path(self.cache_dir).mkdir(parents=True, exist_ok=True)
+        self.model = None
 
+    def _ensure_model(self):
         with self._init_lock:
             if (
                 FastEmbedProvider._model_instance is not None
@@ -49,12 +52,10 @@ class FastEmbedProvider(EmbeddingProvider):
                 logger.debug("FastEmbed model loaded from class singleton cache.")
                 return
 
-            # FastEmbed downloads and loads the model into memory synchronously on init.
-            # Docker prewarms this cache; runtime startup should reuse it.
             logger.info(
                 {
                     "event": "fastembed_load_start",
-                    "model": model_name,
+                    "model": self.model_name,
                     "cache_dir": self.cache_dir,
                 }
             )
@@ -65,7 +66,7 @@ class FastEmbedProvider(EmbeddingProvider):
             if "cache_dir" in signature.parameters:
                 kwargs["cache_dir"] = self.cache_dir
             if "lazy_load" in signature.parameters:
-                kwargs["lazy_load"] = settings.FASTEMBED_LAZY_LOAD
+                kwargs["lazy_load"] = self.lazy_load
 
             self.model = TextEmbedding(**kwargs)
             FastEmbedProvider._model_instance = self.model
@@ -73,6 +74,8 @@ class FastEmbedProvider(EmbeddingProvider):
             logger.info("FastEmbed model loaded successfully.")
 
     def _embed_sync(self, texts: list[str]) -> list[list[float]]:
+        if self.model is None:
+            self._ensure_model()
         # FastEmbed returns a generator of numpy arrays, we convert to list of floats
         embeddings_gen = self.model.embed(texts)
         return [list(vec) for vec in embeddings_gen]

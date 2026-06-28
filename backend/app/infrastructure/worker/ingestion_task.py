@@ -269,8 +269,12 @@ async def _run_ingestion(
     elif file_type in ("txt", "md", "csv", "json"):
         from app.infrastructure.rag.text_extractor import TextExtractor
         parser = TextExtractor()
-    else:
+    elif file_type == "pdf":
+        from app.infrastructure.rag.pdf_markdown_extractor import PDFMarkdownExtractor
         parser = PDFMarkdownExtractor()
+    else:
+        logger.error(f"Unsupported file type detected: {file_type}")
+        raise ValueError(f"Unsupported file format: {file_type}")
 
     # Instantiate use case
     use_case = IngestDocumentUseCase(

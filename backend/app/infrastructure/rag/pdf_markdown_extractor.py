@@ -175,25 +175,8 @@ class PDFMarkdownExtractor(DocumentParser):
             if table_id not in emitted_table_ids:
                 markdown_lines.extend(["", table_text.strip(), ""])
 
-        # Extract images
-        try:
-            image_list = page.get_images(full=True)
-            import base64
-            for img_info in image_list:
-                xref = img_info[0]
-                try:
-                    base_image = page.parent.extract_image(xref)
-                    image_bytes = base_image["image"]
-                    ext = base_image["ext"]
-                    # Filter out tiny images (logos/icons)
-                    if len(image_bytes) < 1024:
-                        continue
-                    b64 = base64.b64encode(image_bytes).decode("ascii")
-                    markdown_lines.append(f"\n![image_base64_extract](data:image/{ext};base64,{b64})\n")
-                except Exception as e:
-                    logger.debug(f"Failed to extract image xref {xref}: {e}")
-        except Exception:
-            pass
+        # Image extraction has been disabled for PDFs.
+        # Relying solely on text extraction and Tesseract OCR fallback for scanned pages.
 
         return "\n".join(markdown_lines)
 
