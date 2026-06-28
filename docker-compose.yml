@@ -13,10 +13,10 @@ services:
       - virtai-network
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-virtai}']
-      interval: 10s
-      timeout: 5s
+      interval: 2s
+      timeout: 3s
       retries: 5
-      start_period: 5s
+      start_period: 1s
 
   redis:
     image: redis:7-alpine
@@ -33,10 +33,10 @@ services:
       - virtai-network
     healthcheck:
       test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
-      interval: 10s
-      timeout: 5s
+      interval: 2s
+      timeout: 2s
       retries: 5
-      start_period: 5s
+      start_period: 1s
 
   backend-init:
     build:
@@ -51,7 +51,6 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       XDG_CACHE_HOME: /app/.cache
       HF_HOME: /app/models/huggingface
-      FASTEMBED_CACHE_DIR: /app/models/fastembed
     networks:
       - virtai-network
     depends_on:
@@ -73,7 +72,6 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       XDG_CACHE_HOME: /app/.cache
       HF_HOME: /app/models/huggingface
-      FASTEMBED_CACHE_DIR: /app/models/fastembed
     volumes:
       - backend-data:/app/.data
       - backend-cache:/app/.cache
@@ -89,10 +87,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:8000/api/v1/health']
-      interval: 10s
-      timeout: 10s
+      interval: 2s
+      timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 5s
 
   worker:
     image: virtai-backend:latest
@@ -108,7 +106,6 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       XDG_CACHE_HOME: /app/.cache
       HF_HOME: /app/models/huggingface
-      FASTEMBED_CACHE_DIR: /app/models/fastembed
     volumes:
       - backend-data:/app/.data
       - backend-cache:/app/.cache
@@ -124,10 +121,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import redis; redis.Redis(host='redis', password='${REDIS_PASSWORD}').ping()"]
-      interval: 30s
-      timeout: 10s
+      interval: 2s
+      timeout: 5s
       retries: 5
-      start_period: 15s
+      start_period: 2s
 
   frontend:
     build:
@@ -153,10 +150,10 @@ services:
       - virtai-network
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
-      interval: 10s
-      timeout: 15s
-      retries: 5
-      start_period: 120s
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
     deploy:
       resources:
         reservations:

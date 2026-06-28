@@ -2,7 +2,7 @@ import asyncio
 import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 
 import httpx
@@ -19,6 +19,15 @@ from app.infrastructure.db.repositories.ingestion_state_repository import Ingest
 from app.infrastructure.vector.pgvector_store import PGVectorStore
 from app.infrastructure.worker.retry_classifier import classify
 from app.shared.errors import IngestionCancelledException
+from app.application.rag.ingest_document import IngestDocumentUseCase
+from app.infrastructure.rag.pdf_markdown_extractor import PDFMarkdownExtractor
+from app.infrastructure.rag.smart_chunker import SmartChunker
+from app.infrastructure.rag.image_markdown_extractor import ImageMarkdownExtractor
+from app.infrastructure.rag.text_extractor import TextExtractor
+from app.shared.config import get_settings
+from app.infrastructure.db.models import Document
+from sqlalchemy import select
+from app.infrastructure.cache.pubsub import publish_doc_progress
 
 LOCK_TTL = 620  # job_timeout (600) + 20s buffer
 
@@ -60,8 +69,6 @@ async def run_ingestion_task(
 
     except asyncio.CancelledError as e:
         logger.warning({**log_ctx, "event": "ingestion_cancelled_by_arq", "error": str(e)})
-        from app.application.rag.ingest_document import IngestDocumentUseCase
-
         try:
             use_case = IngestDocumentUseCase(
                 storage=ctx["storage"],
@@ -94,8 +101,6 @@ async def run_ingestion_task(
             await db.commit()
 
     except Exception as e:
-        from app.application.rag.ingest_document import IngestDocumentUseCase
-
         is_retryable, reason = classify(e)
 
         error_msg = str(e)
@@ -167,12 +172,6 @@ async def run_ingestion_task(
 
 async def sweep_stalled_jobs(ctx: dict) -> None:
     """Cron task to identify and clean up orphaned jobs from ungracefully killed workers."""
-    from datetime import datetime, timedelta, timezone
-
-    from sqlalchemy import select
-
-    from app.infrastructure.db.models import Document
-
     threshold = datetime.now(timezone.utc) - timedelta(seconds=LOCK_TTL)
     terminal = ["COMPLETE", "FAILED", "CANCELLED"]
 
@@ -210,11 +209,6 @@ async def _run_ingestion(
     storage_key: str,
     log_ctx: dict,
 ) -> None:
-    from app.application.rag.ingest_document import IngestDocumentUseCase
-    from app.infrastructure.rag.pdf_markdown_extractor import PDFMarkdownExtractor
-    from app.infrastructure.rag.smart_chunker import SmartChunker
-    from app.shared.config import get_settings
-
     embedder = ctx["embedder"]
     storage = ctx["storage"]
 
@@ -250,7 +244,6 @@ async def _run_ingestion(
             await state_repo.update_progress(doc_id, stage, pct, processed, total)
             await db.commit()
 
-        from app.infrastructure.cache.pubsub import publish_doc_progress
         await publish_doc_progress(user_id, scope_id_str, doc_id, stage, pct)
 
     # Cancellation Check
@@ -264,13 +257,10 @@ async def _run_ingestion(
     chunker = SmartChunker(chunk_size=settings.CHUNK_SIZE, overlap_size=settings.CHUNK_OVERLAP)
 
     if file_type in ("png", "jpg", "jpeg", "webp"):
-        from app.infrastructure.rag.image_markdown_extractor import ImageMarkdownExtractor
         parser = ImageMarkdownExtractor(vision_provider=ctx.get("vision_provider"))
     elif file_type in ("txt", "md", "csv", "json"):
-        from app.infrastructure.rag.text_extractor import TextExtractor
         parser = TextExtractor()
     elif file_type == "pdf":
-        from app.infrastructure.rag.pdf_markdown_extractor import PDFMarkdownExtractor
         parser = PDFMarkdownExtractor()
     else:
         logger.error(f"Unsupported file type detected: {file_type}")

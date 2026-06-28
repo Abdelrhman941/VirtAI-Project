@@ -23,8 +23,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_ROOT_USER_ACTION=ignore \
     XDG_CACHE_HOME=/app/.cache \
     HF_HOME=/app/models/huggingface \
-    HF_HUB_DISABLE_TELEMETRY=1 \
-    FASTEMBED_CACHE_DIR=/app/models/fastembed
+    HF_HUB_DISABLE_TELEMETRY=1
 
 WORKDIR /app
 
@@ -52,10 +51,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip && \
     pip install -r requirements-heavy.txt
 
-# Pre-download FastEmbed model into an image layer so production startup does
-# not fetch model files dynamically.
-RUN mkdir -p /app/models/fastembed /app/models/huggingface && \
-    python -c "import os; from fastembed import TextEmbedding; model=os.environ.get('EMBEDDING_MODEL', 'BAAI/bge-small-en-v1.5'); list(TextEmbedding(model_name=model).embed(['warmup']))"
+
 
 # ── Install Python dependencies (Layer 2) ──────────────────
 # Copy only the dependency manifest so pip install is cached
