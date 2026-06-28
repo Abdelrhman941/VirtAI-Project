@@ -47,12 +47,27 @@ class ExplainHandler:
                 await self.websocket.send_json(event)
         except asyncio.CancelledError:
             pass
+        except Exception as e:
+            logger.error(f"Error in _start_presentation: {e}")
+            import traceback
+            traceback.print_exc()
+            try:
+                await self.websocket.send_json({"type": "error", "message": str(e)})
+            except Exception:
+                pass
 
     async def _handle_interruption(self, data: dict):
         if self._main_task and not self._main_task.done():
             self._main_task.cancel()
+            try:
+                await self._main_task
+            except asyncio.CancelledError:
+                pass
 
-        user_text = data.get("data", {}).get("text", "")
+        user_text = data.get("text", "")
+        # Fallback to nested data just in case
+        if not user_text and isinstance(data.get("data"), dict):
+            user_text = data.get("data", {}).get("text", "")
 
         async def _process_input():
             try:
@@ -62,5 +77,13 @@ class ExplainHandler:
                     await self.websocket.send_json(event)
             except asyncio.CancelledError:
                 pass
+            except Exception as e:
+                logger.error(f"Error in handle_user_input: {e}")
+                import traceback
+                traceback.print_exc()
+                try:
+                    await self.websocket.send_json({"type": "error", "message": str(e)})
+                except Exception:
+                    pass
 
         self._main_task = asyncio.create_task(_process_input())

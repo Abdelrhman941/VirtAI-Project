@@ -1,6 +1,8 @@
 import React, { RefObject } from 'react';
 import { ExplainSession } from '@/features/explain/components/ExplainSession';
 import { DiagramContainer } from '@/features/diagrams/components/DiagramContainer';
+import { DocumentPicker } from '@/features/diagrams/components/DocumentPicker';
+import { QuizContainer } from '@/features/quiz/components/QuizContainer';
 import { MessageList, ChatInput } from '@/features/chat';
 import { PresentationState } from '@/features/explain/hooks/useExplainWS';
 import { ISession } from '@/features/session/types';
@@ -11,6 +13,8 @@ export interface AssistantPanelProps {
   // Mode states
   isExplainActive: boolean;
   isDiagramOpen: boolean;
+  isSummaryOpen: boolean;
+  isQuizOpen?: boolean;
   
   // Explain Props
   explainDocumentId?: string;
@@ -25,6 +29,15 @@ export interface AssistantPanelProps {
   
   // Diagram Props
   onDiagramClose: () => void;
+
+  // Summary Props
+  onSummaryClose: () => void;
+  onSummarizeDocument?: (filename: string) => void;
+
+  // Quiz Props
+  onQuizClose?: () => void;
+  onStartQuizDocument?: (filename: string) => void;
+
   currentSessionId: string | null;
   
   // Chat Props
@@ -47,11 +60,13 @@ export interface AssistantPanelProps {
   onToggleDocuments: () => void;
   onBeforeVoiceStart: () => Promise<boolean>;
   onStop: () => void;
+  wsClient?: any;
 }
 
 export function AssistantPanel({
   isExplainActive,
   isDiagramOpen,
+  isSummaryOpen,
   explainDocumentId,
   explainState,
   explainSlide,
@@ -62,6 +77,10 @@ export function AssistantPanel({
   onExplainPauseOrStop,
   onExplainClose,
   onDiagramClose,
+  onSummaryClose,
+  onSummarizeDocument,
+  isQuizOpen,
+  onQuizClose,
   currentSessionId,
   messages,
   currentMessage,
@@ -79,7 +98,8 @@ export function AssistantPanel({
   textareaRef,
   onToggleDocuments,
   onBeforeVoiceStart,
-  onStop
+  onStop,
+  wsClient
 }: AssistantPanelProps) {
   if (isExplainActive) {
     return (
@@ -109,6 +129,38 @@ export function AssistantPanel({
     );
   }
 
+  if (isSummaryOpen) {
+    return (
+      <div className="w-full h-full flex flex-col relative bg-dark-tertiary overflow-hidden min-w-0">
+        <div className="w-full h-full overflow-y-auto p-6 flex flex-col items-center justify-center">
+          <div className="w-full max-w-2xl w-[600px] max-w-[90vw]">
+            <DocumentPicker 
+              title="Select Document to Summarize"
+              buttonText="Summarize Document"
+              sessionId={currentSessionId} 
+              onSelect={(docId, filename) => {
+                if (onSummarizeDocument) {
+                  onSummarizeDocument(filename);
+                }
+              }} 
+              onCancel={onSummaryClose} 
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isQuizOpen) {
+    return (
+      <QuizContainer 
+        isOpen={isQuizOpen} 
+        onClose={onQuizClose || (() => {})} 
+        sessionId={currentSessionId} 
+      />
+    );
+  }
+
   return (
     <>
       <MessageList
@@ -133,6 +185,7 @@ export function AssistantPanel({
           onToggleDocuments={onToggleDocuments}
           onBeforeVoiceStart={onBeforeVoiceStart}
           onStop={onStop}
+          wsClient={wsClient}
         />
       </div>
     </>

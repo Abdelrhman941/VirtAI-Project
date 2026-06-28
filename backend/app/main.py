@@ -43,10 +43,6 @@ async def lifespan(app: FastAPI):
     await init_redis()
     logger.info("Redis initialised")
 
-    # ── Check GROQ_API_KEY ──────────────────────────────────────────────────
-    if not settings.GROQ_API_KEY:
-        logger.error("❌ GROQ_API_KEY is missing! " "Please set GROQ_API_KEY environment variable.")
-        raise ValueError("GROQ_API_KEY is required")
 
     # ── RAG Infrastructure ───────────────────────────────────────────────────
     import time
@@ -74,8 +70,24 @@ async def lifespan(app: FastAPI):
             )
         elif settings.EMBEDDING_PROVIDER == "openai":
             embedder = OpenAIEmbedder()
+        elif settings.EMBEDDING_PROVIDER == "cohere":
+            if not settings.COHERE_API_KEY:
+                raise ValueError("COHERE_API_KEY is required when EMBEDDING_PROVIDER=cohere")
+            from app.infrastructure.rag.cohere_embedder import CohereEmbedder
+            embedder = CohereEmbedder(
+                model_name=settings.EMBEDDING_MODEL,
+                api_key=settings.COHERE_API_KEY
+            )
         else:
             raise ValueError(f"Unsupported embedding provider: {settings.EMBEDDING_PROVIDER}")
+            
+        from app.infrastructure.rag.cached_embedder import CachedEmbedder
+        from app.infrastructure.cache.redis_client import get_redis
+        embedder = CachedEmbedder(
+            base_embedder=embedder,
+            redis_client=get_redis(),
+            model_name=settings.EMBEDDING_MODEL
+        )
     except Exception as exc:
         logger.error(
             {
@@ -101,16 +113,19 @@ async def lifespan(app: FastAPI):
     app.state.embedder = embedder
     app.state.storage = LocalStorageProvider(base_path=settings.UPLOAD_BASE_PATH)
 
-    from app.infrastructure.rag.reranker import CrossEncoderReranker
+    from app.infrastructure.rag.reranker import CrossEncoderReranker, CohereReranker
 
     try:
-        app.state.reranker = CrossEncoderReranker()
-        logger.info("[Reranker] Aggressively warming up CrossEncoderReranker...")
-        loop = asyncio.get_running_loop()
-        loop.run_in_executor(app.state.reranker.get_executor(), app.state.reranker._ensure_model)
+        if settings.RERANKER_PROVIDER == "cohere":
+            app.state.reranker = CohereReranker(model_name=settings.RERANKER_MODEL, api_key=settings.COHERE_API_KEY)
+        else:
+            app.state.reranker = CrossEncoderReranker()
+            logger.info("[Reranker] Aggressively warming up CrossEncoderReranker...")
+            loop = asyncio.get_running_loop()
+            loop.run_in_executor(app.state.reranker.get_executor(), app.state.reranker._ensure_model)
     except Exception as _reranker_exc:
         logger.error(
-            f"[Reranker] CrossEncoderReranker construction failed "
+            f"[Reranker] Reranker construction failed "
             f"({type(_reranker_exc).__name__}: {_reranker_exc}). Failing fast."
         )
         raise
@@ -121,7 +136,9 @@ async def lifespan(app: FastAPI):
 
         logger.info("[IntentClassifier] Preloading Semantic Router V2.0...")
         app.state.intent_classifier = IntentClassifier(embedder)
-        await app.state.intent_classifier.initialize()
+        task = asyncio.create_task(app.state.intent_classifier.initialize())
+        background_tasks.add(task)
+        task.add_done_callback(background_tasks.discard)
     except Exception as e:
         logger.error(
             f"[IntentClassifier] CRITICAL ERROR: Preload crashed ({type(e).__name__}: {e}). "
@@ -137,31 +154,44 @@ async def lifespan(app: FastAPI):
     from app.application.services.model_policy import FallbackTTSChain, ModelPolicyService
     from app.domain.chat.ports import BaseLLMProvider
     from app.domain.voice.ports import BaseTTSProvider
-    from app.infrastructure.asr.groq_whisper import GroqWhisperASR
-    from app.infrastructure.llm.groq_provider import GroqLLMProvider
     from app.infrastructure.tts.openai_tts_provider import OpenAITTSProvider
 
     app.state.model_policy = ModelPolicyService()
 
-    groq_llm = GroqLLMProvider(
-        model=settings.LLM_MODEL,
-        max_tokens=settings.LLM_MAX_TOKENS,
-        temperature=settings.LLM_TEMPERATURE,
-        api_key=settings.GROQ_API_KEY,
-    )
+    from app.infrastructure.llm.cohere_provider import CohereLLMProvider
+    from app.application.services.model_policy import ModelCapabilities
+    
+    if settings.GENERATION_PROVIDER == "cohere":
+        if not settings.COHERE_API_KEY:
+            raise ValueError("COHERE_API_KEY is required for Cohere LLM")
+        cohere_llm = CohereLLMProvider(
+            model=settings.GENERATION_MODEL,
+            temperature=settings.GENERATION_TEMPERATURE,
+            api_key=settings.COHERE_API_KEY
+        )
+        app.state.model_policy.registry.register_llm(
+            "cohere_llm", 
+            cohere_llm, 
+            ModelCapabilities(streaming_supported=True, latency_tier="fast")
+        )
     openai_tts = OpenAITTSProvider(voice="aria", speed=0.8)
     app.state.tts_provider = openai_tts
 
-    app.state.model_policy.registry.register_llm("groq_llm", groq_llm)
     app.state.model_policy.registry.register_tts("openai_tts", openai_tts)
 
     from app.domain.voice.filler_cache import init_filler_cache
 
     init_filler_cache(openai_tts)
 
-    def create_asr_service() -> GroqWhisperASR:
-        return GroqWhisperASR()
-
+    def create_asr_service():
+        if settings.ASR_PROVIDER == "groq":
+            from app.infrastructure.audio.groq_asr import GroqASRProvider
+            return GroqASRProvider(
+                api_key=settings.GROQ_API_KEY, 
+                model=settings.ASR_MODEL, 
+                language=settings.ASR_LANGUAGE
+            )
+        return None
     def create_llm_service() -> BaseLLMProvider:
         # Note: Handled by fast-fail at startup
         return app.state.model_policy.router.get_llm_chain()
@@ -252,6 +282,28 @@ async def lifespan(app: FastAPI):
     task = asyncio.create_task(cleanup_task(), name="session_cleanup")
     background_tasks.add(task)
     task.add_done_callback(background_tasks.discard)
+
+    # ── Background task: orphan cleanup ─────────────────────────────────────
+    async def orphan_cleanup_task():
+        try:
+            while True:
+                await asyncio.sleep(30 * 60) # 30 minutes
+                from app.infrastructure.db.database import AsyncSessionLocal
+                from app.infrastructure.db.cleanup_jobs import cleanup_orphaned_and_stuck_documents
+                logger.info("Starting cleanup_orphaned_and_stuck_documents")
+                async with AsyncSessionLocal() as db:
+                    try:
+                        result = await cleanup_orphaned_and_stuck_documents(db)
+                        logger.info(f"Cleanup job finished: {result}")
+                    except Exception as e:
+                        logger.error(f"Cleanup job failed: {e}")
+        except asyncio.CancelledError:
+            logger.info("Orphan cleanup task cancelled")
+            raise
+
+    orphan_task = asyncio.create_task(orphan_cleanup_task(), name="orphan_cleanup")
+    background_tasks.add(orphan_task)
+    orphan_task.add_done_callback(background_tasks.discard)
 
     # ── Background task: stale queue recovery ──────────────────────────────
     async def stale_queue_recovery_task():

@@ -8,6 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.chat.chat_use_case import ChatUseCase
+from app.application.prompts.rag.registry import registry, PromptKey
+from app.domain.chat.entities import ConversationHistory
+from app.domain.rag.task_types import detect_locale
 from app.domain.rag.explain_entities import (
     AwaitInputEvent,
     PresentationState,
@@ -70,14 +73,43 @@ class ExplainUseCase:
             slide_index=current_slide_index, total_slides=len(chunks)
         ).model_dump()
 
-        chunk = chunks[current_slide_index]
-        text = chunk.chunk_text or ""
+        current_chunk = chunks[current_slide_index]
+        current_content = current_chunk.chunk_text or ""
 
-        # Simulate streaming LLM/TTS
-        words = text.split(" ")
-        for word in words:
-            await asyncio.sleep(0.1)
-            yield SlideContentTokens(tokens=word + " ").model_dump()
+        # Build Sliding Window Context
+        previous_summary = "None (This is the first slide)"
+        if current_slide_index > 0:
+            prev_text = chunks[current_slide_index - 1].chunk_text or ""
+            previous_summary = prev_text[:400] + ("..." if len(prev_text) > 400 else "")
+
+        next_preview = "None (This is the last slide)"
+        if current_slide_index < len(chunks) - 1:
+            next_text = chunks[current_slide_index + 1].chunk_text or ""
+            next_preview = next_text[:400] + ("..." if len(next_text) > 400 else "")
+
+        # Detect locale and build history
+        locale = detect_locale(current_content)
+        prompt_set = registry.get_prompt_set(PromptKey.WALKTHROUGH, locale)
+
+        sys_str = prompt_set.system.substitute(
+            current_slide_number=current_slide_index + 1,
+            total_slides=len(chunks)
+        )
+        usr_str = prompt_set.footer.substitute(
+            previous_slide_summary=previous_summary,
+            current_slide_content=current_content,
+            next_slide_preview=next_preview
+        )
+
+        history = ConversationHistory(system_prompt=sys_str, max_messages=1)
+        history.add_user_message(usr_str)
+
+        # Stream explanation from LLM
+        async for chunk in self.chat_use_case.llm.stream(history):
+            if chunk.token:
+                yield SlideContentTokens(tokens=chunk.token).model_dump()
+
+        yield {"type": "done"}
 
         yield SlideEndEvent(slide_index=current_slide_index).model_dump()
 
@@ -89,8 +121,25 @@ class ExplainUseCase:
     async def handle_user_input(
         self, user_id: str, document_id: str, text: str
     ) -> AsyncGenerator[dict, None]:
+        import re
         session_key = f"explain_{user_id}_{document_id}"
         state_data = await self._get_state(session_key)
+
+        jump_match = re.search(r"(?:jump to slide|skip to slide|slide)\s*(\d+)", text.lower())
+        if jump_match:
+            try:
+                target_slide = int(jump_match.group(1)) - 1  # 1-indexed to 0-indexed
+                # Boundary check
+                chunks = await self._load_chunks(document_id)
+                if target_slide >= 0 and target_slide < len(chunks):
+                    state_data["current_slide_index"] = target_slide
+            except ValueError:
+                pass
+            
+            await self._save_state(session_key, state_data)
+            async for event in self.start_or_resume(user_id, document_id):
+                yield event
+            return
 
         if "continue" in text.lower() or "next" in text.lower():
             state_data["current_slide_index"] += 1
@@ -113,6 +162,7 @@ class ExplainUseCase:
         )
 
         yield SlideContentTokens(tokens=response_text).model_dump()
+        yield {"type": "done"}
 
         state_data["state"] = PresentationState.AWAITING.value
         await self._save_state(session_key, state_data)

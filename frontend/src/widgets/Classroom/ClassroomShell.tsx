@@ -7,7 +7,7 @@ import { PresentationState, useExplainWS } from '@/features/explain/hooks/useExp
 import { SettingsDrawer, useSessionManager } from '@/features/session';
 import { PCMRecorder } from '@/features/voice/audio/pcmRecorder';
 import { toast } from '@/shared/utils/toast';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -18,8 +18,8 @@ import { SCROLL_STICK_THRESHOLD_PX } from './constants';
 import { useClassroomAudio } from './hooks/useClassroomAudio';
 import { useClassroomChat } from './hooks/useClassroomChat';
 import { useClassroomState } from './hooks/useClassroomState';
-import { WSContext } from '@/core/realtime/WSContext';
-import { FiMonitor, FiShare2, FiEdit3, FiMessageSquare } from 'react-icons/fi';
+
+import { FiMonitor, FiShare2, FiEdit3, FiMessageSquare, FiFileText } from 'react-icons/fi';
 import { ErrorState } from '@/shared/components/UIStates';
 
 export interface AudioVisemePacket {
@@ -84,9 +84,19 @@ export default function ClassroomShell() {
 
   const { documents } = useDocumentList(currentSessionId);
   const [isDiagramOpen, setIsDiagramOpen] = useState(false);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
 
   const handleGenerateDiagram = () => {
     setIsDiagramOpen(true);
+  };
+
+  const handleGenerateSummary = () => {
+    setIsSummaryOpen(true);
+  };
+
+  const handleGenerateQuiz = () => {
+    setIsQuizOpen(true);
   };
 
   const {
@@ -166,6 +176,11 @@ export default function ClassroomShell() {
     await session.clearAllSessions();
   }, [disconnect, session]);
 
+  const handleSummarizeDocument = useCallback((filename: string) => {
+    setIsSummaryOpen(false);
+    commitAndSend(`Please summarize the document: ${filename}`);
+  }, [commitAndSend]);
+
   const handleDeleteSession = useCallback(async (sessionId: string) => {
     if (sessionId === currentSessionId) {
       disconnect();
@@ -173,10 +188,33 @@ export default function ClassroomShell() {
     await session.deleteSession(sessionId);
   }, [disconnect, session, currentSessionId]);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatScrollRef = useRef<HTMLDivElement>(null);
+  // Desktop Refs
+  const desktopMessagesEndRef = useRef<HTMLDivElement>(null);
+  const desktopChatScrollRef = useRef<HTMLDivElement>(null);
+  const desktopTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Mobile Refs
+  const mobileMessagesEndRef = useRef<HTMLDivElement>(null);
+  const mobileChatScrollRef = useRef<HTMLDivElement>(null);
+  const mobileTextareaRef = useRef<HTMLTextAreaElement>(null);
+
   const shouldStickToBottom = useRef<boolean>(true);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Helper to get currently active/visible refs
+  const getActiveRefs = useCallback(() => {
+    if (desktopChatScrollRef.current && desktopChatScrollRef.current.clientHeight > 0) {
+      return {
+        chatScrollRef: desktopChatScrollRef,
+        messagesEndRef: desktopMessagesEndRef,
+        textareaRef: desktopTextareaRef
+      };
+    }
+    return {
+      chatScrollRef: mobileChatScrollRef,
+      messagesEndRef: mobileMessagesEndRef,
+      textareaRef: mobileTextareaRef
+    };
+  }, []);
   const scrollPositionsRef = useRef<Map<string | null, number>>(new Map());
   const prevSessionIdRef = useRef<string | null>(currentSessionId);
   const isCreatingSessionRef = useRef<boolean>(false);
@@ -187,13 +225,15 @@ export default function ClassroomShell() {
     if (prevId !== nextId) {
       resetAvatarAudio();
 
+      const { chatScrollRef } = getActiveRefs();
       if (chatScrollRef.current) {
         scrollPositionsRef.current.set(prevId, chatScrollRef.current.scrollTop);
       }
       requestAnimationFrame(() => {
         const saved = scrollPositionsRef.current.get(nextId);
-        if (chatScrollRef.current && saved !== null && saved !== undefined) {
-          chatScrollRef.current.scrollTop = saved;
+        const { chatScrollRef: activeRef } = getActiveRefs();
+        if (activeRef.current && saved !== null && saved !== undefined) {
+          activeRef.current.scrollTop = saved;
           shouldStickToBottom.current = false;
         } else {
           shouldStickToBottom.current = true;
@@ -201,7 +241,7 @@ export default function ClassroomShell() {
       });
       prevSessionIdRef.current = nextId;
     }
-  }, [currentSessionId, resetAvatarAudio]);
+  }, [currentSessionId, resetAvatarAudio, getActiveRefs]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -217,15 +257,53 @@ export default function ClassroomShell() {
   }, [openSettings]);
 
   const handleChatScroll = useCallback(() => {
+    const { chatScrollRef } = getActiveRefs();
     const el = chatScrollRef.current;
     if (!el) return;
-    shouldStickToBottom.current =
-      el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_STICK_THRESHOLD_PX;
-  }, []);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentSession?.messages, conversationState.currentMessage, interimTranscript]);
+    // Add a small 1px buffer to account for subpixel rendering issues
+    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_STICK_THRESHOLD_PX + 1;
+    shouldStickToBottom.current = isAtBottom;
+  }, [getActiveRefs]);
+
+  const prevMessagesLength = useRef(currentSession?.messages?.length || 0);
+  const prevPipelineState = useRef(conversationState.pipelineState);
+
+  useLayoutEffect(() => {
+    const { chatScrollRef, messagesEndRef } = getActiveRefs();
+    const el = chatScrollRef.current;
+    const endEl = messagesEndRef.current;
+    if (!el || !endEl) return;
+
+    const currentLength = currentSession?.messages?.length || 0;
+    const isNewMessage = currentLength > prevMessagesLength.current;
+    const isNewThinkingState = conversationState.pipelineState === 'thinking' && prevPipelineState.current !== 'thinking';
+
+    prevMessagesLength.current = currentLength;
+    prevPipelineState.current = conversationState.pipelineState;
+
+    // Force stick to bottom when a new message block or thinking bubble appears
+    if (isNewMessage || isNewThinkingState) {
+      shouldStickToBottom.current = true;
+    }
+
+    if (shouldStickToBottom.current) {
+      // Determine if we are actively streaming high-frequency chunks
+      const isStreaming = !!conversationState.currentMessage || !!interimTranscript;
+
+      // Use 'auto' during streaming to prevent browser smooth-scroll cancellation (jitter/stuck).
+      // Use 'smooth' for new message initialization or when thinking state starts for premium UX.
+      const behavior = (isNewMessage || isNewThinkingState) && !isStreaming ? 'smooth' : 'auto';
+
+      endEl.scrollIntoView({ behavior, block: 'end' });
+    }
+  }, [
+    currentSession?.messages,
+    conversationState.currentMessage,
+    interimTranscript,
+    conversationState.pipelineState,
+    getActiveRefs
+  ]);
 
   const handleStop = useCallback(() => {
     safeSend({
@@ -250,16 +328,20 @@ export default function ClassroomShell() {
     const text = inputValue.trim();
     if (!text) return;
 
+    // Force scroll to bottom when user explicitly sends a message
+    shouldStickToBottom.current = true;
+
     commitAndSend(text);
     setInputValue('');
 
+    const { textareaRef } = getActiveRefs();
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
     if (!isConnected && currentSessionId !== null) {
       toast.warning('Offline', 'Message queued. Will send when connected.', 3000);
     }
-  }, [inputValue, isConnected, currentSessionId, commitAndSend, setInputValue]);
+  }, [inputValue, isConnected, currentSessionId, commitAndSend, setInputValue, getActiveRefs]);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -304,7 +386,7 @@ export default function ClassroomShell() {
           action={
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-2.5 rounded-full bg-gold text-[#0A0908] font-semibold text-sm hover:bg-gold-soft hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer shadow-lg"
+              className="px-6 py-2.5 rounded-full bg-gold text-[#0A0908] font-semibold text-sm hover:bg-gold-soft hover:scale-[1.02] active:scale-[0.98] transition-colors duration-200 cursor-pointer shadow-lg"
             >
               Reload Classroom
             </button>
@@ -316,18 +398,16 @@ export default function ClassroomShell() {
 
   const isSidebarOpen = isSettingsOpen || isDocumentsOpen;
 
+  const chatWsClient = {
+    connectionState,
+    isConnected,
+    send: safeSend,
+    onMessage,
+    currentSessionId,
+  };
+
   return (
-    <WSContext.Provider
-      value={{
-        connectionState,
-        isConnected,
-        send: safeSend,
-        reconnect,
-        disconnect,
-        currentSessionId,
-        onMessage,
-      }}
-    >
+    <>
       <Helmet>
         <title>{avatarName} — VirtAI Classroom</title>
       </Helmet>
@@ -375,7 +455,9 @@ export default function ClassroomShell() {
             hasDocuments={documents.length > 0}
             hasMessages={currentSession?.messages?.length ? currentSession.messages.length > 0 : false}
             onGenerateDiagram={handleGenerateDiagram}
+            onGenerateSummary={handleGenerateSummary}
             onStartExplain={handleStartExplain}
+            onStartQuiz={handleGenerateQuiz}
             onOpenSettings={openSettings}
           />
 
@@ -383,7 +465,7 @@ export default function ClassroomShell() {
           <div className="hidden lg:flex flex-row w-full flex-1 min-h-0 gap-6">
 
             {/* Avatar Panel (Left) */}
-            <aside className="flex-[3] min-w-0 min-h-0 rounded-2xl bg-dark-secondary border border-white/5 relative overflow-hidden flex items-center justify-center shadow-xl">
+            <aside className="flex-[3] min-w-0 min-h-0 relative overflow-hidden flex items-center justify-center bg-dark-secondary/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl">
               <AvatarCanvasWrapper
                 avatarId={activeAvatarId}
                 pipelineState={conversationState.pipelineState}
@@ -397,10 +479,11 @@ export default function ClassroomShell() {
             </aside>
 
             {/* Chat Panel (Right) */}
-            <section className="flex-[7] min-w-0 min-h-0 rounded-2xl bg-dark-secondary border border-white/5 flex flex-col shadow-xl relative">
+            <section className="flex-[7] min-w-0 min-h-0 flex flex-col relative bg-dark-secondary/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl">
               <AssistantPanel
                 isExplainActive={isExplainActive}
                 isDiagramOpen={isDiagramOpen}
+                isSummaryOpen={isSummaryOpen}
                 explainDocumentId={documents.length > 0 ? documents[0].id : undefined}
                 explainState={explainState}
                 explainSlide={explainSlide}
@@ -425,24 +508,29 @@ export default function ClassroomShell() {
                   resetAvatarAudio();
                 }}
                 onDiagramClose={() => setIsDiagramOpen(false)}
+                onSummaryClose={() => setIsSummaryOpen(false)}
+                onSummarizeDocument={handleSummarizeDocument}
+                isQuizOpen={isQuizOpen}
+                onQuizClose={() => setIsQuizOpen(false)}
                 currentSessionId={currentSessionId}
                 messages={currentSession?.messages}
                 currentMessage={conversationState.currentMessage}
                 interimTranscript={interimTranscript}
                 chatError={conversationState.error}
                 avatarName={avatarName}
-                chatScrollRef={chatScrollRef}
-                messagesEndRef={messagesEndRef}
+                chatScrollRef={desktopChatScrollRef}
+                messagesEndRef={desktopMessagesEndRef}
                 onChatScroll={handleChatScroll}
                 pipelineState={conversationState.pipelineState as any}
                 inputValue={inputValue}
                 onInputChange={setInputValue}
                 onSendMessage={handleSendMessage}
                 onKeyDown={onKeyDown}
-                textareaRef={textareaRef}
+                textareaRef={desktopTextareaRef}
                 onToggleDocuments={toggleDocuments}
                 onBeforeVoiceStart={ensureVoiceSession}
                 onStop={handleStop}
+                wsClient={chatWsClient}
               />
             </section>
 
@@ -452,7 +540,7 @@ export default function ClassroomShell() {
           <div className="flex lg:hidden flex-col w-full flex-1 min-h-0 gap-4 pb-16">
 
             {/* Avatar Container: exactly 40% of available height */}
-            <aside className="h-[40%] min-h-0 rounded-2xl bg-dark-secondary border border-white/5 relative overflow-hidden flex items-center justify-center shadow-xl">
+            <aside className="h-[40%] min-h-0 relative overflow-hidden flex items-center justify-center bg-dark-secondary/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl mx-4">
               <AvatarCanvasWrapper
                 avatarId={activeAvatarId}
                 pipelineState={conversationState.pipelineState}
@@ -466,8 +554,10 @@ export default function ClassroomShell() {
             </aside>
 
             {/* Chat Container: remaining 60% height */}
-            <section className="h-[60%] min-h-0 rounded-2xl bg-dark-secondary border border-white/5 flex flex-col relative shadow-xl">
+            <section className="h-[60%] min-h-0 flex flex-col relative bg-dark-secondary/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl mx-4">
               <AssistantPanel
+                isSummaryOpen={isSummaryOpen}
+                onSummaryClose={() => setIsSummaryOpen(false)}
                 isExplainActive={isExplainActive}
                 isDiagramOpen={isDiagramOpen}
                 explainDocumentId={documents.length > 0 ? documents[0].id : undefined}
@@ -494,24 +584,28 @@ export default function ClassroomShell() {
                   resetAvatarAudio();
                 }}
                 onDiagramClose={() => setIsDiagramOpen(false)}
+                onSummarizeDocument={handleSummarizeDocument}
+                isQuizOpen={isQuizOpen}
+                onQuizClose={() => setIsQuizOpen(false)}
                 currentSessionId={currentSessionId}
                 messages={currentSession?.messages}
                 currentMessage={conversationState.currentMessage}
                 interimTranscript={interimTranscript}
                 chatError={conversationState.error}
                 avatarName={avatarName}
-                chatScrollRef={chatScrollRef}
-                messagesEndRef={messagesEndRef}
+                chatScrollRef={mobileChatScrollRef}
+                messagesEndRef={mobileMessagesEndRef}
                 onChatScroll={handleChatScroll}
                 pipelineState={conversationState.pipelineState as any}
                 inputValue={inputValue}
                 onInputChange={setInputValue}
                 onSendMessage={handleSendMessage}
                 onKeyDown={onKeyDown}
-                textareaRef={textareaRef}
+                textareaRef={mobileTextareaRef}
                 onToggleDocuments={toggleDocuments}
                 onBeforeVoiceStart={ensureVoiceSession}
                 onStop={handleStop}
+                wsClient={chatWsClient}
               />
             </section>
 
@@ -532,7 +626,7 @@ export default function ClassroomShell() {
               }`}
             >
               <FiMessageSquare size={20} />
-              <span className="text-[10px] font-semibold tracking-wide font-sans">Chat</span>
+              <span className="text-[10px] font-semibold tracking-wide font-display">Chat</span>
             </button>
 
             {/* Explain Tab */}
@@ -546,7 +640,7 @@ export default function ClassroomShell() {
               }`}
             >
               <FiMonitor size={20} />
-              <span className="text-[10px] font-semibold tracking-wide font-sans">Explain</span>
+              <span className="text-[10px] font-semibold tracking-wide font-display">Explain</span>
             </button>
 
             {/* Diagram Tab */}
@@ -560,22 +654,40 @@ export default function ClassroomShell() {
               }`}
             >
               <FiShare2 size={20} />
-              <span className="text-[10px] font-semibold tracking-wide font-sans">Diagram</span>
+              <span className="text-[10px] font-semibold tracking-wide font-display">Diagram</span>
+            </button>
+
+            {/* Summary Tab */}
+            <button
+              onClick={handleGenerateSummary}
+              disabled={!documents.length}
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${
+                isSummaryOpen
+                  ? 'text-gold font-bold'
+                  : 'text-gray-400 active:text-white'
+              }`}
+            >
+              <FiFileText size={20} />
+              <span className="text-[10px] font-semibold tracking-wide font-display">Summary</span>
             </button>
 
             {/* Quiz Tab */}
             <button
-              onClick={() => navigate('/quiz')}
+              onClick={handleGenerateQuiz}
               disabled={!documents.length}
-              className="flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer text-gray-400 active:text-white transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${
+                isQuizOpen
+                  ? 'text-gold font-bold'
+                  : 'text-gray-400 active:text-white'
+              }`}
             >
               <FiEdit3 size={20} />
-              <span className="text-[10px] font-semibold tracking-wide font-sans">Quiz</span>
+              <span className="text-[10px] font-semibold tracking-wide font-display">Quiz</span>
             </button>
           </nav>
 
         </main>
       </div>
-    </WSContext.Provider>
+    </>
   );
 }

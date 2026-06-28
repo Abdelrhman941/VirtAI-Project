@@ -4,9 +4,8 @@ import time
 import uuid
 
 from loguru import logger
+from app.presentation.ws.ws_schemas import IncomingWSMessage
 from pydantic import TypeAdapter, ValidationError
-
-from app.presentation.ws.pipeline_bridge import _pipeline_task_done_callback
 from app.schemas.ws_messages import (
     ChatAbort,
     ChatUserMessage,
@@ -14,32 +13,12 @@ from app.schemas.ws_messages import (
     WSMessageEnvelope,
     make_pipeline_state,
 )
+from app.presentation.ws.pipeline_bridge import _pipeline_task_done_callback
 
-envelope_adapter = TypeAdapter(WSMessageEnvelope)
+incoming_msg_adapter = TypeAdapter(IncomingWSMessage)
 
-
-def validate_message(raw_message: dict) -> ChatUserMessage | ChatAbort | ClientSpeechStopped:
-    if not isinstance(raw_message, dict):
-        raise ValueError("Message must be a dictionary")
-    if "type" not in raw_message:
-        raise ValueError("Message missing 'type' field")
-
-    # Use discriminated union to validate payload structure
-    try:
-        envelope = envelope_adapter.validate_python(raw_message)
-        return envelope.data
-    except ValidationError as e:
-        # Check if it failed because the type wasn't in the union
-        msg_type = raw_message.get("type")
-        if msg_type not in [
-            "chat.user_message",
-            "chat.abort",
-            "client.speech_stopped",
-            "tts.request",
-        ]:
-            raise ValueError(f"Unknown message type: {msg_type}")
-        raise e
-
+RATE_LIMIT_WINDOW_SECONDS = 10.0
+RATE_LIMIT_MAX_MESSAGES = 1000
 
 class ProtocolRouter:
     """Routes incoming WebSocket messages to appropriate handlers."""
@@ -53,14 +32,38 @@ class ProtocolRouter:
         - ws
         """
         self.ctx = context
+        self._message_timestamps: list[float] = []
+
+    def _check_rate_limit(self) -> bool:
+        now = time.time()
+        # Clean up old timestamps
+        self._message_timestamps = [t for t in self._message_timestamps if now - t < RATE_LIMIT_WINDOW_SECONDS]
+        if len(self._message_timestamps) >= RATE_LIMIT_MAX_MESSAGES:
+            return False
+        self._message_timestamps.append(now)
+        return True
+
+    def cleanup(self) -> None:
+        """Clear rate limiter state on disconnect to avoid memory leaks."""
+        self._message_timestamps.clear()
 
     async def route_message(self, raw: str) -> None:
+        if not self._check_rate_limit():
+            await self.ctx.outbound_sender.safe_send_error(
+                code="RATE_LIMITED",
+                message="Rate limit exceeded. Please wait.",
+                session_id=None,
+                session_pending=self.ctx._session_pending,
+                connected=self.ctx._connected,
+            )
+            return
+
         try:
             data = json.loads(raw)
         except json.JSONDecodeError as e:
             logger.warning(f"Invalid JSON: {raw[:100]} | {e}")
             await self.ctx.outbound_sender.safe_send_error(
-                code="INVALID_MESSAGE",
+                code="INVALID_PAYLOAD",
                 message="Invalid JSON format",
                 session_id=None,
                 session_pending=self.ctx._session_pending,
@@ -70,7 +73,7 @@ class ProtocolRouter:
 
         if not isinstance(data, dict):
             await self.ctx.outbound_sender.safe_send_error(
-                code="INVALID_MESSAGE",
+                code="INVALID_PAYLOAD",
                 message="Message must be a JSON object",
                 session_id=None,
                 session_pending=self.ctx._session_pending,
@@ -80,66 +83,86 @@ class ProtocolRouter:
 
         msg_type_str = data.get("type", "")
         if not msg_type_str:
+            await self.ctx.outbound_sender.safe_send_error(
+                code="INVALID_PAYLOAD",
+                message="Message missing 'type' field",
+                session_id=None,
+                session_pending=self.ctx._session_pending,
+                connected=self.ctx._connected,
+            )
+            return
+
+        # Map "text" to "chat.user_message" for frontend compatibility BEFORE validation
+        if msg_type_str == "text":
+            msg_type_str = "chat.user_message"
+            data["type"] = "chat.user_message"
+
+        try:
+            validated_msg = incoming_msg_adapter.validate_python(data)
+        except ValidationError as e:
+            logger.warning(f"Validation error: {e}")
+            await self.ctx.outbound_sender.safe_send_error(
+                code="INVALID_PAYLOAD",
+                message=f"Message validation failed: {e!s}",
+                session_id=None,
+                session_pending=self.ctx._session_pending,
+                connected=self.ctx._connected,
+            )
+            return
+
+        msg_type = validated_msg.type
+
+        if msg_type == "session_restore":
+            await self.ctx.session_bootstrap.handle_session_restore(validated_msg.session_id, self.ctx)
+            return
+
+        if msg_type == "session_new":
+            await self.ctx.session_bootstrap.handle_session_new(self.ctx)
+            return
+
+        if msg_type == "ping":
+            self.ctx.session.touch()
+            self.ctx._last_pong_time = time.time()
+            await self.ctx.ws.send_json({"type": "pong"})
             return
 
         self.ctx.session.touch()
         self.ctx._last_pong_time = time.time()
 
-        if msg_type_str == "ws.ack":
-            await self._handle_ws_ack(data)
+        if msg_type == "ws.ack":
+            await self._handle_ws_ack(validated_msg.data)
             return
 
-        if "." in msg_type_str:
-            await self._route_validated_message(raw)
+        if msg_type == "chat.user_message":
+            # Map back to old ChatUserMessage for the handler
+            old_msg = ChatUserMessage(
+                text=validated_msg.text,
+                message_id=validated_msg.message_id or str(uuid.uuid4()),
+                session_id=validated_msg.session_id
+            )
+            await self._handle_chat_user_message(old_msg)
             return
 
+        if msg_type == "chat.abort":
+            old_abort = ChatAbort(
+                message_id=validated_msg.message_id,
+                session_id=validated_msg.session_id
+            )
+            await self._handle_chat_abort(old_abort)
+            return
+
+        if msg_type == "client.speech_stopped":
+            await self._handle_voice_mode_stop(None)
+            return
+        
+        # We shouldn't reach here if type is validated
         await self.ctx.outbound_sender.safe_send_error(
-            code="UNKNOWN_TYPE",
-            message=f"Unknown message type: {msg_type_str}",
+            code="INVALID_PAYLOAD",
+            message=f"Unknown message type: {msg_type}",
             session_id=None,
             session_pending=self.ctx._session_pending,
             connected=self.ctx._connected,
         )
-
-    async def _route_validated_message(self, raw: str) -> None:
-        data = json.loads(raw)
-        try:
-            validated_msg = validate_message(data)
-        except ValidationError as e:
-            await self.ctx.outbound_sender.safe_send_error(
-                code="INVALID_MESSAGE",
-                message=f"Message validation failed: {e!s}",
-                session_id=self.ctx.session.session_id,
-                session_pending=self.ctx._session_pending,
-                connected=self.ctx._connected,
-            )
-            return
-        except ValueError as e:
-            await self.ctx.outbound_sender.safe_send_error(
-                code="UNKNOWN_TYPE",
-                message=str(e),
-                session_id=self.ctx.session.session_id,
-                session_pending=self.ctx._session_pending,
-                connected=self.ctx._connected,
-            )
-            return
-
-        try:
-            if isinstance(validated_msg, ChatUserMessage):
-                await self._handle_chat_user_message(validated_msg)
-            elif isinstance(validated_msg, ChatAbort):
-                await self._handle_chat_abort(validated_msg)
-            elif isinstance(validated_msg, ClientSpeechStopped):
-                await self._handle_voice_mode_stop(None)
-        except Exception as e:
-            logger.error(f"Error handling message: {e}")
-            await self.ctx.outbound_sender.safe_send_error(
-                code="INTERNAL_ERROR",
-                message="Error processing message",
-                session_id=self.ctx.session.session_id,
-                session_pending=self.ctx._session_pending,
-                connected=self.ctx._connected,
-            )
 
     async def _handle_abort(self, data: dict | None = None) -> None:
         async with self.ctx._turn_lock:
@@ -159,8 +182,10 @@ class ProtocolRouter:
         if self.ctx._voice_mode_handler is not None:
             self.ctx._voice_mode_handler.audio_pipeline.clear_buffer()
 
-    async def _handle_ws_ack(self, data: dict) -> None:
+    async def _handle_ws_ack(self, data: dict | None) -> None:
         if self.ctx._session_pending or not self.ctx.session.session_id:
+            return
+        if not data:
             return
         ack_data = data.get("data", data)
         try:
@@ -199,6 +224,7 @@ class ProtocolRouter:
                     send_callback=send_callback,
                     send_binary_callback=send_binary_callback,
                     trace_id=trace_id,
+                    user_id=getattr(self.ctx, "_user_id", None),
                 ),
                 name=f"pipeline_message_{session_id}",
             )

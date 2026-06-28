@@ -68,6 +68,10 @@ ALLOWED_MIME_TYPES = {
     "pdf": {"application/pdf", "application/x-pdf", "application/octet-stream"},
     "txt": {"text/plain", "application/octet-stream"},
     "md": {"text/markdown", "text/plain", "application/octet-stream"},
+    "png": {"image/png"},
+    "jpg": {"image/jpeg"},
+    "jpeg": {"image/jpeg"},
+    "webp": {"image/webp"},
 }
 
 
@@ -79,7 +83,7 @@ def validate_declared_mime(content_type: str | None, declared_ext: str) -> None:
     if normalized and normalized not in allowed:
         raise HTTPException(
             status_code=415,
-            detail="Unsupported file content type. Upload a PDF, TXT, or MD file.",
+            detail="Unsupported file content type. Upload a PDF, TXT, MD, or image file.",
         )
 
 
@@ -91,6 +95,11 @@ async def validate_file_magic(file: UploadFile, declared_ext: str) -> None:
         if kind is None or kind.extension != "pdf":
             raise HTTPException(
                 status_code=400, detail="File content does not match declared type 'pdf'"
+            )
+    elif declared_ext in ("png", "jpg", "jpeg", "webp"):
+        if kind is None or not kind.mime.startswith("image/"):
+            raise HTTPException(
+                status_code=400, detail="File content does not match declared image type"
             )
     elif declared_ext in ("txt", "md"):
         if kind is not None:
@@ -126,9 +135,9 @@ async def upload_document(
     # 1. Validate file type & size early
     safe_filename = sanitize_filename(file.filename)
     ext = safe_filename.split(".")[-1].lower() if "." in safe_filename else ""
-    if ext not in ["pdf", "txt", "md"]:
+    if ext not in ["pdf", "txt", "md", "png", "jpg", "jpeg", "webp"]:
         raise HTTPException(
-            status_code=400, detail="Unsupported file type. Must be pdf, txt, or md."
+            status_code=400, detail="Unsupported file type. Must be pdf, txt, md, or an image."
         )
 
     max_upload_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
@@ -247,6 +256,7 @@ async def list_statuses(
                 "processed_chunks": d.processed_chunks,
                 "total_chunks": d.total_chunks,
                 "error_message": d.error_message,
+                "file_size": d.file_size,
             }
         )
 
@@ -323,6 +333,7 @@ async def list_documents(
             "upload_date": d.upload_date.isoformat(),
             "chunk_count": d.chunk_count,
             "file_type": d.file_type,
+            "file_size": getattr(d, "file_size", 0),
         }
         for d in docs
         if d.current_stage not in {IngestionStage.FAILED, IngestionStage.CANCELLED}

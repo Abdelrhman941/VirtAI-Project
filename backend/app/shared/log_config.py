@@ -19,8 +19,10 @@ _BEARER_PATTERN = re.compile(r"Bearer\s+[A-Za-z0-9._-]+", re.IGNORECASE)
 def _redact_secrets(record: Record) -> None:
     """Redact sensitive API keys from log messages in-place."""
     settings = get_settings()
-    if settings.GROQ_API_KEY and settings.GROQ_API_KEY in record["message"]:
-        record["message"] = record["message"].replace(settings.GROQ_API_KEY, "[REDACTED]")
+    if settings.COHERE_API_KEY and settings.COHERE_API_KEY in record["message"]:
+        record["message"] = record["message"].replace(settings.COHERE_API_KEY, "[REDACTED]")
+    if settings.GOOGLE_API_KEY and settings.GOOGLE_API_KEY in record["message"]:
+        record["message"] = record["message"].replace(settings.GOOGLE_API_KEY, "[REDACTED]")
     record["message"] = _BEARER_PATTERN.sub("Bearer [REDACTED]", record["message"])
     record["message"] = _JWT_PATTERN.sub("[JWT_REDACTED]", record["message"])
 

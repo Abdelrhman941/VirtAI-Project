@@ -191,3 +191,21 @@ class VisualizationProviderPort(ABC):
         e.g., {"image_url": "https/..."} OR {"unavailable": True, "reason": "timeout"}
         """
         pass
+
+class VisionPort(ABC):
+    """Abstract interface for image understanding/OCR."""
+
+    @abstractmethod
+    async def health_check(self) -> bool:
+        """Returns True if the vision provider is accessible and healthy."""
+        pass
+
+    @abstractmethod
+    async def describe(self, image_b64: str) -> str:
+        """Takes a base64 encoded image string and returns a textual description."""
+        pass
+
+    @abstractmethod
+    async def describe_batch(self, images: list[bytes]) -> list[str]:
+        """Takes a list of raw image bytes and returns textual descriptions."""
+        pass

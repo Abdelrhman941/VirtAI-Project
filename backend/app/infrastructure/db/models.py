@@ -13,6 +13,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -178,13 +179,14 @@ class DocumentChunk(Base):
             postgresql_with={"m": 16, "ef_construction": 64},
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
+        Index("ix_chunks_active_doc_scope", "is_active", "document_id", "scope_id"),
         UniqueConstraint(
             "document_id", "chunk_order", "chunk_version", name="uq_chunk_order_version"
         ),
         Index("ix_chunks_active", "document_id", "is_active"),
         Index("ix_chunks_version", "document_id", "chunk_version"),
         Index(
-            "ix_chunks_text_gin", func.to_tsvector("english", chunk_text), postgresql_using="gin"
+            "ix_chunks_text_gin", text("to_tsvector('english', chunk_text)"), postgresql_using="gin"
         ),
     )
 
@@ -241,8 +243,24 @@ class QuizAttempt(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    answers: Mapped[list | dict] = mapped_column(JSONB, default=dict)
     score: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class QuizAttemptAnswer(Base):
+    __tablename__ = "quiz_attempt_answers"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    attempt_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("quiz_attempts.id", ondelete="CASCADE"), nullable=False
+    )
+    question_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("quiz_questions.id", ondelete="CASCADE"), nullable=False
+    )
+    selected_option: Mapped[int] = mapped_column(Integer, nullable=True)
+    is_correct: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    time_spent_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    hesitation_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 

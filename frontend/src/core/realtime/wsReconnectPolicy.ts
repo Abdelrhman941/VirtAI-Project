@@ -26,7 +26,7 @@ export function createReconnectPolicy({
 
   return {
     nextDelay() {
-      const delay = Math.min(baseDelay * 2 ** attempt, maxDelay) + Math.random() * 1000;
+      const delay = Math.min(baseDelay * (2 ** attempt) + Math.random() * 1000, maxDelay);
       attempt++;
       return delay;
     },

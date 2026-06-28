@@ -14,7 +14,7 @@ from app.application.rag.response_formatter import ResponseFormatterService
 from app.application.rag.token_budget import TokenBudgetManager
 from app.application.voice.pipeline_context import TurnContext
 from app.domain.chat.ports import BaseLLMProvider
-from app.domain.rag.task_types import TaskType, detect_locale
+from app.domain.rag.task_types import Locale, TaskType, detect_locale, classify_task_type
 from app.domain.voice.entities import TTSResult
 from app.domain.voice.ports import BaseTTSProvider
 from app.schemas.ws_messages import (
@@ -71,6 +71,8 @@ class LLMStage(BaseStage):
 
         original_sys_prompt = context.history.system_prompt
         context.original_system_prompt = original_sys_prompt
+        
+        task_type = TaskType.SIMPLE_QA
 
         if self._retrieval:
             try:
@@ -84,29 +86,30 @@ class LLMStage(BaseStage):
                 formatter = ResponseFormatterService(TokenBudgetManager())
 
                 if is_casual:
-                    messages = formatter.format_prompt(
-                        query=context.text_input,
-                        chunks=[],
-                        task_type=TaskType.SIMPLE_QA,
-                        locale=locale,
-                        history_tokens=context.history.get_estimated_tokens(),
+                    chitchat_prompt = (
+                        "أنت الدكتور عمر، مساعد ذكي تعليمي ودود. قام المستخدم بالتحية أو طرح سؤال بسيط غير متعلق بالمحتوى. "
+                        "رد بترحيب وود، واسأله كيف يمكنك مساعدته في المستند المرفوع."
+                        if locale == Locale.AR
+                        else "You are Dr. Omar, a friendly educational AI avatar. The user just greeted you or made small talk. "
+                        "Respond warmly and ask how you can help them with the uploaded document."
                     )
-                    context.history.system_prompt = messages[0].content
+                    context.history.system_prompt = chitchat_prompt
                     if context.history.message_count > 0:
-                        context.history._messages[-1].content = messages[1].content
+                        context.history._messages[-1].content = context.text_input
                 else:
+                    task_type = classify_task_type(context.text_input)
                     history_tokens = context.history.get_estimated_tokens()
                     result = await self._retrieval.retrieve(
                         context.text_input,
                         session_id=context.session_id,
-                        user_id=None,
-                        task_type=TaskType.SIMPLE_QA,
+                        user_id=context.user_id,
+                        task_type=task_type,
                     )
 
                     messages = formatter.format_prompt(
                         query=context.text_input,
                         chunks=result.documents,
-                        task_type=TaskType.SIMPLE_QA,
+                        task_type=task_type,
                         locale=locale,
                         history_tokens=history_tokens,
                     )
@@ -146,7 +149,7 @@ class LLMStage(BaseStage):
                             if detected in _VALID_EMOTIONS:
                                 context.llm_emotion = detected
                             sentence = _EMOTION_RE.sub("", sentence).strip()
-                    if sentence:
+                    if sentence and task_type not in (TaskType.QUIZ, TaskType.DIAGRAM):
                         # Bug 1 Fix: strip all bracketed metadata before TTS
                         clean_sentence = re.sub(r"\[.*?\]", "", sentence).strip()
                         try:

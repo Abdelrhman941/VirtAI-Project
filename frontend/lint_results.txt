@@ -1,0 +1,474 @@
+
+> virtai-react@1.0.0 lint
+> eslint src
+
+
+D:\A\Projects\VirtAI-Project\frontend\src\core\realtime\WSContext.tsx
+   1:8   warning  'React' is defined but never used         @typescript-eslint/no-unused-vars
+   7:19  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  11:47  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\core\realtime\useWSConnectionManager.ts
+  331:3  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+D:\A\Projects\VirtAI-Project\frontend\src\core\realtime\useWSConnectionManager.ts:331:3
+  329 |   // This is an intentional pattern ΓÇö assigning to a ref in render is safe
+  330 |   // because the assignment itself has no observable side-effects.
+> 331 |   connectRef.current = connect;
+      |   ^^^^^^^^^^^^^^^^^^ Cannot update ref during render
+  332 |
+  333 |   const disconnect = useCallback(() => {
+  334 |     isIntentionalCloseRef.current = true;  react-hooks/refs
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\avatar\components\AvatarComponent.tsx
+    1:1   error    Do not use a triple slash reference for @react-three/fiber, use `import` style instead                                                                                                                                                                           @typescript-eslint/triple-slash-reference
+  128:18  error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  129:18  error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  136:18  warning  The ref value 'groupRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'groupRef.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\avatar\components\useAvatarAnimations.ts
+   12:7   warning  'FADE_DURATION' is assigned a value but never used                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+   22:7   warning  'ARRAY_EMPTY_LENGTH' is assigned a value but never used                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   45:14  warning  'captureSkeletonSpace' is defined but never used                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+   48:19  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                       @typescript-eslint/no-explicit-any
+  372:23  warning  The ref value 'stopTimeoutsRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'stopTimeoutsRef.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\avatar\components\useAvatarLipSync.ts
+   70:3   warning  'getNextPlaybackTime' is defined but never used  @typescript-eslint/no-unused-vars
+  136:21  error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  140:31  error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  142:18  error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  145:31  error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\chat\components\ChatInput.tsx
+  36:28  warning  'isConnected' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  36:41  warning  'send' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  36:47  warning  'onMessage' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  39:9   warning  'isOffline' is assigned a value but never used    @typescript-eslint/no-unused-vars
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\chat\components\MessageList.tsx
+  2:31  warning  'PiClockFill' is defined but never used  @typescript-eslint/no-unused-vars
+  3:10  warning  'Bot' is defined but never used          @typescript-eslint/no-unused-vars
+  3:15  warning  'User' is defined but never used         @typescript-eslint/no-unused-vars
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\chat\hooks\useConversationReducer.ts
+  19:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\diagrams\components\DiagramViewer.tsx
+  106:66  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  106:73  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\diagrams\hooks\useDiagramSession.ts
+  22:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\diagrams\hooks\useMermaidRender.ts
+  50:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\documents\components\UploadTab.tsx
+  154:99  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\documents\documentApi.ts
+  63:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  71:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\documents\types.ts
+  15:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\documents\useDocumentList.ts
+  144:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\documents\useDocumentList.ts:144:5
+  142 |   // Clear upload queue and abort active uploads implicitly when session changes
+  143 |   useEffect(() => {
+> 144 |     setUploadQueue([]);
+      |     ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  145 |     
+  146 |     // Abort all active uploads to prevent them from completing in the background
+  147 |     uploadAbortControllersRef.current.forEach(controller => controller.abort());  react-hooks/set-state-in-effect
+  212:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\documents\useDocumentList.ts:212:5
+  210 |   useEffect(() => {
+  211 |     const controller = new AbortController();
+> 212 |     fetchDocuments(controller.signal);
+      |     ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  213 |     return () => controller.abort();
+  214 |   }, [fetchDocuments]);
+  215 |                                                                                                                                 react-hooks/set-state-in-effect
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\explain\components\ExplainSession.tsx
+   1:28  warning  'useState' is defined but never used    @typescript-eslint/no-unused-vars
+  21:3   warning  'documentId' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\explain\hooks\useExplainWS.ts
+   1:44  warning  'useRef' is defined but never used                    @typescript-eslint/no-unused-vars
+  19:11  warning  'connectionState' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  26:43  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  32:46  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  39:41  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  44:33  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\overview\components\OverviewPage.tsx
+  70:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  82:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\overview\hooks\useActiveSection.ts
+  1:37  warning  'useRef' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\overview\hooks\useDevicePerformance.ts
+  32:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\overview\hooks\useDevicePerformance.ts:32:5
+  30 |       typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 1023px)').matches;
+  31 |
+> 32 |     setIsLowPerformance(
+     |     ^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  33 |       saveDataEnabled || slowNetwork || lowMemoryDevice || lowCpuDevice || isMobileViewport
+  34 |     );
+  35 |   }, []);  react-hooks/set-state-in-effect
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\overview\hooks\useProgressivePhases.ts
+  132:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\overview\hooks\useProgressivePhases.ts:132:7
+  130 |   useEffect(() => {
+  131 |     if (!phase2.footer || prefersReducedMotion || isLowPerformance) {
+> 132 |       setIsAmbientReady(false);
+      |       ^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  133 |       return;
+  134 |     }
+  135 |  react-hooks/set-state-in-effect
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\overview\hooks\useSplashSession.ts
+  1:10  warning  'useEffect' is defined but never used      @typescript-eslint/no-unused-vars
+  8:36  warning  'isNavbarReady' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\session\components\SessionHoverPreview.tsx
+  27:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\session\components\SessionHoverPreview.tsx:27:7
+  25 |       }, 2000); // 2s delay
+  26 |     } else {
+> 27 |       setShow(false);
+     |       ^^^^^^^ Avoid calling setState() directly within an effect
+  28 |       if (timerRef.current) clearTimeout(timerRef.current);
+  29 |     }
+  30 |     return () => {  react-hooks/set-state-in-effect
+  58:35  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\session\components\SessionList.tsx
+  7:3  warning  'PiChatsFill' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\session\hooks\useSessionManager.test.tsx
+  30:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  31:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  40:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  53:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  66:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  67:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  79:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  80:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  92:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\session\hooks\useSessionManager.ts
+  14:77  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+  23:23  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\session\hooks\useSessionManager.ts:23:23
+  21 |   // Sync urlSessionId
+  22 |   useEffect(() => {
+> 23 |     if (urlSessionId) setCurrentSessionId(urlSessionId);
+     |                       ^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  24 |   }, [urlSessionId]);
+  25 |
+  26 |   // Logout cleanup                                           react-hooks/set-state-in-effect
+  29:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\session\hooks\useSessionManager.ts:29:7
+  27 |   useEffect(() => {
+  28 |     if (!isAuthenticated && isAuthInitialized) {
+> 29 |       setCurrentSessionId(null);
+     |       ^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  30 |       queryClient.removeQueries();
+  31 |     }
+  32 |   }, [isAuthenticated, isAuthInitialized, queryClient]);  react-hooks/set-state-in-effect
+  54:9   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\session\hooks\useSessionManager.ts:54:9
+  52 |       if (!match && navigate) {
+  53 |         navigate('/classroom', { replace: true });
+> 54 |         setCurrentSessionId(null);
+     |         ^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  55 |       }
+  56 |     }
+  57 |   }, [status, sessions, urlSessionId, navigate]);                  react-hooks/set-state-in-effect
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\setup\components\AllSetTab.tsx
+  13:11  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  14:10  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\summary\api\summaryApi.ts
+  1:8  warning  'apiClient' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\voice\audio\pcmWorklet.ts
+   9:36  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  10:65  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  13:9   error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  50:37  warning  '_outputs' is defined but never used      @typescript-eslint/no-unused-vars
+  50:65  warning  '_parameters' is defined but never used   @typescript-eslint/no-unused-vars
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\voice\hooks\useGaplessAudioQueue.ts
+   60:29  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   79:29  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  159:15  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\voice\hooks\useMicrophoneStream.ts
+   60:3  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\voice\hooks\useMicrophoneStream.ts:60:3
+  58 |
+  59 |   const callbackRef = useRef(onAudioChunk);
+> 60 |   callbackRef.current = onAudioChunk;
+     |   ^^^^^^^^^^^^^^^^^^^ Cannot update ref during render
+  61 |   const isMountedRef = useRef(true);
+  62 |
+  63 |   /**  react-hooks/refs
+  122:6  warning  React Hook useCallback has an unnecessary dependency: 'onAudioChunk'. Either exclude it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               react-hooks/exhaustive-deps
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\voice\hooks\useVoiceMode.ts
+   27:19  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+   28:45  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+  130:49  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+  299:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\voice\hooks\useVoiceMode.ts:299:7
+  297 |       }
+  298 |
+> 299 |       setState((prev) => ({
+      |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  300 |         ...prev,
+  301 |         error: userFriendlyMessage,
+  302 |         errorCode: 'MICROPHONE_ERROR',                                                               react-hooks/set-state-in-effect
+  309:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\voice\hooks\useVoiceMode.ts:309:5
+  307 |
+  308 |   useEffect(() => {
+> 309 |     setState((prev) => ({ ...prev, isListening: micIsListening }));
+      |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  310 |   }, [micIsListening]);
+  311 |
+  312 |   useEffect(() => {                                                             react-hooks/set-state-in-effect
+  324:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\A\Projects\VirtAI-Project\frontend\src\features\voice\hooks\useVoiceMode.ts:324:7
+  322 |         connState === 'reconnecting' ? 'Reconnecting to server\u2026' : 'Connection lost';
+  323 |
+> 324 |       setState((prev) => ({
+      |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  325 |         ...prev,
+  326 |         isListening: false,
+  327 |         error: errorMsg,  react-hooks/set-state-in-effect
+
+D:\A\Projects\VirtAI-Project\frontend\src\react-three-fiber.d.ts
+  8:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  8:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\shared\components\ErrorBoundary.tsx
+  40:16  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\A\Projects\VirtAI-Project\frontend\src\vite-env.d.ts
+  6:15  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+D:\A\Projects\VirtAI-Project\frontend\src\widgets\Classroom\AssistantPanel.tsx
+  141:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  150:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\widgets\Classroom\AvatarCanvasWrapper.tsx
+   73:29  error  Component definition is missing display name  react/display-name
+  154:20  error  Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\widgets\Classroom\AvatarTopBar.tsx
+   2:10  warning  'PiWifiSlashFill' is defined but never used      @typescript-eslint/no-unused-vars
+  24:3   warning  'avatarName' is defined but never used           @typescript-eslint/no-unused-vars
+  27:3   warning  'reconnectError' is defined but never used       @typescript-eslint/no-unused-vars
+  34:3   warning  'onOpenSettings' is defined but never used       @typescript-eslint/no-unused-vars
+  39:9   warning  'isOffline' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  63:5   warning  'dotColor' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  68:9   warning  'pulseClass' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\A\Projects\VirtAI-Project\frontend\src\widgets\Classroom\ClassroomShell.tsx
+    1:10  warning  'ChatInput' is defined but never used                    @typescript-eslint/no-unused-vars
+    1:21  warning  'MessageList' is defined but never used                  @typescript-eslint/no-unused-vars
+    2:10  warning  'DiagramContainer' is defined but never used             @typescript-eslint/no-unused-vars
+    5:10  warning  'ExplainSession' is defined but never used               @typescript-eslint/no-unused-vars
+  116:18  warning  'isExplainConnected' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  157:5   warning  'wsClient' is assigned a value but never used            @typescript-eslint/no-unused-vars
+  163:43  error    Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+  512:67  error    Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+  583:67  error    Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\widgets\Classroom\avatarLifecycle.ts
+    1:31  warning  'env' is defined but never used           @typescript-eslint/no-unused-vars
+    1:36  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  130:12  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  157:12  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\A\Projects\VirtAI-Project\frontend\src\widgets\Classroom\hooks\useClassroomAudio.ts
+  75:9  error  Error: Cannot access variable before it is declared
+
+`tryPlayChunk` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+D:\A\Projects\VirtAI-Project\frontend\src\widgets\Classroom\hooks\useClassroomAudio.ts:75:9
+  73 |         expectedChunkRef.current[baseId]++;
+  74 |         delete missingChunkTimeoutsRef.current[baseId];
+> 75 |         tryPlayChunk(baseId);
+     |         ^^^^^^^^^^^^ `tryPlayChunk` accessed before it is declared
+  76 |       }, 3000);
+  77 |     }
+  78 |   }, [getAudioContext, enqueueAudioUrl]);
+
+D:\A\Projects\VirtAI-Project\frontend\src\widgets\Classroom\hooks\useClassroomAudio.ts:19:3
+  17 |   const { enqueueAudioUrl, flushQueue, getAudioContext, playbackStartTimeRef, getIsAudioPlaying, getNextPlaybackTime } = useGaplessAudioQueue();
+  18 |
+> 19 |   const tryPlayChunk = useCallback((baseId: string) => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 20 |     if (abortedMessageIdsRef.current.has(baseId)) {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 21 |       delete chunksRef.current[baseId];
+     ΓÇª
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 77 |     }
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 78 |   }, [getAudioContext, enqueueAudioUrl]);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `tryPlayChunk` is declared here
+  79 |
+  80 |   const handleTtsReady = useCallback((messageId: string | undefined, url: string) => {
+  81 |     if (!messageId) return;  react-hooks/immutability
+
+D:\A\Projects\VirtAI-Project\frontend\src\widgets\Classroom\hooks\useSmoothStreaming.ts
+  24:36  warning  'finalText' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\A\Projects\VirtAI-Project\frontend\src\widgets\Overview\HowItWorks\useScrollPipeline.ts
+  2:18  warning  'useEffect' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  2:29  warning  'useState' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+  4:35  warning  'stepCount' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  8:42  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+D:\A\Projects\VirtAI-Project\frontend\src\widgets\Overview\HowItWorks\useScrollPipeline.ts:8:42
+   6 |   const scrollContainerRef = useRef<HTMLElement | null>(null);
+   7 |
+>  8 |   if (typeof document !== 'undefined' && !scrollContainerRef.current) {
+     |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+   9 |     scrollContainerRef.current = document.getElementById('main-scroll-container');
+  10 |   }
+  11 |                                                                                                                               react-hooks/refs
+  8:43  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+D:\A\Projects\VirtAI-Project\frontend\src\widgets\Overview\HowItWorks\useScrollPipeline.ts:8:43
+   6 |   const scrollContainerRef = useRef<HTMLElement | null>(null);
+   7 |
+>  8 |   if (typeof document !== 'undefined' && !scrollContainerRef.current) {
+     |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+   9 |     scrollContainerRef.current = document.getElementById('main-scroll-container');
+  10 |   }
+  11 |
+
+To initialize a ref only once, check that the ref is null with the pattern `if (ref.current == null) { ref.current = ... }`  react-hooks/refs
+
+D:\A\Projects\VirtAI-Project\frontend\src\widgets\Overview\Navbar.tsx
+   39:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\A\Projects\VirtAI-Project\frontend\src\widgets\Overview\Navbar.tsx:39:5
+  37 |       ? window.scrollY
+  38 |       : (scrollContainer as HTMLElement).scrollTop;
+> 39 |     setVisible(initialScrollTop > window.innerHeight * 0.6);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  40 |
+  41 |     scrollContainer.addEventListener('scroll', onScroll, { passive: true });
+  42 |     return () => scrollContainer.removeEventListener('scroll', onScroll);  react-hooks/set-state-in-effect
+  146:30  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  170:30  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+
+Γ£û 124 problems (78 errors, 46 warnings)
+

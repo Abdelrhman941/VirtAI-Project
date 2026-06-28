@@ -6,17 +6,26 @@ import { LoadingState, EmptyState } from '@/shared/components/UIStates';
 
 interface DocumentPickerProps {
   sessionId: string | null;
-  onSelect: (documentId: string) => void;
+  onSelect: (documentId: string, filename: string) => void;
   onCancel: () => void;
+  title?: string;
+  buttonText?: string;
 }
 
-export function DocumentPicker({ sessionId, onSelect, onCancel }: DocumentPickerProps) {
+export function DocumentPicker({ 
+  sessionId, 
+  onSelect, 
+  onCancel,
+  title = "Select Document for Tree Map",
+  buttonText = "Generate Tree Map"
+}: DocumentPickerProps) {
   const { documents, isLoading } = useDocumentList(sessionId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const handleConfirm = () => {
     if (selectedId) {
-      onSelect(selectedId);
+      const selectedDoc = documents.find(d => d.id === selectedId);
+      onSelect(selectedId, selectedDoc?.filename || 'Document');
     }
   };
 
@@ -35,7 +44,7 @@ export function DocumentPicker({ sessionId, onSelect, onCancel }: DocumentPicker
   return (
     <div className="p-8 flex flex-col relative">
       <h2 className="text-2xl font-bold font-display text-white/90 tracking-wide mb-6 text-center">
-        Select Document for Diagram
+        {title}
       </h2>
 
       {documents.length === 0 ? (
@@ -56,7 +65,7 @@ export function DocumentPicker({ sessionId, onSelect, onCancel }: DocumentPicker
             return (
               <label
                 key={doc.id || doc.temp_id}
-                className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all duration-300 group ${
+                className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-colors duration-300 group ${
                   isSelected
                     ? 'bg-white/10 border-white/30 shadow-[0_0_15px_rgba(255,255,255,0.05)]'
                     : isProcessing
@@ -112,9 +121,9 @@ export function DocumentPicker({ sessionId, onSelect, onCancel }: DocumentPicker
         <button
           onClick={handleConfirm}
           disabled={!selectedId}
-          className="px-8 py-2.5 rounded-full text-sm font-semibold text-black bg-white hover:bg-gray-100 disabled:bg-white/10 disabled:text-white/30 disabled:cursor-not-allowed transition-all duration-300 shadow-xl"
+          className="px-8 py-2.5 rounded-full text-sm font-semibold text-black bg-white hover:bg-gray-100 disabled:bg-white/10 disabled:text-white/30 disabled:cursor-not-allowed transition-colors duration-300 shadow-xl"
         >
-          Generate Diagram
+          {buttonText}
         </button>
       </div>
     </div>

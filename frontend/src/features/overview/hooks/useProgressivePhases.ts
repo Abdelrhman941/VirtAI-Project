@@ -65,6 +65,7 @@ export function useProgressivePhases(prefersReducedMotion: boolean, isLowPerform
 
     const revealStep = (step: PhaseKey) => {
       startTransition(() => {
+         
         setPhase2((currentPhase) => {
           if (currentPhase[step]) {
             return currentPhase;
@@ -90,6 +91,7 @@ export function useProgressivePhases(prefersReducedMotion: boolean, isLowPerform
           } else {
             // Batch all remaining steps to prevent scroll blocking
             startTransition(() => {
+               
               setPhase2((prev) => {
                 const next = { ...prev };
                 for (let i = index; i < PHASE_SEQUENCE.length; i++) {
@@ -129,6 +131,7 @@ export function useProgressivePhases(prefersReducedMotion: boolean, isLowPerform
 
   useEffect(() => {
     if (!phase2.footer || prefersReducedMotion || isLowPerformance) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsAmbientReady(false);
       return;
     }

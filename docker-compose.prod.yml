@@ -23,9 +23,6 @@ services:
     container_name: virtai-frontend-prod
     ports:
       - "3000:8080"
-    depends_on:
-      backend:
-        condition: service_healthy
     networks:
       - virtai-network
     restart: unless-stopped

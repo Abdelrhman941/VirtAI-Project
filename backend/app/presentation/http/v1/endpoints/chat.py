@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.user.entities import UserEntity
+from app.domain.rag.task_types import Locale
 from app.infrastructure.db.database import get_db
 from app.infrastructure.workers.background_chat_worker import save_conversation_background_task
 from app.presentation.http.v1.dependencies import (
@@ -111,9 +112,20 @@ async def generate_session_title(
             raise HTTPException(status_code=404, detail="Session not found")
 
         from app.application.chat.generate_title_use_case import GenerateTitleUseCase
+        from app.domain.rag.task_types import detect_locale
 
         use_case = GenerateTitleUseCase(chat_use_case.llm)
-        title = await use_case.execute(message)
+        
+        # Try to extract locale from headers, fallback to detect_locale
+        accept_lang = request.headers.get("accept-language", "").lower()
+        if "ar" in accept_lang:
+            locale = Locale.AR
+        elif "en" in accept_lang:
+            locale = Locale.EN
+        else:
+            locale = detect_locale(message)
+            
+        title = await use_case.execute(message, locale)
 
         updated = await repo.update_chat_session_title(session_id, title)
         await db.commit()
@@ -239,14 +251,25 @@ class RAGQuery(BaseModel):
 @router.post("/query", response_model=dict)
 async def query_rag(
     payload: RAGQuery,
+    request: Request,
     chat_use_case: ChatUseCaseDep,
     background_tasks: BackgroundTasks,
     user: UserEntity = Depends(_current_user),
 ) -> dict:
     """REST endpoint to perform a one-off RAG query."""
     try:
+        from app.domain.rag.task_types import detect_locale
+        
+        accept_lang = request.headers.get("accept-language", "").lower()
+        if "ar" in accept_lang:
+            locale = Locale.AR
+        elif "en" in accept_lang:
+            locale = Locale.EN
+        else:
+            locale = detect_locale(payload.query)
+            
         response = await chat_use_case.execute_rag_query(
-            payload.query, str(user.id), session_id=payload.session_id
+            payload.query, str(user.id), session_id=payload.session_id, locale=locale
         )
 
         if payload.session_id:

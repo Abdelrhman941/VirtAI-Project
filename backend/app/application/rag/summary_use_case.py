@@ -10,7 +10,7 @@ from app.domain.chat.entities import ConversationHistory
 from app.domain.chat.ports import BaseLLMProvider
 from app.domain.rag.task_types import Locale, TaskType
 from app.infrastructure.db.models import DocumentChunk, SummaryCache
-from app.infrastructure.rag.prompts.registry import get_prompt_set
+from app.application.prompts.rag.registry import get_prompt_set
 
 _BATCH_CHARS = 10_000
 _REDUCE_BATCH_CHARS = 12_000
@@ -84,8 +84,8 @@ class SummaryUseCase:
             async def map_batch(batch_text: str, index: int) -> str:
                 async with semaphore:
                     logger.debug(f"Mapping batch {index+1}/{len(batches)}")
-                    sys_prompt = prompt_set.system.safe_substitute()
-                    footer = prompt_set.footer.safe_substitute()
+                    sys_prompt = prompt_set.system.substitute()
+                    footer = prompt_set.footer.substitute()
                     user_text = f"--- Excerpt ---\n\n{batch_text}\n\n{footer}"
                     history = ConversationHistory(system_prompt=sys_prompt)
                     history.add_user_message(user_text)
@@ -110,7 +110,7 @@ class SummaryUseCase:
                     combined = reduce_batches[j]
 
                 # Intermediate merge
-                sys_prompt = prompt_set.system.safe_substitute()
+                sys_prompt = prompt_set.system.substitute()
                 user_text = (
                     "You are merging two sets of detailed notes into one combined set.\n"
                     "Preserve ALL content — do not drop any definitions, formulas, or steps.\n"
@@ -130,8 +130,8 @@ class SummaryUseCase:
 
         # 5. Final Streaming Reduce
         final_prompt_set = get_prompt_set(TaskType.SUMMARY, locale)
-        sys_prompt = final_prompt_set.system.safe_substitute()
-        footer = final_prompt_set.footer.safe_substitute()
+        sys_prompt = final_prompt_set.system.substitute()
+        footer = final_prompt_set.footer.substitute()
 
         user_text = reduce_batches[0] + (f"\n\n{footer}" if footer else "")
         history = ConversationHistory(system_prompt=sys_prompt)

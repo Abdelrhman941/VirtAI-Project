@@ -279,7 +279,7 @@ class VoiceModeHandler:
             error_message = {
                 "type": "error",
                 "code": "TRANSCRIPTION_FAILED",
-                "message": "Failed to transcribe audio. Please try again.",
+                "message": "Audio transcription failed",
                 "session_id": self.session_id,
                 "details": {},  # Always include details field
             }
@@ -369,7 +369,7 @@ class VoiceModeHandler:
             error_message = {
                 "type": "error",
                 "code": "TRANSCRIPTION_FAILED",
-                "message": "Failed to transcribe audio. Please try again.",
+                "message": "Audio transcription failed",
                 "session_id": self.session_id,
                 "details": {},  # Always include details field
             }

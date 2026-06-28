@@ -28,6 +28,18 @@ async def worker_startup_validation(ctx: dict[Any, Any]) -> None:
         if not result.scalar_one_or_none():
             raise RuntimeError("pgvector extension is not installed in the database")
 
+    # 2.5 Test Tesseract OCR
+    logger.info("Worker startup: Testing Tesseract OCR languages...")
+    try:
+        import pytesseract
+        langs = pytesseract.get_languages()
+        if 'eng' not in langs:
+            logger.warning("Tesseract 'eng' language pack missing")
+        if 'ara' not in langs:
+            logger.warning("Tesseract 'ara' language pack missing — Arabic OCR will fail")
+    except Exception as e:
+        logger.warning(f"Tesseract not available: {e}")
+
     # 3. Warm Embedding Provider (must match API server configuration)
     logger.info(
         {
@@ -44,13 +56,27 @@ async def worker_startup_validation(ctx: dict[Any, Any]) -> None:
         )
     elif settings.EMBEDDING_PROVIDER == "openai":
         from app.infrastructure.rag.openai_embedder import OpenAIEmbedder
-
         embedder = OpenAIEmbedder()
+    elif settings.EMBEDDING_PROVIDER == "cohere":
+        if not settings.COHERE_API_KEY:
+            raise ValueError("COHERE_API_KEY is required when EMBEDDING_PROVIDER=cohere")
+        from app.infrastructure.rag.cohere_embedder import CohereEmbedder
+        embedder = CohereEmbedder(
+            model_name=settings.EMBEDDING_MODEL,
+            api_key=settings.COHERE_API_KEY
+        )
     else:
         raise ValueError(
             f"Unsupported EMBEDDING_PROVIDER: {settings.EMBEDDING_PROVIDER}. "
-            f"Expected 'fastembed' or 'openai'."
+            f"Expected 'fastembed', 'openai', or 'cohere'."
         )
+        
+    from app.infrastructure.rag.cached_embedder import CachedEmbedder
+    embedder = CachedEmbedder(
+        base_embedder=embedder,
+        redis_client=redis_client,
+        model_name=settings.EMBEDDING_MODEL
+    )
     warmup_ms = int((time.monotonic() - t0) * 1000)
 
     logger.info(
@@ -62,8 +88,18 @@ async def worker_startup_validation(ctx: dict[Any, Any]) -> None:
         }
     )
 
+    # 4. Vision Provider
+    vision_provider = None
+    if settings.VISION_PROVIDER == "gemini":
+        from app.infrastructure.vision.gemini_vision import GeminiVisionProvider
+        vision_provider = GeminiVisionProvider(
+            api_key=settings.GOOGLE_API_KEY, 
+            model=settings.VISION_MODEL
+        )
+
     # Store in context
     ctx["embedder"] = embedder
+    ctx["vision_provider"] = vision_provider
     ctx["storage"] = LocalStorageProvider(base_path=settings.UPLOAD_BASE_PATH)
     ctx["redis"] = redis_client
     logger.info("Worker startup: All checks passed. Ready to process jobs.")

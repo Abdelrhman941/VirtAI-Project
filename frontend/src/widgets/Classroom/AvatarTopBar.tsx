@@ -1,6 +1,6 @@
 import React from 'react';
 import { PiWifiSlashFill, PiList } from 'react-icons/pi';
-import { FiMonitor, FiShare2, FiEdit3, FiUser } from 'react-icons/fi';
+import { FiMonitor, FiShare2, FiEdit3, FiUser, FiFileText } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { ConnectionState } from '@/core/realtime/useWSClient';
 import { ConnectionBadge } from '@/shared/components/ConnectionBadge';
@@ -15,7 +15,9 @@ interface AvatarTopBarProps {
   hasDocuments: boolean;
   hasMessages: boolean;
   onGenerateDiagram: () => void;
+  onGenerateSummary: () => void;
   onStartExplain: () => void;
+  onStartQuiz: () => void;
   onOpenSettings?: () => void;
 }
 
@@ -28,42 +30,11 @@ export function AvatarTopBar({
   hasDocuments,
   hasMessages,
   onGenerateDiagram,
+  onGenerateSummary,
   onStartExplain,
+  onStartQuiz,
   onOpenSettings
 }: AvatarTopBarProps) {
-  const navigate = useNavigate();
-
-  const isOnline = connectionState === ConnectionState.ONLINE;
-  const isOffline = connectionState === ConnectionState.OFFLINE;
-  const isReconnecting = connectionState === ConnectionState.RECONNECTING;
-  const isInitializing = connectionState === ConnectionState.INITIALIZING;
-
-  // Derive unified state group from the single source of truth
-  let stateGroup: 'ready' | 'connecting' | 'offline' = 'offline';
-  if (!currentSessionId || isOnline) {
-    stateGroup = 'ready';
-  } else if (isReconnecting || isInitializing) {
-    stateGroup = 'connecting';
-  } else {
-    stateGroup = 'offline';
-  }
-
-  // Exact UI mappings as requested
-  let dotColor = '';
-  let statusText = '';
-  if (stateGroup === 'ready') {
-    dotColor = 'bg-green-500';
-    statusText = 'Assistant Connected';
-  } else if (stateGroup === 'connecting') {
-    dotColor = 'bg-yellow-500';
-    statusText = 'Establishing Connection...';
-  } else {
-    dotColor = 'bg-red-500';
-    statusText = 'Disconnected';
-  }
-
-  const isConnecting = stateGroup === 'connecting';
-  const pulseClass = (stateGroup === 'ready' || isConnecting) ? 'animate-pulse' : '';
 
   return (
     <header className="w-full pb-2 relative z-[60]">
@@ -71,11 +42,9 @@ export function AvatarTopBar({
       <div className="hidden lg:flex items-center justify-between w-full">
         {/* Left Section (Status) */}
         <ConnectionBadge
-          stateGroup={stateGroup}
           currentSessionId={currentSessionId}
-          statusText={statusText}
-          onReconnect={reconnect}
           size="md"
+          onReconnect={reconnect}
         />
 
         {/* Right Section (Action Buttons) */}
@@ -90,15 +59,23 @@ export function AvatarTopBar({
           )}
           
           <ToolbarButton
+            onClick={onGenerateSummary}
+            disabled={!hasDocuments}
+            title={!hasDocuments ? "Please upload syllabus or reference materials to generate a summary" : "Generate Summary"}
+            icon={<FiFileText size={15} />}
+            label="Summarize"
+          />
+          
+          <ToolbarButton
             onClick={onGenerateDiagram}
             disabled={!hasDocuments}
             title={!hasDocuments ? "Please upload syllabus or reference materials to generate a diagram" : "Synthesize Relationship Diagram"}
             icon={<FiShare2 size={15} />}
-            label="Synthesize Diagram"
+            label="Synthesize Tree Map"
           />
           
           <ToolbarButton
-            onClick={() => navigate('/quiz')}
+            onClick={onStartQuiz}
             disabled={!hasDocuments}
             title={!hasDocuments ? "Please upload syllabus or reference materials to generate a quiz" : "Start Knowledge Check"}
             icon={<FiEdit3 size={15} />}
@@ -120,11 +97,9 @@ export function AvatarTopBar({
 
         {/* Center: "AI Tutor Online" status indicator */}
         <ConnectionBadge
-          stateGroup={stateGroup}
           currentSessionId={currentSessionId}
-          statusText={statusText}
-          onReconnect={reconnect}
           size="sm"
+          onReconnect={reconnect}
         />
 
         {/* Far Right: Setup Profile Icon */}

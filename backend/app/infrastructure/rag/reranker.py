@@ -2,11 +2,59 @@ import asyncio
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
+import cohere
 from loguru import logger
 
 from app.domain.rag.entities import DocumentChunk
 from app.domain.rag.ports import RerankerPort
 from app.shared.config import get_settings
+
+
+class CohereReranker(RerankerPort):
+    """
+    Cohere Reranker using Cohere AsyncClientV2.
+    Uses the rerank-multilingual-v3.0 model by default.
+    """
+
+    def __init__(self, model_name: str | None = None, api_key: str | None = None):
+        settings = get_settings()
+        self.model_name = model_name or settings.RERANKER_MODEL
+        self.api_key = api_key or settings.COHERE_API_KEY
+        
+        if not self.api_key:
+            raise ValueError("COHERE_API_KEY is required for CohereReranker")
+            
+        self._client = cohere.AsyncClientV2(api_key=self.api_key)
+        logger.info(f"[Reranker] CohereReranker registered with model={self.model_name}")
+
+    async def rerank(
+        self, query: str, chunks: list[DocumentChunk], top_k: int = 5
+    ) -> list[tuple[DocumentChunk, float]]:
+        """Rerank chunks using Cohere's rerank endpoint."""
+        if not chunks:
+            return []
+
+        try:
+            # We must pass strings as documents to Cohere V2
+            documents = [chunk.chunk_text for chunk in chunks]
+            
+            response = await self._client.rerank(
+                model=self.model_name,
+                query=query,
+                documents=documents,
+                top_n=top_k,
+            )
+            
+            # Map back to chunks
+            ranked = []
+            for res in response.results:
+                ranked.append((chunks[res.index], res.relevance_score))
+                
+            return ranked
+        except Exception as e:
+            logger.error(f"[Reranker] Cohere reranking failed: {e}")
+            # Fallback to passthrough scoring
+            return [(chunk, 1.0 - i * 0.01) for i, chunk in enumerate(chunks[:top_k])]
 
 
 class CrossEncoderReranker(RerankerPort):

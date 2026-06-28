@@ -1,5 +1,7 @@
 services:
   backend:
+    ports:
+      - '127.0.0.1:8000:8000'
     volumes:
       - ./backend/app:/app/app:cached
       - ./backend/alembic:/app/alembic:cached
@@ -14,9 +16,7 @@ services:
     volumes:
       - ./backend/app:/app/app:cached
       - ./backend/.env:/app/.env:ro
-    command: >
-      sh -c "python -m arq app.infrastructure.worker.arq_settings.WorkerSettings
-            --watch /app/app"
+    command: sh -c "python -u -m arq app.infrastructure.worker.arq_settings.WorkerSettings --watch /app/app"
 
   frontend:
     build:
@@ -27,6 +27,19 @@ services:
     volumes:
       - ./frontend:/app
       - frontend-node-modules:/app/node_modules
+
+  tts:
+    ports:
+      - '127.0.0.1:8080:8000'
+    pull_policy: never
+
+  postgres:
+    ports:
+      - '127.0.0.1:5432:5432'
+
+  redis:
+    ports:
+      - '127.0.0.1:6379:6379'
 
 volumes:
   frontend-node-modules:

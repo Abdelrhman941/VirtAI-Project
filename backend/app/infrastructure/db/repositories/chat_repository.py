@@ -220,33 +220,60 @@ class ChatRepository(ChatRepositoryPort):
         input_type: str = "text",
         tts_cache_key: str | None = None,
         sources: list[dict] | None = None,
+        message_id: str | None = None,
     ) -> ChatMessageDict:
         """Save a message and update session counters."""
         sid = require_uuid(session_id, field_name="session_id")
-        message = Message(
-            session_id=sid,
-            role=role,
-            content=content,
-            input_type=input_type,
-            tts_cache_key=tts_cache_key,
-            sources=sources or [],
-        )
-        self.db.add(message)
+        
+        message_kwargs = {
+            "session_id": sid,
+            "role": role,
+            "content": content,
+            "input_type": input_type,
+            "tts_cache_key": tts_cache_key,
+            "sources": sources or [],
+        }
+        
+        is_existing = False
+        if message_id:
+            mid = require_uuid(message_id, field_name="message_id")
+            message_kwargs["id"] = mid
+            existing = await self.db.execute(select(Message.id).where(Message.id == mid))
+            if existing.scalar_one_or_none() is not None:
+                is_existing = True
+            
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+        stmt = pg_insert(Message).values(**message_kwargs)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "content": stmt.excluded.content,
+                "tts_cache_key": stmt.excluded.tts_cache_key,
+                "sources": stmt.excluded.sources,
+                "timestamp": stmt.excluded.timestamp,
+                "role": stmt.excluded.role,
+                "input_type": stmt.excluded.input_type,
+            }
+        ).returning(Message)
+        
+        result = await self.db.execute(stmt)
+        message = result.scalars().first()
 
         # Update session message_count, updated_at, and last_message_at.
         # Phase 1: last_message_at is stamped here alongside updated_at so both
         # fields are kept current.  updated_at is unchanged (still set) for
         # backward compatibility; last_message_at is the canonical sort key.
-        now = _now()
-        await self.db.execute(
-            update(ChatSession)
-            .where(ChatSession.id == sid)
-            .values(
-                message_count=ChatSession.message_count + 1,
-                updated_at=now,
-                last_message_at=now,
+        if not is_existing:
+            now = _now()
+            await self.db.execute(
+                update(ChatSession)
+                .where(ChatSession.id == sid)
+                .values(
+                    message_count=ChatSession.message_count + 1,
+                    updated_at=now,
+                    last_message_at=now,
+                )
             )
-        )
 
         # If this is first user message and title is still "New Chat", update title
         if role == "user":
@@ -294,7 +321,6 @@ class ChatRepository(ChatRepositoryPort):
             "user_id": str(session.user_id),
             "title": session.title,
             "created_at": session.created_at.isoformat() if session.created_at else None,
-            "updated_at": session.updated_at.isoformat() if session.updated_at else None,
             "message_count": session.message_count,
             # Phase 1: new canonical field.  Always present after Phase 0 backfill.
             "last_message_at": (

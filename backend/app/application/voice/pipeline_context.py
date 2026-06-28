@@ -17,6 +17,7 @@ class TurnContext:
     # Input Data
     audio_buffer: AudioBuffer | None = None
     text_input: str | None = None
+    user_id: str | None = None
 
     # State / History
     history: ConversationHistory | None = None

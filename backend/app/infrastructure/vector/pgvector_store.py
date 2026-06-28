@@ -1,4 +1,5 @@
 from uuid import UUID
+import re
 
 from loguru import logger
 from sqlalchemy import func, select
@@ -203,8 +204,12 @@ class PGVectorStore(VectorStore):
         )
 
         # Lexical query
-        text_query = func.websearch_to_tsquery("english", query_text)
-        text_vector = func.to_tsvector("english", ChunkModel.chunk_text)
+        ts_config = "english"
+        if re.search(r'[\u0600-\u06FF]', query_text):
+            ts_config = "simple"
+
+        text_query = func.websearch_to_tsquery(ts_config, query_text)
+        text_vector = func.to_tsvector(ts_config, ChunkModel.chunk_text)
         stmt_lexical = (
             select(
                 ChunkModel,

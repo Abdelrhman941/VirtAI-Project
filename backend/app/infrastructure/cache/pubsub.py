@@ -45,3 +45,28 @@ async def publish_session_invalidation(user_id: str, family_id: str | Literal["a
             f"[PubSub] Failed to broadcast session invalidation | "
             f"user_id={user_id} | family_id={family_id} | error={e}"
         )
+
+async def publish_doc_progress(user_id: str, session_id: str | None, document_id: str, stage: str, pct: int) -> None:
+    """
+    Broadcasts a document ingestion progress event.
+    """
+    redis = get_redis_or_none()
+    if not redis:
+        return
+
+    channel = f"virtai:ws:events:{user_id}"
+    payload = {
+        "event": "doc_status",
+        "user_id": user_id,
+        "session_id": session_id,
+        "data": {
+            "document_id": document_id,
+            "stage": stage,
+            "progress_pct": pct
+        }
+    }
+
+    try:
+        await redis.publish(channel, json.dumps(payload))
+    except Exception as e:
+        logger.error(f"[PubSub] Failed to broadcast doc progress | document_id={document_id} | error={e}")

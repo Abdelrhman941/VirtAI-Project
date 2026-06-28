@@ -51,9 +51,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
           richColors
           position="top-right"
           theme="dark"
+          closeButton
+          duration={5000}
           toastOptions={{
             style: {
               transition: 'transform 0.3s ease-out, opacity 0.3s ease-out, box-shadow 0.3s ease-out'
+            },
+            classNames: {
+              closeButton: 'bg-white/20 hover:bg-white/40 border-white/30 text-white !opacity-100 !flex !visible !right-2 !top-2 w-6 h-6 items-center justify-center rounded-full',
             }
           }}
         />

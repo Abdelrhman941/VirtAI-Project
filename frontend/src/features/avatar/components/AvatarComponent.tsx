@@ -1,4 +1,3 @@
-/// <reference types="@react-three/fiber" />
 import React, { useRef, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei';

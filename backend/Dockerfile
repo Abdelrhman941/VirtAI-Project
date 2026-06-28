@@ -4,6 +4,15 @@
 # Optimized Development Dockerfile
 # ─────────────────────────────────────────────────────────────
 
+# ── Stage 1: Dependency Extractor ─────────────────────────
+FROM python:3.10-slim AS extractor
+WORKDIR /build
+COPY pyproject.toml .
+# Extract specific heavy ML dependencies to avoid invalidating the main
+# cache when unrelated dependencies change in pyproject.toml.
+RUN grep -E 'sentence-transformers|fastembed|langchain==|langgraph==|pymupdf>=|cohere|qdrant-client' pyproject.toml | sed -E 's/^[ \t]*"([^"]+)".*/\1/' > requirements-heavy.txt
+
+# ── Stage 2: Main Image ───────────────────────────────────
 FROM pytorch/pytorch:2.6.0-cuda12.6-cudnn9-runtime
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -13,13 +22,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_ROOT_USER_ACTION=ignore \
     XDG_CACHE_HOME=/app/.cache \
-    HF_HOME=/app/.cache/huggingface \
-    HF_HUB_DISABLE_TELEMETRY=1 \
-    FASTEMBED_CACHE_DIR=/app/.cache/fastembed
+    HF_HOME=/app/models/huggingface \
+    HF_HUB_DISABLE_TELEMETRY=1
 
 WORKDIR /app
 
-ARG EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
+ARG EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-mpnet-base-v2
 ENV EMBEDDING_MODEL=${EMBEDDING_MODEL}
 
 # ── System dependencies ────────────────────────────────────
@@ -33,29 +41,17 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     gosu \
     tesseract-ocr \
     tesseract-ocr-eng \
+    tesseract-ocr-ara \
     poppler-utils && \
     tesseract --version
 
 # ── Install heavy ML dependencies (Layer 1) ────────────────
-# Install stable, heavy ML dependencies first to avoid re-downloading
-# when pyproject.toml changes (e.g., adding a dev dependency).
+COPY --from=extractor /build/requirements-heavy.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip && \
-    pip install \
-    "sentence-transformers>=2.7.0" \
-    "fastembed>=0.3.1" \
-    "langchain==1.3.2" \
-    "langgraph==1.2.2" \
-    "pymupdf>=1.24.0" \
-    "cohere>=5.0.0" \
-    "qdrant-client>=1.10.0"
+    pip install -r requirements-heavy.txt
 
-# Pre-download FastEmbed model into an image layer so production startup does
-# not fetch model files dynamically. A named Docker volume can persist this
-# cache across container replacements.
-# MOVED UP: Cache this BEFORE pyproject.toml is copied so dependency changes don't invalidate it.
-RUN mkdir -p /app/.cache/fastembed /app/.cache/huggingface && \
-    python -c "import os; from fastembed import TextEmbedding; model=os.environ.get('EMBEDDING_MODEL', 'BAAI/bge-small-en-v1.5'); list(TextEmbedding(model_name=model).embed(['warmup']))"
+
 
 # ── Install Python dependencies (Layer 2) ──────────────────
 # Copy only the dependency manifest so pip install is cached
@@ -63,7 +59,6 @@ RUN mkdir -p /app/.cache/fastembed /app/.cache/huggingface && \
 COPY pyproject.toml ./
 
 # Minimal stub so "pip install ." can resolve the package
-# without copying the full source tree yet.
 RUN --mount=type=cache,target=/root/.cache/pip \
     mkdir -p app && touch app/__init__.py && \
     pip install .
@@ -77,9 +72,10 @@ COPY alembic.ini ./alembic.ini
 COPY alembic ./alembic
 
 # ── Runtime directories & Security ───────────────────────────
-RUN mkdir -p /app/.data/sessions /app/.data/uploads && \
+RUN mkdir -p /app/.data/sessions /app/.data/uploads /app/models && \
     useradd -m appuser && \
     chown -R appuser:appuser /app/.data && \
+    chown -R appuser:appuser /app/models && \
     chown -R appuser:appuser /app
 
 COPY entrypoint.sh /entrypoint.sh

@@ -1,0 +1,524 @@
+/*
+ * MarkdownRenderer.css
+ *
+ * Premium Obsidian-inspired markdown preview for VirtAI.
+ * Scoped under .md-root — zero browser default leakage.
+ *
+ * Design principles:
+ *  - Calm, editorial typography
+ *  - Consistent vertical rhythm via --md-* tokens
+ *  - Native bidi support via dir="auto" + logical CSS properties
+ *  - Arabic + Latin font stacks that coexist cleanly
+ *  - Code blocks: monospace, no wrap, scrollable
+ *  - Tables: responsive with scroll wrapper
+ *  - Semantic color usage — no bright white everywhere
+ *  - Reduced motion respected
+ *
+ * TOKEN SYSTEM
+ * All design decisions flow through --md-* custom properties set on .md-root.
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   0. ROOT TOKENS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-root {
+  /* Typography basics */
+  --md-font-body: 'General Sans', 'Noto Sans Arabic', 'Segoe UI', system-ui, sans-serif;
+  --md-font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, monospace;
+
+  --md-font-size: 1rem;          /* 16px - Stronger base size */
+  --md-line-height: 1.6;         /* Elegant, readable spacing */
+  --md-letter-spacing: 0.005em;
+
+  /* Heading scale */
+  --md-h1-size: 1.45rem;
+  --md-h2-size: 1.22rem;
+  --md-h3-size: 1.1rem;
+  --md-h4-size: 0.98rem;
+  --md-h5-size: 0.92rem;
+  --md-h6-size: 0.875rem;
+  --md-heading-weight: 650;
+  --md-heading-line-height: 1.3;
+
+  /* Vertical rhythm - Obsidian-style precise spacing */
+  --md-spacing-unit: 0.25rem; /* Base unit ~4px */
+  --md-block-gap: calc(var(--md-spacing-unit) * 4);      /* 16px - Between major blocks */
+  --md-para-gap: calc(var(--md-spacing-unit) * 3);       /* 12px - Between paragraphs */
+  --md-heading-above: calc(var(--md-spacing-unit) * 6);  /* 24px - Above headings */
+  --md-heading-below: calc(var(--md-spacing-unit) * 1);  /* 4px - Below headings */
+  --md-list-gap: calc(var(--md-spacing-unit) * 2);       /* 8px - Between list items */
+  --md-code-margin: calc(var(--md-spacing-unit) * 4);    /* 16px - Code block margins */
+
+  /* Color palette */
+  --md-text: rgba(255, 255, 255, 0.88);
+  --md-text-muted: rgba(255, 255, 255, 0.65);
+  --md-heading: rgba(255, 255, 255, 0.95);
+  --md-text-strong: rgba(255, 255, 255, 0.95);
+  --md-link: #60a5fa;
+  --md-link-hover: #93c5fd;
+  
+  --md-bg-code-inline: rgba(255, 255, 255, 0.08);
+  --md-bg-code-block: #0d1117;
+  --md-border-code: rgba(255, 255, 255, 0.12);
+  
+  --md-border-table: rgba(255, 255, 255, 0.15);
+  --md-bg-table-head: rgba(255, 255, 255, 0.05);
+  --md-bg-table-row: transparent;
+  --md-bg-table-row-alt: rgba(255, 255, 255, 0.02);
+  
+  --md-border-blockquote: rgba(255, 255, 255, 0.2);
+  --md-text-blockquote: rgba(255, 255, 255, 0.75);
+
+  --md-cursor-color: #f8fafc;
+  --md-divider: rgba(255, 255, 255, 0.12);
+}
+
+.md-root > :first-child { margin-block-start: 0; }
+.md-root > :last-child { margin-block-end: 0; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   0.1. SUPPRESSION OF EMPTY ELEMENTS (GAP FIX)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.md-root p:empty,
+.md-root p:has(> br:only-child) {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 0 !important;
+}
+
+.md-root br + br {
+  display: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   1. HEADINGS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6 {
+  font-family: var(--md-font-body);
+  font-weight: var(--md-heading-weight);
+  line-height: var(--md-heading-line-height);
+  color: var(--md-text-heading);
+  margin-block-start: var(--md-heading-above);
+  margin-block-end: var(--md-heading-below);
+  text-wrap: balance;
+  letter-spacing: -0.01em;
+}
+
+.md-h1 {
+  font-size: var(--md-h1-size);
+  padding-block-end: 0.4em;
+  border-block-end: 1px solid var(--md-border-h1);
+}
+
+.md-h2 { font-size: var(--md-h2-size); }
+.md-h3 { font-size: var(--md-h3-size); font-weight: 600; }
+.md-h4 { font-size: var(--md-h4-size); font-weight: 600; color: rgba(255, 255, 255, 0.82); }
+.md-h5 { font-size: var(--md-h5-size); font-weight: 600; color: rgba(255, 255, 255, 0.72); text-transform: uppercase; letter-spacing: 0.05em; }
+.md-h6 { font-size: var(--md-h6-size); font-weight: 600; color: var(--md-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+.md-h1 + .md-h2,
+.md-h2 + .md-h3,
+.md-h3 + .md-h4 {
+  margin-block-start: 0.4em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   2. PARAGRAPHS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-p {
+  margin-block-start: var(--md-para-gap);
+  margin-block-end: var(--md-para-gap);
+}
+
+/* Eliminate margin collapse gap so paragraphs hug the heading tightly */
+:is(.md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6) + .md-p {
+  margin-block-start: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   3. LISTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-ul, .md-ol {
+  margin-block-start: var(--md-block-gap);
+  margin-block-end: var(--md-block-gap);
+  padding-inline-start: 1.6em;
+}
+
+.md-ul { list-style-type: disc; }
+.md-ol { list-style-type: decimal; }
+
+.md-li {
+  margin-block-start: 0.3em;
+  margin-block-end: 0.3em;
+  line-height: var(--md-line-height);
+}
+
+/* Fix nested paragraphs inside list items */
+.md-li > .md-p {
+  margin-block-start: 0;
+  margin-block-end: 0;
+}
+
+.md-li > .md-p + .md-p {
+  margin-block-start: 0.5em;
+}
+
+.md-li > :first-child { margin-block-start: 0; }
+.md-li > :last-child { margin-block-end: 0; }
+
+.md-ul .md-ul,
+.md-ul .md-ol,
+.md-ol .md-ul,
+.md-ol .md-ol {
+  margin-block-start: 0.2em;
+  margin-block-end: 0.1em;
+}
+
+.md-ul .md-ul { list-style-type: circle; }
+.md-ul .md-ul .md-ul { list-style-type: square; }
+
+/* Task lists */
+.md-task-item {
+  list-style: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55em;
+  margin-block-start: var(--md-list-gap);
+  margin-block-end: var(--md-list-gap);
+  line-height: var(--md-line-height);
+  margin-inline-start: -1.6em; /* Compensate for ul padding */
+}
+
+.md-checkbox {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--md-checkbox-size);
+  height: var(--md-checkbox-size);
+  min-width: var(--md-checkbox-size);
+  margin-block-start: 0.2em;
+  border-radius: 3px;
+  border: 1.5px solid rgba(180, 171, 139, 0.45);
+  background: var(--md-bg-checkbox);
+  color: var(--md-checkbox-color);
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.md-checkbox--checked {
+  background: var(--md-bg-checkbox-checked);
+  border-color: var(--md-checkbox-color);
+}
+
+.md-checkbox svg {
+  width: 0.65em;
+  height: 0.65em;
+}
+
+.md-task-content { flex: 1; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   4. BLOCKQUOTES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-blockquote {
+  margin-block: var(--md-block-gap);
+  padding-block: 0.65em;
+  padding-inline-start: 1.1em;
+  padding-inline-end: 0;
+  border-inline-start: 2.5px solid var(--md-border-blockquote);
+  border-inline-end: none;
+  background: var(--md-bg-blockquote);
+  color: var(--md-text-quote);
+  font-style: normal;
+  border-start-end-radius: var(--md-radius-sm);
+  border-end-end-radius: var(--md-radius-sm);
+}
+
+.md-blockquote > :first-child { margin-block-start: 0; }
+.md-blockquote > :last-child { margin-block-end: 0; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   5. CODE BLOCKS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-pre {
+  position: relative;
+  margin-block: var(--md-code-margin);
+  padding-block-start: 2.4em; /* space for lang badge */
+  padding-block-end: 1.1em;
+  padding-inline: 1.2em;
+  background: var(--md-bg-code-block);
+  border: 1px solid var(--md-border-code);
+  border-radius: var(--md-radius-lg);
+  overflow-x: auto;
+  overflow-y: hidden;
+  direction: ltr; /* Force LTR for code */
+  text-align: start;
+  tab-size: 2;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180, 171, 139, 0.25) transparent;
+}
+
+.md-pre::-webkit-scrollbar { height: 5px; }
+.md-pre::-webkit-scrollbar-thumb { background: rgba(180, 171, 139, 0.22); border-radius: 3px; }
+
+/* Language badge */
+.md-pre-lang {
+  position: absolute;
+  top: 0.55em;
+  inset-inline-end: 0.85em; /* Logical property */
+  font-family: var(--md-font-mono);
+  font-size: 0.7em;
+  font-weight: 500;
+  color: rgba(180, 171, 139, 0.55);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  user-select: none;
+  pointer-events: none;
+}
+
+.md-code-block {
+  font-family: var(--md-font-mono);
+  font-size: 0.845em;
+  line-height: 1.5;
+  color: var(--md-text-code-block);
+  background: none;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+  display: block;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   6. INLINE CODE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-inline-code {
+  font-family: var(--md-font-mono);
+  font-size: 0.83em;
+  font-weight: 450;
+  color: var(--md-text-code-inline);
+  background: var(--md-bg-code-inline);
+  border: 1px solid rgba(180, 171, 139, 0.15);
+  border-radius: var(--md-radius-sm);
+  padding-block: 0.12em;
+  padding-inline: 0.38em;
+  direction: ltr; /* Always LTR */
+  display: inline;
+  unicode-bidi: embed;
+  white-space: pre-wrap; /* Allows long inline code to wrap */
+  word-break: break-word;
+  vertical-align: baseline;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   7. LINKS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-link {
+  color: var(--md-text-link);
+  text-decoration: underline;
+  text-decoration-color: rgba(180, 171, 139, 0.3);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: color 0.18s ease, text-decoration-color 0.18s ease;
+  direction: ltr;
+  unicode-bidi: embed;
+  word-break: break-all;
+}
+
+.md-link:hover {
+  color: var(--md-text-link-hover);
+  text-decoration-color: rgba(255, 255, 255, 0.5);
+}
+
+.md-link:focus-visible {
+  outline: 2px solid var(--md-checkbox-color);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   8. EMPHASIS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-strong { 
+  font-weight: 650; 
+  color: var(--md-text-strong);
+  line-height: inherit;
+}
+.md-em { font-style: italic; }
+.md-del { text-decoration: line-through; color: var(--md-text-del); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   9. TABLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin-block: var(--md-block-gap);
+  border-radius: var(--md-radius-lg);
+  border: 1px solid var(--md-border-table);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180, 171, 139, 0.2) transparent;
+}
+
+.md-table-wrapper::-webkit-scrollbar { height: 5px; }
+.md-table-wrapper::-webkit-scrollbar-thumb { background: rgba(180, 171, 139, 0.2); border-radius: 3px; }
+
+.md-table {
+  width: 100%;
+  min-width: max-content;
+  border-collapse: collapse;
+  font-size: 0.88em;
+  line-height: 1.55;
+  table-layout: auto;
+}
+
+.md-thead { background: var(--md-bg-table-head); }
+
+.md-th {
+  padding-block: 0.65em;
+  padding-inline: 1em;
+  font-weight: 600;
+  color: var(--md-text-table-head);
+  border-block-end: 1px solid var(--md-border-table);
+  white-space: nowrap;
+}
+
+.md-td {
+  padding-block: 0.55em;
+  padding-inline: 1em;
+  color: var(--md-text-table-cell);
+  border-block-end: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: top;
+}
+
+.md-tbody .md-tr:nth-child(even) { background: var(--md-bg-table-row-alt); }
+.md-tbody .md-tr:last-child .md-td { border-block-end: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   10. HORIZONTAL RULE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  height: 0;
+  margin-block: 2em;
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   11. IMAGES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-img-wrapper {
+  display: block;
+  margin-block: var(--md-block-gap);
+}
+
+.md-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--md-radius-md);
+  border: 1px solid var(--md-border-subtle);
+}
+
+.md-img-caption {
+  display: block;
+  margin-block-start: 0.4em;
+  font-size: 0.8em;
+  color: var(--md-text-muted);
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   12. STREAMING CURSOR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--md-cursor-color);
+  border-radius: 1px;
+  vertical-align: middle;
+  position: absolute;
+  transform: translateY(0.15em);
+  margin-inline-start: 2px;
+  animation: md-cursor-blink 1.1s ease-in-out infinite;
+}
+
+@keyframes md-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   13. STREAMING FADE FIX
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-root {
+  opacity: 1;
+  transition: opacity 120ms ease-out;
+  animation: md-stream-end-fade 120ms ease-out;
+}
+
+.md-root.md-streaming {
+  transition: none;
+  animation: none;
+}
+
+@keyframes md-stream-end-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@starting-style {
+  .md-root {
+    opacity: 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   14. REDUCED MOTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .md-streaming-cursor { animation: none; opacity: 0.7; }
+  .md-root { transition: none !important; animation: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   14. RESPONSIVE / MOBILE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  .md-root {
+    --md-font-size: 0.9rem;
+    --md-h1-size: 1.3rem;
+    --md-h2-size: 1.12rem;
+    --md-h3-size: 1.02rem;
+    --md-code-margin: 0.75em;
+  }
+  .md-pre {
+    padding-block-start: 2.1em;
+    padding-block-end: 0.85em;
+    padding-inline: 0.9em;
+    border-radius: var(--md-radius-md);
+  }
+  .md-th, .md-td { padding-block: 0.5em; padding-inline: 0.7em; }
+  .md-blockquote { padding-block: 0.55em; padding-inline: 0.85em; }
+}

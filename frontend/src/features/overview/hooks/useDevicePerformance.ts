@@ -29,6 +29,7 @@ export function useDevicePerformance() {
     const isMobileViewport =
       typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 1023px)').matches;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLowPerformance(
       saveDataEnabled || slowNetwork || lowMemoryDevice || lowCpuDevice || isMobileViewport
     );

@@ -1,7 +1,6 @@
 import React, { memo } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import CopyButton from '../../../shared/components/CopyButton';
+import { StreamingMessageRenderer } from './StreamingMessageRenderer';
 import { VisualizeButton } from './VisualizeButton';
 import { IMessage } from '../../session/types';
 import { formatTimeOnly } from '../../../shared/utils/date';
@@ -30,17 +29,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = memo(function MessageBubble(
         msg.content
       ) : (
         <>
-          <div className="markdown-body">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {msg.content}
-            </ReactMarkdown>
-          </div>
-          <div className="flex justify-start gap-2 mt-2 items-center">
+          <StreamingMessageRenderer content={msg.content} isStreaming={false} />
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
             <CopyButton content={msg.content} />
-            {isLast && msg.id && (
-              <VisualizeButton messageId={msg.id} locale="en" onExpand={onScrollToBottom} />
-            )}
           </div>
+          {isLast && msg.id && (
+            <VisualizeButton messageId={msg.id} locale="en" onExpand={onScrollToBottom} />
+          )}
         </>
       )}
     </ChatBubble>

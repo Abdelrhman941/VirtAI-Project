@@ -130,23 +130,24 @@ class WebSocketHandler:
             )
 
         try:
-            await self.outbound_sender.send_protocol_message(
-                ServerReady(
-                    session_id=self.session.session_id or None,
-                    avatar_id=self.session.avatar_id,
-                    message="Connected and ready",
-                    resumed=self.resumed,
-                    last_seq=(
-                        self.connection_manager.latest_sequence(self.session.session_id)
-                        if self.session.session_id
-                        else 0
+            if not self._session_pending:
+                await self.outbound_sender.send_protocol_message(
+                    ServerReady(
+                        session_id=self.session.session_id or None,
+                        avatar_id=self.session.avatar_id,
+                        message="Connected and ready",
+                        resumed=self.resumed,
+                        last_seq=(
+                            self.connection_manager.latest_sequence(self.session.session_id)
+                            if self.session.session_id
+                            else 0
+                        ),
+                        timestamp=time.time(),
                     ),
-                    timestamp=time.time(),
-                ),
-                self.session.session_id,
-                self._session_pending,
-                self._connected,
-            )
+                    self.session.session_id,
+                    self._session_pending,
+                    self._connected,
+                )
 
             if self.resumed:
                 for payload in replay_batch:
@@ -154,15 +155,16 @@ class WebSocketHandler:
                         break
                     try:
                         await self.ws.send_text(payload)
-                    except Exception:
+                    except Exception as e:
+                        logger.warning(f"[WS] Failed to replay message: {e}")
                         break
         except Exception as e:
             logger.error(f"[WS] Failed to send ready message: {e}")
             self._connected = False
             try:
                 await self.ws.close(code=1011, reason="Internal server error")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[WS] Failed to close cleanly after error: {e}")
             return
 
         self._heartbeat_task = asyncio.create_task(self.connection_lifecycle.heartbeat_loop())

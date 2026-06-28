@@ -8,8 +8,9 @@ export interface SessionResumeState {
 }
 
 export function createSessionResumeState(): SessionResumeState {
+  const savedSessionId = typeof window !== 'undefined' ? localStorage.getItem('virt_session_id') : null;
   return {
-    sessionId: null,
+    sessionId: savedSessionId,
     lastSeq: 0,
     lastAckedSeq: 0,
     messageQueue: [],
@@ -78,4 +79,7 @@ export function resetSessionState(state: SessionResumeState): void {
   state.sessionId = null;
   state.lastSeq = 0;
   state.lastAckedSeq = 0;
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('virt_session_id');
+  }
 }

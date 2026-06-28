@@ -30,9 +30,13 @@ export function useMermaidRender(mermaidCode: string | undefined, id: string = '
           securityLevel: 'strict',
         });
 
+        // Ensure escaped newlines are converted to actual newlines
+        // Sometimes LLMs return literal '\n' instead of an actual newline character
+        const cleanCode = mermaidCode.replace(/\\n/g, '\n').trim();
+
         // Use mermaid.render safely
         // mermaid.render returns an object with svg in newer versions: { svg: string }
-        const { svg } = await mermaid.render(id, mermaidCode);
+        const { svg } = await mermaid.render(id, cleanCode);
 
         if (isMounted) {
           setSvgContent(svg);

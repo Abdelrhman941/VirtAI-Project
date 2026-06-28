@@ -19,7 +19,7 @@ const sessionsResponseSchema = z.array(sessionSchema);
 const messageSchema = z.object({
   id: z.string(),
   session_id: z.string(),
-  role: z.string(),
+  role: z.enum(['system', 'user', 'assistant']),
   content: z.string(),
   created_at: timestampField,
 }).passthrough();
@@ -45,7 +45,7 @@ export async function fetchSessions(): Promise<ISession[]> {
 /**
  * Create a new chat session on the backend.
  */
-export async function createSession(): Promise<unknown> {
+export async function createSession(): Promise<ISession> {
   const response = await apiClient.post('/chat/');
   return response.data;
 }

@@ -3,11 +3,9 @@ import { useRef, useEffect, useState } from 'react';
 
 export function useScrollPipeline(stepCount: number) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLElement | null>(null);
-
-  if (typeof document !== 'undefined' && !scrollContainerRef.current) {
-    scrollContainerRef.current = document.getElementById('main-scroll-container');
-  }
+  const [scrollContainerRef] = useState<{ current: HTMLElement | null }>(() => {
+    return { current: typeof document !== 'undefined' ? document.getElementById('main-scroll-container') : null };
+  });
 
   const { scrollYProgress } = useScroll({
     target: containerRef,

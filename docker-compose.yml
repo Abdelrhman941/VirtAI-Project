@@ -7,17 +7,16 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-virtai}
-    ports:
-      - '127.0.0.1:5432:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
       - virtai-network
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-virtai}']
-      interval: 10s
-      timeout: 5s
+      interval: 2s
+      timeout: 3s
       retries: 5
+      start_period: 1s
 
   redis:
     image: redis:7-alpine
@@ -28,17 +27,16 @@ services:
       --requirepass ${REDIS_PASSWORD}
       --save 60 1
       --loglevel warning
-    ports:
-      - '127.0.0.1:6379:6379'
     volumes:
       - redis-data:/data
     networks:
       - virtai-network
     healthcheck:
       test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
-      interval: 10s
-      timeout: 5s
+      interval: 2s
+      timeout: 2s
       retries: 5
+      start_period: 1s
 
   backend-init:
     build:
@@ -52,8 +50,7 @@ services:
       POSTGRES_HOST: postgres
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       XDG_CACHE_HOME: /app/.cache
-      HF_HOME: /app/.cache/huggingface
-      FASTEMBED_CACHE_DIR: /app/.cache/fastembed
+      HF_HOME: /app/models/huggingface
     networks:
       - virtai-network
     depends_on:
@@ -68,19 +65,17 @@ services:
     image: virtai-backend:latest
     container_name: virtai-backend
     restart: unless-stopped
-    ports:
-      - '8000:8000'
     env_file:
       - ./backend/.env
     environment:
       POSTGRES_HOST: postgres
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       XDG_CACHE_HOME: /app/.cache
-      HF_HOME: /app/.cache/huggingface
-      FASTEMBED_CACHE_DIR: /app/.cache/fastembed
+      HF_HOME: /app/models/huggingface
     volumes:
       - backend-data:/app/.data
       - backend-cache:/app/.cache
+      - backend-models:/app/models/huggingface
     networks:
       - virtai-network
     depends_on:
@@ -90,14 +85,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      tts:
-        condition: service_healthy
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:8000/api/v1/health']
-      interval: 10s
-      timeout: 10s
-      start_period: 90s
+      interval: 2s
+      timeout: 5s
       retries: 5
+      start_period: 5s
 
   worker:
     image: virtai-backend:latest
@@ -112,11 +105,11 @@ services:
       POSTGRES_HOST: postgres
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       XDG_CACHE_HOME: /app/.cache
-      HF_HOME: /app/.cache/huggingface
-      FASTEMBED_CACHE_DIR: /app/.cache/fastembed
+      HF_HOME: /app/models/huggingface
     volumes:
       - backend-data:/app/.data
       - backend-cache:/app/.cache
+      - backend-models:/app/models/huggingface
     networks:
       - virtai-network
     depends_on:
@@ -128,10 +121,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import redis; redis.Redis(host='redis', password='${REDIS_PASSWORD}').ping()"]
-      interval: 30s
-      timeout: 10s
-      start_period: 60s
+      interval: 2s
+      timeout: 5s
       retries: 5
+      start_period: 2s
 
   frontend:
     build:
@@ -139,9 +132,6 @@ services:
       dockerfile: Dockerfile
     container_name: virtai-frontend
     restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
     networks:
       - virtai-network
 
@@ -151,22 +141,19 @@ services:
       dockerfile: Dockerfile
     container_name: virtai-tts
     restart: unless-stopped
-    ports:
-      - '8080:8000'
     environment:
       TTS_HOME: /app/voices
       HF_HOME: /app/voices/huggingface
     volumes:
       - tts_config:/app/config
-      - tts-voices:/app/voices
     networks:
       - virtai-network
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
-      interval: 10s
-      timeout: 15s
-      start_period: 120s
-      retries: 5
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
     deploy:
       resources:
         reservations:
@@ -178,8 +165,8 @@ volumes:
   redis-data:
   backend-data:
   backend-cache:
+  backend-models:
   tts_config:
-  tts-voices:
 
 networks:
   virtai-network:

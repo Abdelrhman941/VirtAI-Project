@@ -222,10 +222,12 @@ class PolicyRouter:
             if candidates:
                 return FallbackLLMChain(candidates[0], fallbacks=candidates[1:])
 
-        # Default policy: Currently we only have Groq, use it as primary.
-        primary = self.registry.get_llm("groq_llm")
+        # Default policy: Cohere as primary (will be registered in BATCH 2).
+        primary = self.registry.get_llm("cohere_llm")
         if not primary:
-            raise RuntimeError("Primary LLM provider 'groq_llm' not registered.")
+            logger.warning("Primary LLM provider 'cohere_llm' not registered yet. Returning None.")
+            # Returning None temporarily to avoid crash before BATCH 2
+            return None
         return FallbackLLMChain(primary, fallbacks=[])
 
     def get_tts_chain(self, policy: str = "default") -> FallbackTTSChain:

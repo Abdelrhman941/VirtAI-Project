@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useMemo, useLayoutEffect } from 'react';
 import useWSClient, { ConnectionState } from '@/core/realtime/useWSClient';
+import { useSmoothStreaming } from './useSmoothStreaming';
 import useConversationReducer from '@/features/chat/hooks/useConversationReducer';
 import { toast } from '@/shared/utils/toast';
 import { WSPayloadSchema, WSPayload, Viseme } from '../ClassroomShell';
@@ -24,6 +25,7 @@ export function buildWsUrl(avatarId: string, voiceId: string, sessionId?: string
 interface UseClassroomChatProps {
   wsAvatarId: string;
   activeVoiceId: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   session: any; // Using the type from useSessionManager
   onTtsReady: (messageId: string | undefined, url: string) => void;
   onVisemesReady: (messageId: string, cues: Viseme[]) => void;
@@ -61,6 +63,8 @@ export function useClassroomChat({
   const isCreatingSessionRef = useRef<boolean>(false);
   const conversationStateRef = useRef(conversationState);
 
+  const { displayText, pushDelta, commitFinal, resetStream } = useSmoothStreaming();
+
   // Sync refs safely
   useLayoutEffect(() => {
     currentSessionIdRef.current = currentSessionId;
@@ -73,16 +77,17 @@ export function useClassroomChat({
 
   useEffect(() => {
     dispatch({ type: 'RESET' });
+    resetStream();
     resetAvatarAudio();
-  }, [currentSessionId, dispatch, resetAvatarAudio]);
+  }, [currentSessionId, dispatch, resetAvatarAudio, resetStream]);
 
   useEffect(() => {
-    if (connectionState === ConnectionState.RECONNECTING || connectionState === ConnectionState.OFFLINE) { // RECONNECTING or OFFLINE
+    if (connectionState === ConnectionState.RECONNECTING || connectionState === ConnectionState.DISCONNECTED || connectionState === ConnectionState.FAILED) { // RECONNECTING or OFFLINE
       if (conversationState.pipelineState === 'thinking' || conversationState.pipelineState === 'speaking') {
         dispatch({ type: 'ERROR', payload: { message: 'Connection interrupted' } });
         resetAvatarAudio(conversationState.activeMessageId);
       }
-    } else if (connectionState === ConnectionState.ONLINE) { // ONLINE
+    } else if (connectionState === ConnectionState.CONNECTED) { // ONLINE
       if (conversationState.pipelineState === 'error') {
         dispatch({ type: 'CLEAR_ERROR' });
       }
@@ -119,7 +124,7 @@ export function useClassroomChat({
               newId
             );
             // The message will be queued by the core WS queue until connection is established.
-            send({ type: 'chat.user_message', data: { message_id, text } });
+            send({ type: 'chat.user_message', message_id, text });
           }
         }).catch((err: unknown) => {
           isCreatingSessionRef.current = false;
@@ -136,7 +141,7 @@ export function useClassroomChat({
           { id: message_id, role: 'user', content: text, status: 'pending' },
           activeId
         );
-        send({ type: 'chat.user_message', data: { message_id, text } });
+        send({ type: 'chat.user_message', message_id, text });
       }
     },
     [dispatch, send, currentSessionId, resetAvatarAudio, getAudioContext]
@@ -190,17 +195,22 @@ export function useClassroomChat({
       onMessage('chat.delta', (rawData: unknown) => {
         const d = validatePayload(rawData);
         if (!d || !checkSession(d)) return;
-        const safePayload = { ...d, delta: d.delta ? d.delta.replace(/\[.*?\]/g, '') : undefined };
-        dispatch({ type: 'CHAT_DELTA', payload: safePayload });
+        const delta = d.delta ? d.delta.replace(/\[.*?\]/g, '') : '';
+        if (!delta) return;
+        
+        pushDelta(delta);
       }),
       onMessage('chat.final', (rawData: unknown) => {
         const d = validatePayload(rawData);
         if (!d || !checkSession(d)) return;
+        
         const safePayload = { ...d, text: d.text ? d.text.replace(/\[.*?\]/g, '') : undefined };
+        
+        commitFinal(safePayload.text || '');
         dispatch({ type: 'CHAT_FINAL', payload: safePayload });
         if (safePayload.text) {
           sessionRef.current.addAssistantMessage(
-            `${d.message_id}-assistant`,
+            d.db_message_id ? `${d.db_message_id}-assistant` : `${d.message_id}-assistant`,
             safePayload.text,
             d.session_id,
             d.created_at
@@ -214,6 +224,11 @@ export function useClassroomChat({
         const d = validatePayload(rawData);
         if (!d || !checkSession(d)) return;
         const state = (d.state as 'idle' | 'thinking' | 'speaking' | 'error') || 'idle';
+        
+        if (state === 'idle' || state === 'thinking' || state === 'error') {
+          resetStream();
+        }
+
         dispatch({ type: 'PIPELINE_STATE', payload: { state, message_id: d.message_id } });
         
         if (state === 'idle' && d.message_id) {
@@ -254,13 +269,27 @@ export function useClassroomChat({
       }),
     ];
     return () => unsubs.forEach((fn) => fn?.());
-  }, [onMessage, dispatch, currentSessionId, onTtsReady, onVisemesReady]);
+  }, [
+    onMessage,
+    dispatch,
+    currentSessionId,
+    onTtsReady,
+    onVisemesReady,
+    commitFinal,
+    forceAdvanceSequence,
+    pushDelta,
+    resetStream
+  ]);
 
-  // Expose stable properties to prevent deep re-renders when connectionState changes
   const wsClient = useMemo(() => ({ send: safeSend, onMessage }), [safeSend, onMessage]);
 
+  const patchedConversationState = useMemo(() => ({
+    ...conversationState,
+    currentMessage: displayText
+  }), [conversationState, displayText]);
+
   return {
-    conversationState,
+    conversationState: patchedConversationState,
     connectionState,
     isConnected,
     reconnect,

@@ -11,9 +11,12 @@ interface ExplainWSProps {
   onEnd: () => void;
 }
 
+import { useAuthStore } from '@/features/auth/store/authStore';
+
 export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChange, onEnd }: ExplainWSProps) {
-  const wsUrl = documentId 
-    ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/v1/rag/explain/${documentId}`
+  const token = useAuthStore(state => state.accessToken);
+  const wsUrl = documentId && token
+    ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/v1/rag/explain/${documentId}?token=${token}`
     : null;
 
   const { connectionState, isConnected, send, onMessage, disconnect } = useWSClient(wsUrl);
@@ -43,6 +46,13 @@ export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChang
       }),
       onMessage('error', (data: any) => {
         console.error('Explain WS Error:', data.message);
+        onTokens(`\n\n**Error:** ${data.message || 'An unexpected error occurred during analysis.'}\n\n`);
+        setCurrentState('AWAITING');
+        onStateChange('AWAITING');
+      }),
+      onMessage('done', () => {
+        setCurrentState('AWAITING');
+        onStateChange('AWAITING');
       })
     ];
 
@@ -52,13 +62,13 @@ export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChang
   const sendQuestion = useCallback((text: string) => {
     setCurrentState('ANSWERING');
     onStateChange('ANSWERING');
-    send({ type: 'chat.user_message', data: { text } });
+    send({ type: 'chat.user_message', text });
   }, [send, onStateChange]);
 
   const sendContinue = useCallback(() => {
     setCurrentState('EXPLAINING');
     onStateChange('EXPLAINING');
-    send({ type: 'chat.user_message', data: { text: 'continue' } });
+    send({ type: 'chat.user_message', text: 'continue' });
   }, [send, onStateChange]);
 
   const sendPauseOrStop = useCallback(() => {

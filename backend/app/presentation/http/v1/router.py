@@ -103,20 +103,54 @@ async def websocket_endpoint(
         await websocket.close(code=4004, reason="Invalid avatar ID")
         return
 
-    # WebSocket Auth (S1-01)
-    token = None
-    subprotocols = websocket.scope.get("subprotocols", [])
-    if "access_token" in subprotocols:
-        try:
-            idx = subprotocols.index("access_token")
-            if idx + 1 < len(subprotocols):
-                token = subprotocols[idx + 1].strip()
-        except ValueError:
-            pass
+    parsed_session_id = None
+    if session_id:
+        parsed_session_id = parse_uuid(session_id)
+        if parsed_session_id is None:
+            logger.warning("[WS] Invalid session_id")
+            await websocket.close(code=4400, reason="Invalid session ID")
+            return
+        session_id = str(parsed_session_id)
 
-    if not token:
-        logger.warning("[WS] Missing token")
-        await websocket.close(code=4401, reason="Missing token")
+    # WebSocket Auth (S1-01) - Moved to first message
+    # Accept connection immediately without subprotocols
+    try:
+        await websocket.accept()
+        logger.info(f"[WS] Connection accepted | avatar={avatar_id} | client={websocket.client}")
+    except Exception as e:
+        logger.error(f"[WS] Failed to accept connection: {e}")
+        return
+
+    # Wait for first message to be auth
+    try:
+        import asyncio
+        import json
+        auth_msg_raw = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
+        auth_msg = json.loads(auth_msg_raw)
+        if auth_msg.get("type") != "auth" or not auth_msg.get("token"):
+            logger.warning("[WS] Missing or invalid auth message format")
+            try:
+                await websocket.close(code=4001, reason="Missing or invalid auth message")
+            except Exception:
+                pass
+            return
+        token = auth_msg["token"]
+    except asyncio.TimeoutError:
+        logger.warning("[WS] Auth timeout")
+        try:
+            await websocket.close(code=4001, reason="Auth timeout")
+        except Exception:
+            pass
+        return
+    except WebSocketDisconnect:
+        logger.info("[WS] Client disconnected before auth")
+        return
+    except Exception as e:
+        logger.warning(f"[WS] Invalid auth message payload: {e}")
+        try:
+            await websocket.close(code=4001, reason="Invalid auth payload")
+        except Exception:
+            pass
         return
 
     try:
@@ -153,23 +187,6 @@ async def websocket_endpoint(
         logger.error(f"[WS] DB/Redis error during connection: {e}")
         with suppress(Exception):
             await websocket.close(code=1011, reason="Internal server error")
-        return
-
-    parsed_session_id = None
-    if session_id:
-        parsed_session_id = parse_uuid(session_id)
-        if parsed_session_id is None:
-            logger.warning("[WS] Invalid session_id")
-            await websocket.close(code=4400, reason="Invalid session ID")
-            return
-        session_id = str(parsed_session_id)
-
-    # Accept connection
-    try:
-        await websocket.accept(subprotocol="access_token")
-        logger.info(f"[WS] Connection accepted | avatar={avatar_id} | client={websocket.client}")
-    except Exception as e:
-        logger.error(f"[WS] Failed to accept connection: {e}")
         return
 
     user_id = str(parsed_user_id)
@@ -235,6 +252,8 @@ async def websocket_endpoint(
         logger.info(
             f"[WS] Starting handler | session={session.session_id if session else 'pending'}"
         )
+        await websocket.send_json({"type": "ready"})
+        logger.info("[WS] Ready sent | session=%s", session_id)
         await handler.run()
     except WebSocketDisconnect:
         logger.info(f"[WS] Client disconnected | session={handler.session.session_id or 'pending'}")
@@ -251,55 +270,38 @@ async def websocket_endpoint(
                 f"[WS] Session disconnected (kept for resume) | id={handler.session.session_id}"
             )
 
-
 @router.websocket("/rag/explain/{document_id}")
-async def explain_websocket_endpoint(
+async def explain_websocket(
     websocket: WebSocket,
     document_id: str,
+    token: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     chat_use_case: ChatUseCase = Depends(get_chat_use_case),
 ):
     """
-    WebSocket endpoint for Slide-by-Slide Explanation.
-    URL: ws://localhost:8000/api/v1/rag/explain/{document_id}
+    WebSocket endpoint for explaining a specific document slide by slide.
+    URL: ws://localhost:8000/api/v1/rag/explain/{document_id}?token=...
     """
+    if not token:
+        logger.warning("[WS] Explain connection rejected: Missing token")
+        await websocket.close(code=4003, reason="Token missing")
+        return
 
-    # Session Guard: Check if user has already sent a message on this document's session
-    from sqlalchemy import select
+    try:
+        token_payload = decode_auth_token(token, expected_type="access")
+    except Exception as e:
+        logger.warning(f"[WS] Explain connection rejected: Invalid token - {e}")
+        await websocket.close(code=4003, reason="Invalid token")
+        return
 
-    from app.infrastructure.db.models import ChatSession, Document
-    from app.shared.ids import parse_uuid
-
-    doc_uuid = parse_uuid(document_id)
-    if doc_uuid:
-        doc = await db.scalar(select(Document).where(Document.id == doc_uuid))
-        if doc and doc.retrieval_scope == "SESSION" and doc.scope_id:
-            session_model = await db.scalar(
-                select(ChatSession).where(ChatSession.id == doc.scope_id)
-            )
-            if session_model and session_model.message_count > 0:
-                await websocket.close(
-                    code=1008, reason="Cannot present document: chat already started."
-                )
-                return
-
-    # Accept the websocket
     await websocket.accept()
-    user_id = (
-        "test_user"  # Mocked for simplicity since this is an isolated route for the assignment
-    )
-
+    logger.info(f"[WS] Explain connection accepted | document={document_id} | user={token_payload.user_id}")
+    
     handler = ExplainHandler(
         websocket=websocket,
         document_id=document_id,
         db=db,
-        user_id=user_id,
+        user_id=token_payload.user_id,
         chat_use_case=chat_use_case,
     )
-
-    try:
-        await handler.run()
-    except Exception as e:
-        logger.error(f"[ExplainWS] Handler error: {e}")
-    finally:
-        pass
+    await handler.run()

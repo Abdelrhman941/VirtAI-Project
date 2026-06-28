@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import MarkdownRenderer from '../../../shared/components/MarkdownRenderer';
 import { FiStopCircle, FiPauseCircle } from 'react-icons/fi';
 import { PresentationState } from '../hooks/useExplainWS';
 import { SlideQuestionInput } from './SlideQuestionInput';
@@ -59,10 +58,10 @@ export function ExplainSession({
       <div className="explain-content" ref={contentRef}>
         <div className="explain-content-wrapper">
           <div className="markdown-body">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {content || "Analyzing slide context and preparing instructional content..."}
-            </ReactMarkdown>
-            {currentState === 'EXPLAINING' && <span className="inline-block w-[2px] h-[1em] bg-white/80 align-middle ml-1 animate-[pulse_1s_ease-in-out_infinite]"></span>}
+            <MarkdownRenderer
+              content={content || "Analyzing slide context and preparing instructional content..."}
+              streaming={currentState === 'EXPLAINING'}
+            />
           </div>
         </div>
       </div>

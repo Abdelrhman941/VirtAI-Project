@@ -10,7 +10,7 @@ from app.domain.chat.entities import ConversationHistory
 from app.domain.chat.ports import BaseLLMProvider
 from app.domain.rag.task_types import Locale, TaskType
 from app.infrastructure.db.models import DocumentChunk, Quiz, QuizQuestion
-from app.infrastructure.rag.prompts.registry import get_prompt_set
+from app.application.prompts.rag.registry import get_prompt_set
 from app.shared.errors import RAGException
 
 
@@ -24,6 +24,17 @@ class QuizQuestionModel(BaseModel):
 
 class QuizModel(BaseModel):
     questions: list[QuizQuestionModel]
+
+class QuizAttemptAnswerModel(BaseModel):
+    question_id: str
+    selected_option: int | None
+    is_correct: bool
+    time_spent_ms: int
+    hesitation_count: int
+
+class QuizAttemptModel(BaseModel):
+    score: int
+    answers: list[QuizAttemptAnswerModel]
 
 
 QUIZ_SCHEMA = {
@@ -120,8 +131,8 @@ class QuizUseCase:
         lecture_text = "\n\n".join(selected_blocks)
 
         prompt_set = get_prompt_set(TaskType.QUIZ, locale)
-        sys_prompt = prompt_set.system.safe_substitute(num_questions=num_questions)
-        footer = prompt_set.footer.safe_substitute(num_questions=num_questions)
+        sys_prompt = prompt_set.system.substitute(num_questions=num_questions)
+        footer = prompt_set.footer.substitute(num_questions=num_questions)
 
         user_text = f"--- Document Content ---\n\n{lecture_text}\n\n{footer}"
 
@@ -202,3 +213,137 @@ class QuizUseCase:
                 for q in questions
             ],
         }
+
+    async def submit_attempt(self, db: AsyncSession, quiz_id: str, user_id: str, attempt_data: QuizAttemptModel) -> str:
+        from app.infrastructure.db.models import QuizAttempt, QuizAttemptAnswer
+        quiz_uuid = uuid.UUID(quiz_id)
+        user_uuid = uuid.UUID(user_id)
+
+        # verify quiz exists and user owns it
+        quiz_query = await db.execute(
+            select(Quiz).where(Quiz.id == quiz_uuid, Quiz.user_id == user_uuid)
+        )
+        if not quiz_query.scalar_one_or_none():
+            raise QuizDomainException("Quiz not found or unauthorized.")
+
+        attempt = QuizAttempt(quiz_id=quiz_uuid, user_id=user_uuid, score=attempt_data.score)
+        db.add(attempt)
+        await db.flush()
+
+        for ans in attempt_data.answers:
+            attempt_answer = QuizAttemptAnswer(
+                attempt_id=attempt.id,
+                question_id=uuid.UUID(ans.question_id),
+                selected_option=ans.selected_option,
+                is_correct=ans.is_correct,
+                time_spent_ms=ans.time_spent_ms,
+                hesitation_count=ans.hesitation_count,
+            )
+            db.add(attempt_answer)
+
+        await db.commit()
+        return str(attempt.id)
+
+    async def get_analytics(self, db: AsyncSession, quiz_id: str, user_id: str) -> dict[str, Any]:
+        from app.infrastructure.db.models import QuizAttempt, QuizAttemptAnswer
+        quiz_uuid = uuid.UUID(quiz_id)
+        user_uuid = uuid.UUID(user_id)
+
+        # verify quiz exists and user owns it
+        quiz_query = await db.execute(
+            select(Quiz).where(Quiz.id == quiz_uuid, Quiz.user_id == user_uuid)
+        )
+        if not quiz_query.scalar_one_or_none():
+            raise QuizDomainException("Quiz not found or unauthorized.")
+
+        # Get all attempts for this quiz
+        attempts_query = await db.execute(
+            select(QuizAttempt).where(QuizAttempt.quiz_id == quiz_uuid).order_by(QuizAttempt.created_at)
+        )
+        attempts = attempts_query.scalars().all()
+
+        if not attempts:
+            return {
+                "mastery_score": 0,
+                "avg_time_ms": 0,
+                "total_hesitations": 0,
+                "trend": [],
+                "blind_spot_matrix": []
+            }
+
+        trend = [{"attempt": i + 1, "score": a.score} for i, a in enumerate(attempts)]
+        latest_attempt = attempts[-1]
+
+        # Get answers for latest attempt for the matrix
+        answers_query = await db.execute(
+            select(QuizAttemptAnswer).where(QuizAttemptAnswer.attempt_id == latest_attempt.id)
+        )
+        answers = answers_query.scalars().all()
+
+        total_time = sum(a.time_spent_ms for a in answers)
+        total_hesitations = sum(a.hesitation_count for a in answers)
+        avg_time = int(total_time / len(answers)) if answers else 0
+
+        blind_spot_matrix = [
+            {
+                "question_id": str(a.question_id),
+                "time_spent_ms": a.time_spent_ms,
+                "is_correct": a.is_correct,
+            }
+            for a in answers
+        ]
+
+        return {
+            "mastery_score": latest_attempt.score,
+            "avg_time_ms": avg_time,
+            "total_hesitations": total_hesitations,
+            "trend": trend,
+            "blind_spot_matrix": blind_spot_matrix
+        }
+
+    async def get_insights(self, db: AsyncSession, attempt_id: str, user_id: str, locale: Locale) -> str:
+        from app.infrastructure.db.models import QuizAttempt, QuizAttemptAnswer, QuizQuestion
+        attempt_uuid = uuid.UUID(attempt_id)
+        user_uuid = uuid.UUID(user_id)
+
+        # Get the attempt and verify ownership
+        attempt_query = await db.execute(
+            select(QuizAttempt).where(QuizAttempt.id == attempt_uuid, QuizAttempt.user_id == user_uuid)
+        )
+        attempt = attempt_query.scalar_one_or_none()
+        if not attempt:
+            raise QuizDomainException("Quiz attempt not found or unauthorized.")
+
+        # Get incorrect answers and their corresponding questions
+        answers_query = await db.execute(
+            select(QuizAttemptAnswer, QuizQuestion)
+            .join(QuizQuestion, QuizQuestion.id == QuizAttemptAnswer.question_id)
+            .where(QuizAttemptAnswer.attempt_id == attempt_uuid, QuizAttemptAnswer.is_correct == False)
+        )
+        incorrect_items = answers_query.all()
+
+        if not incorrect_items:
+            return "Excellent work! You answered all questions correctly. You have mastered this material." if locale == Locale.EN else "عمل ممتاز! لقد أجبت على جميع الأسئلة بشكل صحيح. لقد أتقنت هذه المادة."
+
+        # Compile mistakes for the LLM
+        mistakes_context = []
+        for ans, q in incorrect_items:
+            mistakes_context.append(
+                f"Question: {q.question_text}\n"
+                f"Correct Answer: {q.options[q.correct_option_index]}\n"
+                f"Student Chose: {q.options[ans.selected_option] if ans.selected_option is not None else 'Skipped'}\n"
+            )
+        
+        prompt = (
+            "You are an expert AI tutor. Review the following incorrect answers from a student's quiz attempt.\n"
+            "Generate a short, encouraging, and highly actionable paragraph (maximum 3-4 sentences) advising the student on which concepts they need to review based on their specific mistakes.\n"
+            "Do NOT list the questions. Just summarize the underlying concepts they missed and advise them.\n"
+            f"Respond in {'Arabic' if locale == Locale.AR else 'English'}.\n\n"
+            "Mistakes:\n" + "\n".join(mistakes_context)
+        )
+        
+        response = await self._llm.generate(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
+        )
+        return response.content

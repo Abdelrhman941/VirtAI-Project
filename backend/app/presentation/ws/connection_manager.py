@@ -209,10 +209,27 @@ class WSConnectionManager:
                                         await ws.close(code=4001, reason="Session invalidated")
                                     except Exception:
                                         pass
-                                    logger.info(
-                                        f"[WSManager] Closed connection | user={uid} | session_id={sid or 'all'} | "
-                                        f"reason=Session invalidated via PubSub"
-                                    )
+                                        logger.info(
+                                            f"[WSManager] Closed connection | user={uid} | session_id={sid or 'all'} | "
+                                            f"reason=Session invalidated via PubSub"
+                                        )
+                            elif event == "doc_status":
+                                sid = data.get("session_id")
+                                uid = data.get("user_id")
+                                if uid:
+                                    async with self._lock:
+                                        # If session_id is tied, we could prioritize it, but generally progress should go to all user tabs
+                                        sockets = set(self._user_to_ws.get(uid, []))
+                                        
+                                        payload = {
+                                            "type": "doc_status",
+                                            "data": data.get("data", {})
+                                        }
+                                        for ws in sockets:
+                                            try:
+                                                await ws.send_text(json.dumps(payload))
+                                            except Exception:
+                                                pass
                         except Exception as e:
                             logger.error(f"[WSManager] Error processing pubsub message: {e}")
 

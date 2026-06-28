@@ -29,6 +29,7 @@ class DomainDocument:
     error_message: str | None
     retrieval_scope: str
     scope_id: UUID | None
+    file_size: int
 
 
 def _to_domain(doc: Document) -> DomainDocument:
@@ -48,6 +49,7 @@ def _to_domain(doc: Document) -> DomainDocument:
         error_message=getattr(doc, "error_message", None),
         retrieval_scope=getattr(doc, "retrieval_scope", "GLOBAL"),
         scope_id=getattr(doc, "scope_id", None),
+        file_size=getattr(doc, "file_size", 0),
     )
 
 
@@ -73,7 +75,6 @@ class DocumentCrudRepository:
 
         scope = "SESSION" if session_id else "GLOBAL"
         s_id = require_uuid(session_id, field_name="session_id") if session_id else None
-
         doc_id = require_uuid(id, field_name="id") if id else None
 
         doc = Document(

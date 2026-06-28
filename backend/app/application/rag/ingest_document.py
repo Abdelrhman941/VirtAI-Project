@@ -12,6 +12,7 @@ from app.domain.rag.ports import (
     ChunkingStrategy,
     DocumentParser,
     EmbeddingProvider,
+    VisionPort,
 )
 from app.domain.storage.ports import StorageProvider
 from app.shared.config import get_settings
@@ -31,6 +32,7 @@ class IngestDocumentUseCase:
         parser: DocumentParser | None,
         chunker: ChunkingStrategy | None,
         embedder: EmbeddingProvider | None,
+        vision_provider: VisionPort | None,
         db_session_factory: Callable[[], AbstractAsyncContextManager[AsyncSession]],
         crud_repo_factory: Callable[[AsyncSession], Any],
         state_repo_factory: Callable[[AsyncSession], Any],
@@ -41,6 +43,7 @@ class IngestDocumentUseCase:
         self.parser = parser
         self.chunker = chunker
         self.embedder = embedder
+        self.vision_provider = vision_provider
         self.db_session_factory = db_session_factory
         self.crud_repo_factory = crud_repo_factory
         self.state_repo_factory = state_repo_factory
@@ -84,7 +87,12 @@ class IngestDocumentUseCase:
             raise ValueError("Parser is required for this stage")
         raw_text = await self.parser.parse_bytes(file_bytes, file_type)
 
+        # Vision processing for standalone images is handled by ImageMarkdownExtractor.
+        # For PDFs, embedded images are completely ignored to save API costs and prevent rate limits.
+        
+        # 3. NORMALIZATION (Safe to do now, no Base64 to corrupt or explode tokens)
         normalized = normalize_text(raw_text)
+
         if len(normalized.strip()) == 0:
             raise EmptyDocumentError("Document parsed to empty text")
 
@@ -158,13 +166,17 @@ class IngestDocumentUseCase:
             # Index batch in short transaction
             chunks_to_store = []
             for j, (text, emb) in enumerate(zip(batch_texts, embeddings, strict=False)):
+                chunk_metadata = {"source": filename}
+                if "[Visual content:" in text:
+                    chunk_metadata["source_type"] = "vision"
+                    
                 chunk = DocumentChunk(
                     id=None,
                     document_id=doc_uuid,
                     chunk_text=text,
                     chunk_order=i + j,
                     embedding=emb,
-                    metadata={"source": filename},
+                    metadata=chunk_metadata,
                     chunk_version=next_version,
                     is_active=False,  # Shadow indexing
                     retrieval_scope=retrieval_scope,
@@ -226,12 +238,15 @@ class IngestDocumentUseCase:
             await state_repo.mark_completed(doc_id)
             await db.commit()
 
-    async def cleanup_failed_job(self, doc_id: str, version: int, storage_key: str) -> None:
+    async def cleanup_failed_job(self, doc_id: str, version: int | None, storage_key: str) -> None:
         """Cleans up completely on cancellation or permanent failure (zero retrieval pollution)."""
         has_other_chunks = False
         async with self.db_session_factory() as db:
             integrity_repo = self.integrity_repo_factory(db)
-            await integrity_repo.delete_chunks_by_version(doc_id, version)
+            if version is not None:
+                await integrity_repo.delete_chunks_by_version(doc_id, version)
+            else:
+                await integrity_repo.delete_all_chunks(doc_id)
             has_other_chunks = await integrity_repo.has_any_chunks(doc_id)
             await db.commit()
 

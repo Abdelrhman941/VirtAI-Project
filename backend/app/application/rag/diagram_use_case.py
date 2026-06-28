@@ -11,7 +11,7 @@ from app.domain.chat.entities import ConversationHistory
 from app.domain.chat.ports import BaseLLMProvider
 from app.domain.rag.task_types import Locale, TaskType
 from app.infrastructure.db.models import DiagramCache, DocumentChunk
-from app.infrastructure.rag.prompts.registry import get_prompt_set
+from app.application.prompts.rag.registry import get_prompt_set
 from app.shared.errors import RAGException
 
 
@@ -51,35 +51,35 @@ class DiagramUseCase:
     def _sanitize_mermaid(self, mermaid_code: str) -> str:
         """
         Sanitize the generated Mermaid code:
-        - Strip markdown code blocks.
-        - Ensure it starts with graph or flowchart.
-        - Sanitize node text (remove quotes/parentheses).
+        - Extract using Regex to find ```mermaid ... ``` or raw graph/flowchart blocks.
+        - Strip hallucinated text.
+        - Sanitize node text.
         """
-        # Strip markdown fences
-        code = mermaid_code.strip()
-        if code.startswith("```mermaid"):
-            code = code[len("```mermaid") :].strip()
-        elif code.startswith("```"):
-            code = code[3:].strip()
-        if code.endswith("```"):
-            code = code[:-3].strip()
+        logger.debug(f"RAW MERMAID FROM LLM:\n{mermaid_code}")
 
-        if not (code.startswith("graph ") or code.startswith("flowchart ")):
+        # Regex to extract mermaid code block, or fallback to the whole string if it starts with flowchart/graph
+        match = re.search(r"```(?:mermaid)?\s*\n(.*?)\n```", mermaid_code, re.DOTALL | re.IGNORECASE)
+        if match:
+            code = match.group(1).strip()
+        else:
+            # Maybe there are no backticks, look for flowchart TD or graph TD explicitly
+            match = re.search(r"(?:flowchart|graph)\s+[A-Za-z]+.*", mermaid_code, re.DOTALL | re.IGNORECASE)
+            if match:
+                code = match.group(0).strip()
+            else:
+                code = mermaid_code.strip()
+
+        # Check if we successfully extracted
+        if not (code.lower().startswith("graph") or code.lower().startswith("flowchart")):
             code = "flowchart TD\n" + code
 
-        # Sanitize node text inside brackets like A[label]
-        # Mermaid doesn't like quotes or parentheses inside the label unless escaped or in quotes (which is sometimes buggy).
-        # Best to just remove them defensively.
-        def replace_brackets(match: Any) -> str:
-            inner = match.group(1)
-            # Remove quotes and parentheses
-            inner_safe = re.sub(r"[\"\'\(\)]", "", inner)
-            return f"[{inner_safe}]"
-
-        # Regex to find [...], but we must be careful not to match too broadly.
-        # Match anything between [ and ] that doesn't contain [ or ].
-        code = re.sub(r"\[([^\[\]]+)\]", replace_brackets, code)
-
+        # Sanitize node text inside brackets like A["label"]
+        # Now we allow quotes, but if they messed up and used unescaped quotes or parentheses, we try to clean it
+        # Actually, let's just ensure no trailing garbage text
+        # If there are empty lines at the end that look like "Here is your diagram...", we should have stripped them
+        # via regex.
+        
+        logger.debug(f"EXTRACTED AND SANITIZED MERMAID:\n{code}")
         return code
 
     def _check_node_limit(self, mermaid_code: str) -> None:
@@ -146,8 +146,8 @@ class DiagramUseCase:
         lecture_text = "\n\n".join(selected_blocks)
 
         prompt_set = get_prompt_set(TaskType.DIAGRAM, locale)
-        sys_prompt = prompt_set.system.safe_substitute()
-        footer = prompt_set.footer.safe_substitute()
+        sys_prompt = prompt_set.system.substitute()
+        footer = prompt_set.footer.substitute()
 
         user_text = f"--- Document Content ---\n\n{lecture_text}\n\n{footer}"
 

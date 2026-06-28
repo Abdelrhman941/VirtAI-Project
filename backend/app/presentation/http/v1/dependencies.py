@@ -13,7 +13,7 @@ Provides FastAPI dependency injection for:
 from typing import Annotated
 
 import redis.asyncio as aioredis
-from fastapi import Depends, Request
+from fastapi import Depends, Request, WebSocket
 
 from app.application.chat.session_manager import SessionManager
 
@@ -115,17 +115,19 @@ from app.infrastructure.vector.pgvector_store import SessionManagedPGVectorStore
 _chat_use_case: ChatUseCase | None = None
 
 
-async def get_chat_use_case(request: Request) -> ChatUseCase:
+async def get_chat_use_case(request: Request = None, websocket: WebSocket = None) -> ChatUseCase:
     """Dependency injection for ChatUseCase."""
     global _chat_use_case
     if _chat_use_case is None:
-
-        llm = request.app.state.model_policy.router.get_llm_chain()
+        conn = request or websocket
+        if conn is None:
+            raise RuntimeError("Either request or websocket must be provided to get_chat_use_case")
+        llm = conn.app.state.model_policy.router.get_llm_chain()
 
         retrieval = RetrievalUseCase(
-            embedder=request.app.state.embedder,
+            embedder=conn.app.state.embedder,
             vector_store=SessionManagedPGVectorStore(),
-            reranker=request.app.state.reranker,
+            reranker=conn.app.state.reranker,
             budget_manager=TokenBudgetManager(),
         )
         from app.infrastructure.cache.chat_context_cache import ChatContextCache
@@ -133,7 +135,7 @@ async def get_chat_use_case(request: Request) -> ChatUseCase:
         _chat_use_case = ChatUseCase(
             llm_provider=llm,
             retrieval_use_case=retrieval,
-            intent_classifier=getattr(request.app.state, "intent_classifier", None),
+            intent_classifier=getattr(conn.app.state, "intent_classifier", None),
             context_cache=ChatContextCache(),
         )
 

@@ -10,7 +10,7 @@ const Setup = lazy(() => import('@/pages/Setup'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const AuthPage = lazy(() => import('@/pages/Auth'));
 const AuthCallbackHandler = lazy(() => import('@/pages/AuthCallback'));
-const Quiz = lazy(() => import('@/pages/Quiz'));
+
 const Help = lazy(() => import('@/pages/Help'));
 
 interface RouteErrorBoundaryProps {
@@ -73,9 +73,7 @@ export default function AppRoutes() {
         <Route path="/classroom/:sessionId?" element={
           <RouteErrorBoundary><Classroom /></RouteErrorBoundary>
         } />
-        <Route path="/quiz" element={
-          <RouteErrorBoundary><Quiz /></RouteErrorBoundary>
-        } />
+
         <Route path="/help" element={
           <RouteErrorBoundary><Help /></RouteErrorBoundary>
         } />

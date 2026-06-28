@@ -27,6 +27,7 @@ export interface Document {
   chunks_processed?: number;
   total_chunks?: number;
   tokens_used?: number;
+  file_size?: number;
   metadata?: DocumentMetadata;
 }
 

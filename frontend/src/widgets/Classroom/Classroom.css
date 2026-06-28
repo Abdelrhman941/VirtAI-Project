@@ -266,7 +266,7 @@
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .classroom-action-btn:disabled {
@@ -523,7 +523,6 @@
   padding: 4.5rem 1.5rem 1.25rem;
   display: flex;
   flex-direction: column;
-  scroll-behavior: smooth;
 }
 
 .chat-stream {
@@ -1837,6 +1836,7 @@
   .toast,
   .toast-progress,
   .streaming-cursor,
+  .md-streaming-cursor,
   .avatar-skeleton-label,
   .typing-dot {
     animation: none !important;
@@ -1885,52 +1885,13 @@
   color: #ef4444;
 }
 
-/* =============== Markdown Typography Overrides =============== */
-
-/* Fix excessive margins between list items and paragraphs inside li */
-.markdown-body li {
-  margin-top: 0.35rem !important;
-  margin-bottom: 0.35rem !important;
-}
-
-/* Consistent typography and line-height */
-.markdown-body p,
-.markdown-body li {
-  line-height: 1.6 !important;
-  max-width: 65ch;
-}
-
-.markdown-body li > p {
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-}
-
-/* Ensure proper indentation for lists and nested lists */
-.markdown-body ul, 
-.markdown-body ol {
-  padding-left: 1.5rem !important;
-}
-
-.markdown-body ul {
-  list-style-type: disc !important;
-}
-
-.markdown-body ol {
-  list-style-type: decimal !important;
-}
-
-.markdown-body ul ul,
-.markdown-body ul ol,
-.markdown-body ol ul,
-.markdown-body ol ol {
-  margin-top: 0.25rem !important;
-  margin-bottom: 0 !important;
-  padding-left: 1.5rem !important;
-}
-
-.ai-message-wrapper .markdown-body p,
-.ai-message-wrapper .markdown-body > p {
-  max-width: 75ch;
-}
+/* =============== Markdown Typography Overrides ===============
+ *
+ * Removed: All .markdown-body !important overrides have been
+ * consolidated into MarkdownRenderer.css (scoped under .md-root).
+ *
+ * The .md-root token system is the single source of truth for
+ * markdown rendering in VirtAI. Do not add markdown overrides here.
+ * ═══════════════════════════════════════════════════════════════ */
 
 

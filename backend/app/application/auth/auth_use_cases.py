@@ -220,3 +220,279 @@ async def rotate_refresh_token_version(
 async def revoke_user_token_version(repo: UserRepositoryPort, user_id: UUID) -> UserEntity | None:
     """Force all existing access and refresh tokens for a user to become stale."""
     return await repo.force_increment_refresh_token_version(user_id)
+
+from dataclasses import dataclass
+from app.shared.errors import AuthenticationException
+
+@dataclass
+class LoginResult:
+    access_token: str
+    refresh_token: str
+    user: UserEntity
+
+class RateLimitExceededError(AuthenticationException):
+    def __init__(self, retry_after: int) -> None:
+        self.retry_after = retry_after
+        super().__init__(message="Too many requests", details={"retry_after": retry_after})
+
+class AccountLockedError(AuthenticationException):
+    def __init__(self) -> None:
+        super().__init__(message="Account temporarily locked due to repeated failed attempts")
+
+class InvalidCredentialsError(AuthenticationException):
+    def __init__(self) -> None:
+        super().__init__(message="Invalid email or password")
+
+class InactiveAccountError(AuthenticationException):
+    def __init__(self) -> None:
+        super().__init__(message="User account is inactive")
+
+class LoginUseCase:
+    def __init__(self, repo: UserRepositoryPort) -> None:
+        self.repo = repo
+
+    async def execute(self, email: str, password: str, client_ip: str, user_agent: str) -> LoginResult:
+        from app.shared.metrics import auth_login_attempts, auth_login_failures
+        from app.infrastructure.cache.rate_limiter import check_rate_limit
+        from app.shared.config import get_settings
+        from app.infrastructure.cache.redis_client import get_redis
+        from redis.asyncio import Redis as AsyncRedis
+        from redis.asyncio.client import Pipeline
+        from app.shared.security import create_access_token, create_refresh_token, decode_auth_token
+        from app.shared.errors import InvalidAuthStateError
+        from app.infrastructure.cache.refresh_token_family import store_initial_refresh_token
+        from app.infrastructure.cache.auth_session_cache import cache_auth_session
+        
+        auth_login_attempts.labels(status="attempt", provider="local").inc()
+        
+        settings = get_settings()
+        allowed = await check_rate_limit(
+            identifier=f"auth:login:{client_ip}",
+            limit=settings.RATE_LIMIT_LOGIN_REQUESTS,
+            window=settings.RATE_LIMIT_LOGIN_WINDOW,
+        )
+        if not allowed:
+            raise RateLimitExceededError(retry_after=settings.RATE_LIMIT_LOGIN_WINDOW)
+
+        redis_client: AsyncRedis = get_redis()
+        key = f"virtai:auth:lockout:{email}"
+        failures: bytes | None = await redis_client.execute_command("GET", key)
+        if failures and int(failures) >= 10:
+            raise AccountLockedError()
+
+        user = await authenticate_user(self.repo, email, password)
+        if user is None:
+            pipe: Pipeline = redis_client.pipeline()
+            pipe.incr(key)
+            pipe.expire(key, 900)
+            await pipe.execute()
+            
+            auth_login_failures.labels(reason="invalid_credentials").inc()
+            raise InvalidCredentialsError()
+            
+        if not user.is_active:
+            auth_login_failures.labels(reason="inactive_account").inc()
+            raise InactiveAccountError()
+
+        refresh = create_refresh_token(user.id, user.refresh_token_version, family_id=None)
+        refresh_payload = decode_auth_token(refresh, expected_type="refresh")
+        if refresh_payload.family_id is None:
+            raise InvalidAuthStateError("Refresh token missing family")
+        resolved_family_id = str(refresh_payload.family_id)
+        access = create_access_token(user.id, user.refresh_token_version, family_id=resolved_family_id)
+
+        max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+        await store_initial_refresh_token(
+            str(user.id),
+            resolved_family_id,
+            refresh,
+            refresh_payload.jti,
+            max_age,
+            client_ip=client_ip,
+            user_agent=user_agent,
+        )
+
+        await cache_auth_session(str(user.id), self._serialize_user(user))
+        
+        auth_login_attempts.labels(status="success", provider="local").inc()
+        return LoginResult(access_token=access, refresh_token=refresh, user=user)
+
+    def _serialize_user(self, user: UserEntity) -> dict:
+        return {
+            "id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "username": user.username,
+            "provider": user.provider.value,
+            "google_id": user.google_id,
+            "setup_complete": user.setup_complete,
+            "is_active": user.is_active,
+            "refresh_token_version": user.refresh_token_version,
+            "created_at": user.created_at.isoformat(),
+            "updated_at": user.updated_at.isoformat(),
+        }
+
+@dataclass
+class SignupResult:
+    access_token: str
+    refresh_token: str
+    user: UserEntity
+
+class EmailAlreadyRegisteredError(AuthenticationException):
+    def __init__(self) -> None:
+        super().__init__(message="Email already registered")
+
+class SignupUseCase:
+    def __init__(self, repo: UserRepositoryPort) -> None:
+        self.repo = repo
+
+    async def execute(self, full_name: str, email: str, password: str, client_ip: str, user_agent: str) -> SignupResult:
+        from app.infrastructure.cache.rate_limiter import check_rate_limit
+        from app.shared.config import get_settings
+        
+        settings = get_settings()
+        allowed = await check_rate_limit(
+            identifier=f"auth:signup:{client_ip}",
+            limit=settings.RATE_LIMIT_SIGNUP_REQUESTS,
+            window=settings.RATE_LIMIT_SIGNUP_WINDOW,
+        )
+        if not allowed:
+            raise RateLimitExceededError(retry_after=settings.RATE_LIMIT_SIGNUP_WINDOW)
+
+        existing = await get_user_by_email(self.repo, email)
+        if existing is not None:
+            raise EmailAlreadyRegisteredError()
+            
+        user = await register_user(self.repo, full_name, email, password)
+
+        from app.shared.security import create_access_token, create_refresh_token, decode_auth_token
+        from app.shared.errors import InvalidAuthStateError
+        from app.infrastructure.cache.refresh_token_family import store_initial_refresh_token
+        from app.infrastructure.cache.auth_session_cache import cache_auth_session
+
+        refresh = create_refresh_token(user.id, user.refresh_token_version, family_id=None)
+        refresh_payload = decode_auth_token(refresh, expected_type="refresh")
+        if refresh_payload.family_id is None:
+            raise InvalidAuthStateError("Refresh token missing family")
+        resolved_family_id = str(refresh_payload.family_id)
+        access = create_access_token(user.id, user.refresh_token_version, family_id=resolved_family_id)
+
+        max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+        await store_initial_refresh_token(
+            str(user.id),
+            resolved_family_id,
+            refresh,
+            refresh_payload.jti,
+            max_age,
+            client_ip=client_ip,
+            user_agent=user_agent,
+        )
+
+        await cache_auth_session(str(user.id), self._serialize_user(user))
+        
+        return SignupResult(access_token=access, refresh_token=refresh, user=user)
+
+    def _serialize_user(self, user: UserEntity) -> dict:
+        return {
+            "id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "username": user.username,
+            "provider": user.provider.value,
+            "google_id": user.google_id,
+            "setup_complete": user.setup_complete,
+            "is_active": user.is_active,
+            "refresh_token_version": user.refresh_token_version,
+            "created_at": user.created_at.isoformat(),
+            "updated_at": user.updated_at.isoformat(),
+        }
+
+class InvalidOAuthStateError(AuthenticationException):
+    def __init__(self) -> None:
+        super().__init__(message="Invalid or expired state parameter")
+
+@dataclass
+class GoogleLoginResult:
+    access_token: str
+    refresh_token: str
+    user: UserEntity
+
+class GoogleLoginUseCase:
+    def __init__(self, repo: UserRepositoryPort) -> None:
+        self.repo = repo
+
+    async def execute(self, code: str, state: str, client_ip: str, user_agent: str) -> GoogleLoginResult:
+        from app.infrastructure.cache.rate_limiter import check_rate_limit
+        from app.shared.config import get_settings
+        from app.shared.metrics import auth_login_attempts, auth_login_failures
+        from app.infrastructure.cache.redis_client import get_redis
+        from app.application.auth.auth_use_cases import exchange_google_code, get_or_create_google_user
+        
+        auth_login_attempts.labels(status="attempt", provider="google").inc()
+        
+        settings = get_settings()
+        allowed = await check_rate_limit(
+            identifier=f"auth:google_callback:{client_ip}",
+            limit=settings.RATE_LIMIT_LOGIN_REQUESTS,
+            window=settings.RATE_LIMIT_LOGIN_WINDOW,
+        )
+        if not allowed:
+            raise RateLimitExceededError(retry_after=settings.RATE_LIMIT_LOGIN_WINDOW)
+
+        redis_client = get_redis()
+        state_key = f"oauth:state:{state}"
+        is_valid_state = await redis_client.execute_command("GET", state_key)
+        if not is_valid_state:
+            auth_login_failures.labels(reason="invalid_oauth_state").inc()
+            raise InvalidOAuthStateError()
+        await redis_client.execute_command("DEL", state_key)
+
+        google_info = await exchange_google_code(code)
+        user = await get_or_create_google_user(self.repo, google_info)
+        
+        if not user.is_active:
+            auth_login_failures.labels(reason="inactive_account").inc()
+            raise InactiveAccountError()
+
+        from app.shared.security import create_access_token, create_refresh_token, decode_auth_token
+        from app.shared.errors import InvalidAuthStateError
+        from app.infrastructure.cache.refresh_token_family import store_initial_refresh_token
+        from app.infrastructure.cache.auth_session_cache import cache_auth_session
+
+        refresh = create_refresh_token(user.id, user.refresh_token_version, family_id=None)
+        refresh_payload = decode_auth_token(refresh, expected_type="refresh")
+        if refresh_payload.family_id is None:
+            raise InvalidAuthStateError("Refresh token missing family")
+        resolved_family_id = str(refresh_payload.family_id)
+        access = create_access_token(user.id, user.refresh_token_version, family_id=resolved_family_id)
+
+        max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+        await store_initial_refresh_token(
+            str(user.id),
+            resolved_family_id,
+            refresh,
+            refresh_payload.jti,
+            max_age,
+            client_ip=client_ip,
+            user_agent=user_agent,
+        )
+
+        await cache_auth_session(str(user.id), self._serialize_user(user))
+        
+        auth_login_attempts.labels(status="success", provider="google").inc()
+        return GoogleLoginResult(access_token=access, refresh_token=refresh, user=user)
+
+    def _serialize_user(self, user: UserEntity) -> dict:
+        return {
+            "id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "username": user.username,
+            "provider": user.provider.value,
+            "google_id": user.google_id,
+            "setup_complete": user.setup_complete,
+            "is_active": user.is_active,
+            "refresh_token_version": user.refresh_token_version,
+            "created_at": user.created_at.isoformat(),
+            "updated_at": user.updated_at.isoformat(),
+        }

@@ -63,7 +63,6 @@ export function createEventRouter(): EventRouter {
 
         if (message.type === 'ready') {
           callbacks.onReady(message);
-          return;
         }
 
         if (message.type === 'pong') {
@@ -74,11 +73,13 @@ export function createEventRouter(): EventRouter {
         }
 
         const typeHandlers = handlers[message.type];
-        const ignoredTypes = ['chat.abort'];
+        const ignoredTypes = ['chat.abort', 'ready'];
 
         if (typeHandlers && typeHandlers.size > 0) {
-          const data: EventRouterPayload = message.data || ({} as EventRouterPayload);
-          typeHandlers.forEach((handler) => handler(data));
+          const payloadData: EventRouterPayload = (message.data !== undefined && message.data !== null)
+            ? message.data 
+            : ('data' in message && message.data === null ? {} : message) as unknown as EventRouterPayload;
+          typeHandlers.forEach((handler) => handler(payloadData));
         } else if (import.meta.env.DEV && !ignoredTypes.includes(message.type)) {
           console.warn('[WS] Unknown message type:', message.type);
         }

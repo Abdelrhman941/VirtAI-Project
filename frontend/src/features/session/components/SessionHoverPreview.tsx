@@ -21,9 +21,11 @@ export default function SessionHoverPreview({
   useEffect(() => {
     if (isHovered) {
       timerRef.current = setTimeout(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setShow(true);
       }, 2000); // 2s delay
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShow(false);
       if (timerRef.current) clearTimeout(timerRef.current);
     }

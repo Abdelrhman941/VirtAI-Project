@@ -26,11 +26,11 @@ def test_format_prompt_truncation():
     assert messages[0].role == MessageRole.SYSTEM
     assert messages[1].role == MessageRole.USER
 
-    # Check that tokens are constrained
+    # Check that tokens are constrained by TaskType.QUIZ budget (20000)
     sys_tokens = budget_manager.count_tokens(messages[0].content)
     usr_tokens = budget_manager.count_tokens(messages[1].content)
 
-    assert (sys_tokens + usr_tokens) <= 2500
+    assert (sys_tokens + usr_tokens) <= 20000
 
 
 def test_format_final_citations():
