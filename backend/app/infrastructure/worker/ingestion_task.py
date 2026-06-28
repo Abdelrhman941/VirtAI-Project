@@ -60,8 +60,12 @@ async def run_ingestion_task(
     try:
         acquired = await redis_client.set(lock_key, job_id, nx=True, ex=LOCK_TTL)
         if not acquired:
-            logger.warning({**log_ctx, "event": "job_skipped_duplicate"})
-            return  # Another worker holds the lock — silent exit
+            existing_job_id = await redis_client.get(lock_key)
+            if existing_job_id and existing_job_id.decode() != job_id:
+                logger.warning({**log_ctx, "event": "job_skipped_duplicate"})
+                return  # Another worker holds the lock — silent exit
+            # We already hold it from a previous attempt (e.g., worker crash and retry)
+            await redis_client.expire(lock_key, LOCK_TTL)
 
         await _run_ingestion(ctx, doc_id, user_id, filename, file_type, storage_key, log_ctx)
 

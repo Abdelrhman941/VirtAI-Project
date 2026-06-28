@@ -106,6 +106,7 @@ async def validate_file_magic(file: UploadFile, declared_ext: str) -> None:
                 status_code=400, detail=f"File appears to be {kind.mime}, not text/markdown"
             )
         import codecs
+        import anyio
 
         decoder = codecs.getincrementaldecoder("utf-8")()
         await file.seek(0)
@@ -113,9 +114,9 @@ async def validate_file_magic(file: UploadFile, declared_ext: str) -> None:
             while True:
                 chunk = await file.read(65536)
                 if not chunk:
-                    decoder.decode(b"", True)
+                    await anyio.to_thread.run_sync(decoder.decode, b"", True)
                     break
-                decoder.decode(chunk)
+                await anyio.to_thread.run_sync(decoder.decode, chunk)
         except UnicodeDecodeError:
             raise HTTPException(status_code=400, detail="File is not valid UTF-8") from None
 
