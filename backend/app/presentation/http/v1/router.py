@@ -265,11 +265,16 @@ async def websocket_endpoint(
         )
     finally:
         if handler and getattr(handler, "session", None) and handler.session.session_id:
-            await connection_manager.unregister(handler.session.session_id, websocket)
-            await session_manager.disconnect_session(handler.session.session_id)
-            logger.info(
-                f"[WS] Session disconnected (kept for resume) | id={handler.session.session_id}"
-            )
+            was_active = await connection_manager.unregister(handler.session.session_id, websocket)
+            if was_active:
+                await session_manager.disconnect_session(handler.session.session_id)
+                logger.info(
+                    f"[WS] Session disconnected (kept for resume) | id={handler.session.session_id}"
+                )
+            else:
+                logger.info(
+                    f"[WS] Old socket unregistered, session {handler.session.session_id} remains active via new socket"
+                )
 
 @router.websocket("/rag/explain/{document_id}")
 async def explain_websocket(

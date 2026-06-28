@@ -27,10 +27,10 @@ export function useClassroomAudio() {
 
     // Handle filler separately (no sequence waiting)
     const fillerChunk = sessionChunks['filler'];
-    if (fillerChunk && fillerChunk.url && fillerChunk.cues) {
+    if (fillerChunk && fillerChunk.url) {
       const ctx = getAudioContext();
       if (ctx.state === 'suspended') ctx.resume();
-      enqueueAudioUrl(fillerChunk.url, fillerChunk.cues, mouthCuesRef);
+      enqueueAudioUrl(fillerChunk.url, fillerChunk.cues || [], mouthCuesRef);
       delete sessionChunks['filler'];
     }
 
@@ -39,10 +39,10 @@ export function useClassroomAudio() {
     let playedAny = false;
     while (true) {
       const nextChunk = sessionChunks[expected.toString()];
-      if (nextChunk && nextChunk.url && nextChunk.cues) {
+      if (nextChunk && nextChunk.url) {
         const ctx = getAudioContext();
         if (ctx.state === 'suspended') ctx.resume();
-        enqueueAudioUrl(nextChunk.url, nextChunk.cues, mouthCuesRef);
+        enqueueAudioUrl(nextChunk.url, nextChunk.cues || [], mouthCuesRef);
         
         if (chunksRef.current[baseId]?.[expected.toString()]) {
           delete chunksRef.current[baseId][expected.toString()];
@@ -131,11 +131,11 @@ export function useClassroomAudio() {
       
       keys.forEach(idx => {
         const chunk = sessionChunks[idx.toString()];
-        if (chunk && chunk.url && chunk.cues) {
+        if (chunk && chunk.url) {
           const ctx = getAudioContext();
           if (ctx.state === 'suspended') ctx.resume();
           console.warn(`[AudioSequence] Eager reconciliation flush. Pushing out-of-order chunk ${idx}`);
-          enqueueAudioUrl(chunk.url, chunk.cues, mouthCuesRef);
+          enqueueAudioUrl(chunk.url, chunk.cues || [], mouthCuesRef);
           
           if (chunksRef.current[baseId]?.[idx.toString()]) {
             delete chunksRef.current[baseId][idx.toString()];

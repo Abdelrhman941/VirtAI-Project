@@ -5,15 +5,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from loguru import logger
 from pydantic import ValidationError
 
-from app.application.chat.session_manager_v2 import (
-    DomainEvent,
-    IncomingMessage,
-    OutboundSender,
-    SessionManager,
-)
-
-# Global SessionManager instance shared across all WebSocket connections
-global_session_manager = SessionManager()
+from app.application.chat.session_manager import SessionManager, ConversationSession
 
 
 class FastAPIOutboundSender(OutboundSender):
@@ -41,9 +33,9 @@ class WebSocketHandler:
         **kwargs: Any,
     ):
         self.ws = websocket
-        self.session_manager = global_session_manager
+        self.session_manager: SessionManager = kwargs.get("session_manager")
         self.user_id = user_id
-        self.session = kwargs.get("session")
+        self.session: ConversationSession | None = kwargs.get("session")
         self.session_id: str | None = self.session.session_id if getattr(self.session, "session_id", None) else None
 
     async def run(self) -> None:
@@ -59,9 +51,7 @@ class WebSocketHandler:
 
     async def _accept_and_register(self) -> None:
         # Connection is already accepted by the router before handler.run()
-        outbound = FastAPIOutboundSender(self.ws)
-        self.session_id = await self.session_manager.register_connection(self.user_id, outbound)
-        logger.info(f"[WS] Connection registered for user {self.user_id}, session {self.session_id}")
+        pass
 
     async def _message_loop(self) -> None:
         if not self.session_id:
@@ -74,13 +64,23 @@ class WebSocketHandler:
                 logger.info(f"[WS] Client disconnected (IncompleteReadError): session {self.session_id}")
                 break
             except RuntimeError as e:
-                if "disconnect" in str(e).lower() or "close" in str(e).lower():
-                    logger.info(f"[WS] Client disconnected (RuntimeError): session {self.session_id}")
-                    break
-                raise
+                logger.info(f"[WS] Client disconnected (RuntimeError): session {self.session_id} - {e}")
+                break
+            except Exception as e:
+                logger.error(f"[WS] Error receiving text: {e}")
+                break
             try:
-                msg = IncomingMessage(content=data)
-                await self.session_manager.handle_message(self.session_id, msg)
+                # Forward to pipeline
+                if self.session and hasattr(self.session, "pipeline"):
+                    from app.schemas.ws_messages import ChatUserMessage
+                    import json
+                    try:
+                        msg_dict = json.loads(data)
+                        if msg_dict.get("type") == "chat.user_message":
+                            payload = ChatUserMessage(**msg_dict.get("data", {}))
+                            await self.session.pipeline.process_user_message(payload)
+                    except Exception as parse_e:
+                        logger.error(f"[WS] Parse error: {parse_e}")
             except ValidationError as e:
                 logger.error(f"[WS] Validation error: {e}")
             except ValueError as e:

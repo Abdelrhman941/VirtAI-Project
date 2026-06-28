@@ -205,6 +205,23 @@ export function useGaplessAudioQueue() {
   }, [flushQueue]);
 
   useEffect(() => {
+    const unlockAudio = () => {
+      const ctx = getAudioContext();
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+    };
+    window.addEventListener('pointerdown', unlockAudio, { once: true });
+    window.addEventListener('keydown', unlockAudio, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+    };
+  }, [getAudioContext]);
+
+  useEffect(() => {
     // DEFENSIVE: Stalled Audio Queue Watchdog
     // Polls the AudioContext state. If suspended while nodes are scheduled, forces resume.
     // If playback is irreparably desynced (stuck 2000ms past intended end), flushes queue to recover.

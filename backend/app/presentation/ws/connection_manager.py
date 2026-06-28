@@ -64,13 +64,16 @@ class WSConnectionManager:
                 pass
             await self._cleanup_websocket(old)
 
-    async def unregister(self, session_id: str, websocket: WebSocket) -> None:
-        """Unregister socket only if it is still the active one."""
+    async def unregister(self, session_id: str, websocket: WebSocket) -> bool:
+        """Unregister socket only if it is still the active one. Returns True if it was active."""
+        was_active = False
         async with self._lock:
             current = self._active.get(session_id)
             if current is websocket:
                 self._active.pop(session_id, None)
+                was_active = True
         await self._cleanup_websocket(websocket)
+        return was_active
 
     async def cleanup_session(self, session_id: str) -> None:
         """Completely clean up memory tracking for a session when it is permanently destroyed."""
