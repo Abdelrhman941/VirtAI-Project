@@ -5,7 +5,7 @@ import pytest
 
 from app.application.chat.session_manager import ConversationSession, SessionManager
 from app.application.voice.handle_voice_turn import ConversationPipeline
-from app.infrastructure.db.repositories.document_integrity_service import DocumentIntegrityService
+from app.infrastructure.db.repositories.document_repository import DocumentRepository
 
 
 @pytest.mark.asyncio
@@ -53,7 +53,7 @@ async def test_llm_with_sentinel_pushes_none_on_exception():
 async def test_delete_chunks_by_version():
     """Test that delete_chunks_by_version executes the correct SQL query via SQLAlchemy."""
     db_mock = AsyncMock()
-    repo = DocumentIntegrityService(db=db_mock)
+    repo = DocumentRepository(db=db_mock)
 
     import uuid
 

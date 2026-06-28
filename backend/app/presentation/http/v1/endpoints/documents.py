@@ -22,8 +22,7 @@ from app.domain.rag.stage_machine import IngestionStage
 from app.domain.user.entities import UserEntity
 from app.infrastructure.db.database import get_db
 from app.infrastructure.db.repositories.chat_repository import ChatRepository
-from app.infrastructure.db.repositories.document_crud_repository import DocumentCrudRepository
-from app.infrastructure.db.repositories.ingestion_state_repository import IngestionStateRepository
+from app.infrastructure.db.repositories.document_repository import DocumentRepository
 from app.presentation.http.v1.dependencies import StorageDep, _current_user
 from app.shared.config import get_settings
 from app.shared.ids import parse_uuid
@@ -147,7 +146,7 @@ async def upload_document(
         )
     validate_declared_mime(file.content_type, ext)
 
-    state_repo = IngestionStateRepository(db)
+    state_repo = DocumentRepository(db)
 
     # 2. Check per-user active job count
     active_jobs = await state_repo.count_active_jobs(str(user.id))
@@ -226,7 +225,7 @@ async def list_statuses(
     """List statuses for all documents."""
     from app.infrastructure.cache.redis_client import get_redis_or_none
 
-    crud_repo = DocumentCrudRepository(db)
+    crud_repo = DocumentRepository(db)
 
     if active_only:
         docs = await crud_repo.list_active(str(user.id), session_id=session_id)
@@ -274,7 +273,7 @@ async def get_document_status(
 
     if parse_uuid(document_id) is None:
         raise HTTPException(status_code=400, detail="Invalid document_id")
-    state_repo = IngestionStateRepository(db)
+    state_repo = DocumentRepository(db)
     status = await state_repo.get_status(document_id, str(user.id))
     if not status:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -300,7 +299,7 @@ async def cancel_document(
     """Cancel document ingestion."""
     if parse_uuid(document_id) is None:
         raise HTTPException(status_code=400, detail="Invalid document_id")
-    state_repo = IngestionStateRepository(db)
+    state_repo = DocumentRepository(db)
     status = await state_repo.get_status(document_id, str(user.id))
     if not status:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -322,7 +321,7 @@ async def list_documents(
     db: AsyncSession = Depends(get_db),
 ) -> list[dict[str, Any]]:
     """List all documents for the current user."""
-    crud_repo = DocumentCrudRepository(db)
+    crud_repo = DocumentRepository(db)
     docs = await crud_repo.list_by_user(str(user.id), session_id=session_id)
     return [
         {
@@ -350,7 +349,7 @@ async def delete_document(
     """Delete a document and cascade delete its chunks."""
     if parse_uuid(document_id) is None:
         raise HTTPException(status_code=400, detail="Invalid document_id")
-    crud_repo = DocumentCrudRepository(db)
+    crud_repo = DocumentRepository(db)
     storage_key = await crud_repo.delete_with_cascade(document_id, str(user.id))
     if not storage_key:
         raise HTTPException(status_code=404, detail="Document not found")
