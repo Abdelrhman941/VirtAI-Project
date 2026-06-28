@@ -1,5 +1,7 @@
 from uuid import UUID, uuid4
 
+from unittest.mock import AsyncMock
+
 import pytest
 
 from app.application.rag.retrieval_use_case import RetrievalUseCase
@@ -96,8 +98,12 @@ async def test_retrieval_uses_session_scope_and_source_metadata() -> None:
                 )
             ]
 
+    class FakeReranker:
+        async def rerank(self, query: str, chunks: list, top_k: int = 5):
+            return [(chunk, 1.0) for chunk in chunks[:top_k]]
+
     vector_store = FakeVectorStore()
-    retrieval = RetrievalUseCase(embedder=FakeEmbedder(), vector_store=vector_store)
+    retrieval = RetrievalUseCase(embedder=FakeEmbedder(), vector_store=vector_store, reranker=FakeReranker())
 
     context = await retrieval.execute("summarize it", session_id=session_id, user_id=str(uuid4()))
 

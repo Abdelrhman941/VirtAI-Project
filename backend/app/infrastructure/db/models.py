@@ -16,7 +16,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.infrastructure.db.database import Base
 from app.shared.config import get_settings
@@ -41,9 +41,9 @@ class User(Base):
     setup_complete: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     refresh_token_version: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+        DateTime(timezone=True), default=utc_now, server_default=func.now(), onupdate=utc_now
     )
 
 
@@ -55,15 +55,15 @@ class ChatSession(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(255), default="New Chat")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+        DateTime(timezone=True), default=utc_now, server_default=func.now(), onupdate=utc_now
     )
     message_count: Mapped[int] = mapped_column(Integer, default=0)
     # Phase 1: canonical timestamp for the most-recent message in this session.
     # Stamped by save_message() on every persist; NOT touched by title renames.
     # Backfilled from messages.timestamp by migration 20260625_add_last_message_at.
-    last_message_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    last_message_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, server_default=func.now())
 
     __table_args__ = (
         # Legacy index kept; still referenced by update_chat_session_title path.
@@ -85,7 +85,7 @@ class Message(Base):
     input_type: Mapped[str] = mapped_column(String(20), default="text")
     tts_cache_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     sources: Mapped[list | dict] = mapped_column(JSONB, default=list)
-    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, server_default=func.now())
 
     __table_args__ = (
         Index("ix_messages_session_timestamp", "session_id", "timestamp"),
@@ -105,7 +105,7 @@ class Avatar(Base):
     language: Mapped[str] = mapped_column(String(5), default="en")
     persona_prompt: Mapped[str] = mapped_column(Text, default="")
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+        DateTime(timezone=True), default=utc_now, server_default=func.now(), onupdate=utc_now
     )
 
 
@@ -118,7 +118,7 @@ class Document(Base):
     )
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     file_type: Mapped[str] = mapped_column(String(20), nullable=False)
-    upload_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    upload_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, server_default=func.now())
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(20), default="processing")
 
@@ -131,10 +131,7 @@ class Document(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     upload_source: Mapped[str] = mapped_column(String(30), default="SETUP")
     document_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    normalized_content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     file_size: Mapped[int] = mapped_column(Integer, default=0)
-    retry_count: Mapped[int] = mapped_column(Integer, default=0)
-    queue_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     retrieval_scope: Mapped[str] = mapped_column(String(30), default="GLOBAL")
     scope_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     storage_key: Mapped[str] = mapped_column(String(500), default="")
@@ -164,7 +161,7 @@ class DocumentChunk(Base):
         Vector(settings.EMBEDDING_DIMENSION), nullable=True
     )
     chunk_metadata: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, server_default=func.now())
     chunk_version: Mapped[int] = mapped_column(Integer, default=1)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     retrieval_scope: Mapped[str] = mapped_column(String(30), default="GLOBAL")
@@ -202,7 +199,7 @@ class SummaryCache(Base):
         nullable=False,
     )
     summary_text: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, server_default=func.now())
 
 
 class Quiz(Base):
@@ -215,7 +212,12 @@ class Quiz(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_quizzes_document_id", "document_id"),
+        Index("ix_quizzes_user_id", "user_id"),
+    )
 
 
 class QuizQuestion(Base):
@@ -230,7 +232,11 @@ class QuizQuestion(Base):
     correct_option_index: Mapped[int] = mapped_column(Integer, nullable=False)
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
     citations: Mapped[list | dict] = mapped_column(JSONB, default=list)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_quiz_questions_quiz_id", "quiz_id"),
+    )
 
 
 class QuizAttempt(Base):
@@ -244,7 +250,14 @@ class QuizAttempt(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     score: Mapped[int] = mapped_column(Integer, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_quiz_attempts_quiz_id", "quiz_id"),
+        Index("ix_quiz_attempts_user_id", "user_id"),
+    )
+
+    answers: Mapped[list["QuizAttemptAnswer"]] = relationship(back_populates="attempt", cascade="all, delete-orphan")
 
 
 class QuizAttemptAnswer(Base):
@@ -261,7 +274,14 @@ class QuizAttemptAnswer(Base):
     is_correct: Mapped[bool] = mapped_column(Boolean, nullable=False)
     time_spent_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     hesitation_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_quiz_attempt_answers_attempt_id", "attempt_id"),
+        Index("ix_quiz_attempt_answers_question_id", "question_id"),
+    )
+
+    attempt: Mapped["QuizAttempt"] = relationship(back_populates="answers")
 
 
 class DiagramCache(Base):
@@ -276,7 +296,7 @@ class DiagramCache(Base):
     )
     mermaid_code: Mapped[str] = mapped_column(Text, nullable=False)
     citations: Mapped[list | dict] = mapped_column(JSONB, default=list)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, server_default=func.now())
 
 
 class VisualizationCache(Base):
@@ -292,4 +312,4 @@ class VisualizationCache(Base):
     image_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     unavailable: Mapped[bool] = mapped_column(Boolean, default=False)
     reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, server_default=func.now())

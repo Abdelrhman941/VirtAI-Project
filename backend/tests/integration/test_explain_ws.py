@@ -72,11 +72,11 @@ async def test_explain_ws_flow(app_fixture, mock_db_session):
     mock_payload.user_id = user_id
     
     with patch("app.application.explain.explain_use_case.get_redis", return_value=mock_redis), \
-         patch("app.shared.security.decode_auth_token", return_value=mock_payload):
+         patch("app.presentation.http.v1.router.decode_auth_token", return_value=mock_payload):
 
         client = TestClient(app_fixture)
 
-        with client.websocket_connect(f"/api/v1/rag/explain/{doc_id}", subprotocols=["access_token", "fake_token"]) as websocket:
+        with client.websocket_connect(f"/api/v1/rag/explain/{doc_id}?token=fake_token", subprotocols=["access_token", "fake_token"]) as websocket:
             # Slide 0
             data = websocket.receive_json()
             assert data["type"] == "SlideStartEvent"
@@ -88,6 +88,8 @@ async def test_explain_ws_flow(app_fixture, mock_db_session):
                 data = websocket.receive_json()
                 if data["type"] == "SlideEndEvent":
                     break
+                if data["type"] == "done":
+                    continue
                 assert data["type"] == "SlideContentTokens"
                 tokens.append(data["tokens"])
 

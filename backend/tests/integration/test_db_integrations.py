@@ -38,7 +38,7 @@ async def test_quiz_attempt_insertion(mock_db_session):
     doc_id = uuid.uuid4()
 
     new_entry = QuizAttempt(
-        user_id=uuid.uuid4(), quiz_id=doc_id, score=80, answers={"q1": "correct", "q2": "incorrect"}
+        user_id=uuid.uuid4(), quiz_id=doc_id, score=80
     )
     mock_db_session.add(new_entry)
     await mock_db_session.commit()

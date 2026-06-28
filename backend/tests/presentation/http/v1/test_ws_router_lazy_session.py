@@ -44,6 +44,16 @@ class _FakeWebSocket(WebSocket):
     def scope(self):
         return {"subprotocols": ["access_token", self._token]}
 
+    @property
+    def application_state(self):
+        from starlette.websockets import WebSocketState
+        return WebSocketState.CONNECTED
+
+    @property
+    def client_state(self):
+        from starlette.websockets import WebSocketState
+        return WebSocketState.CONNECTED
+
     async def accept(
         self, subprotocol: str | None = None, headers: Iterable[tuple[bytes, bytes]] | None = None
     ) -> None:
@@ -51,6 +61,15 @@ class _FakeWebSocket(WebSocket):
 
     async def close(self, code: int = 1000, reason: str | None = None) -> None:
         self.closed = True
+
+    async def receive_text(self) -> str:
+        return '{"type": "auth", "token": "valid.mock.token"}'
+
+    async def receive_json(self) -> dict:
+        return {"type": "auth", "token": "valid.mock.token"}
+
+    async def _receive(self) -> dict:
+        return {"type": "websocket.receive", "text": '{"type": "auth", "token": "valid.mock.token"}'}
 
 
 class _FakeSessionManager:

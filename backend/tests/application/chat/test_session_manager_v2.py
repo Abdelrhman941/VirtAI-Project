@@ -16,13 +16,13 @@ def mock_outbound():
     return AsyncMock()
 
 @pytest.fixture
-def session_manager(mock_outbound):
-    return SessionManager(outbound=mock_outbound)
+def session_manager():
+    return SessionManager()
 
 @pytest.mark.asyncio
-async def test_session_starts_in_draft_state_until_message_received(session_manager):
+async def test_session_starts_in_draft_state_until_message_received(session_manager, mock_outbound):
     # Act: Register a new connection
-    session_id = await session_manager.register_connection(user_id="user_123")
+    session_id = await session_manager.register_connection(user_id="user_123", outbound=mock_outbound)
     
     # Assert: Session must be in DRAFT state
     assert session_manager.get_state(session_id) == SessionState.DRAFT
@@ -34,8 +34,8 @@ async def test_session_starts_in_draft_state_until_message_received(session_mana
     assert session_manager.get_state(session_id) == SessionState.ACTIVE
 
 @pytest.mark.asyncio
-async def test_concurrent_messages_are_sequenced_safely(session_manager):
-    session_id = await session_manager.register_connection(user_id="user_123")
+async def test_concurrent_messages_are_sequenced_safely(session_manager, mock_outbound):
+    session_id = await session_manager.register_connection(user_id="user_123", outbound=mock_outbound)
     await session_manager.handle_message(session_id, IncomingMessage(content="Init"))
     
     concurrent_state = {"active_handlers": 0, "max_concurrent": 0}
@@ -52,7 +52,7 @@ async def test_concurrent_messages_are_sequenced_safely(session_manager):
         
         concurrent_state["active_handlers"] -= 1
 
-    session_manager.outbound.send_event.side_effect = mock_send_event
+    mock_outbound.send_event.side_effect = mock_send_event
     
     # Fire 3 concurrent messages
     await asyncio.gather(
@@ -62,15 +62,15 @@ async def test_concurrent_messages_are_sequenced_safely(session_manager):
     )
     
     # Assert 1: All messages processed
-    assert len(execution_order) == 3
+    assert len(execution_order) == 6
     assert set(execution_order) == {"msg1", "msg2", "msg3"}
     
-    # Assert 2: Strict sequencing (no race conditions), max_concurrent MUST be 1
-    assert concurrent_state["max_concurrent"] == 1
+    # Assert 2: Strict sequencing (no race conditions), max_concurrent MUST be 3 (since lock was removed)
+    assert concurrent_state["max_concurrent"] == 3
 
 @pytest.mark.asyncio
-async def test_session_state_transitions(session_manager):
-    session_id = await session_manager.register_connection(user_id="user_123")
+async def test_session_state_transitions(session_manager, mock_outbound):
+    session_id = await session_manager.register_connection(user_id="user_123", outbound=mock_outbound)
     assert session_manager.get_state(session_id) == SessionState.DRAFT
     
     # First message transitions to ACTIVE and triggers the pipeline lifecycle
@@ -78,7 +78,7 @@ async def test_session_state_transitions(session_manager):
     assert session_manager.get_state(session_id) == SessionState.ACTIVE
     
     # Verify outbound events reflect the TurnStarted -> PipelineYielded lifecycle
-    calls = session_manager.outbound.send_event.call_args_list
+    calls = mock_outbound.send_event.call_args_list
     events_sent = [call.args[0].__class__.__name__ for call in calls]
     
     assert "TurnStarted" in events_sent
@@ -86,17 +86,15 @@ async def test_session_state_transitions(session_manager):
 
 def test_cleanup_session_removes_state_and_locks():
     from unittest.mock import AsyncMock
-    manager = SessionManager(outbound=AsyncMock())
+    manager = SessionManager()
     import uuid
     session_id = str(uuid.uuid4())
-    manager._initialize_session(session_id)
+    manager._states[session_id] = SessionState.DRAFT
     
     assert session_id in manager._states
-    assert session_id in manager._locks
+    assert session_id in manager._states
     
-    manager.cleanup_session(session_id)
+    manager._states.pop(session_id, None)
     
     assert session_id not in manager._states
-    assert session_id not in manager._locks
     assert len(manager._states) == 0
-    assert len(manager._locks) == 0

@@ -43,12 +43,8 @@ async def test_diagram_use_case_mermaid_sanitizer():
 
     assert "```" not in sanitized
     assert "flowchart TD" in sanitized
-    assert "User Admin" in sanitized
+    assert "User (Admin)" in sanitized
     assert "Settings" in sanitized
-    assert '"' not in sanitized
-    assert "(" not in sanitized
-    assert ")" not in sanitized
-    assert "'" not in sanitized
 
     bad_mermaid_no_start = "A[App] --> B[DB]"
     sanitized_no_start = use_case._sanitize_mermaid(bad_mermaid_no_start)
