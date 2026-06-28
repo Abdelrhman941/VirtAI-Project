@@ -220,12 +220,24 @@ class OpenAITTSProvider(BaseTTSProvider):
         )
 
     async def synthesize_streaming(
-        self, text: str, max_retries: int = 3
+        self, text: str, max_retries: int = 3, voice: str | None = None
     ) -> AsyncGenerator[TTSChunk, None]:
+        from app.infrastructure.cache.tts_cache import get_cached_audio, cache_audio
         text = clean_text_for_tts(text)
         if not text.strip():
             raise TTSException("Empty text provided")
 
+        api_voice = self.resolve_voice(voice or self.voice)
+
+        # Check cache
+        cached_audio = await get_cached_audio(text=text, voice=api_voice)
+        if cached_audio is not None:
+            logger.info("TTS streaming cache hit")
+            yield TTSChunk(audio_data=cached_audio)
+            yield TTSChunk(is_done=True)
+            return
+
+        accumulated_chunks = []
         for attempt in range(max_retries):
             try:
                 async with self._client.stream(
@@ -234,7 +246,7 @@ class OpenAITTSProvider(BaseTTSProvider):
                     json={
                         "model": self.model,
                         "input": text,
-                        "voice": self.api_voice,
+                        "voice": api_voice,
                         "response_format": "mp3",
                         "speed": self.speed,
                     },
@@ -247,10 +259,18 @@ class OpenAITTSProvider(BaseTTSProvider):
                     response.raise_for_status()
                     async for chunk in response.aiter_bytes():
                         if chunk:
+                            accumulated_chunks.append(chunk)
                             yield TTSChunk(audio_data=chunk)
+                
+                # Cache the accumulated audio
+                full_audio = b"".join(accumulated_chunks)
+                if full_audio:
+                    await cache_audio(text=text, voice=api_voice, audio_bytes=full_audio)
+                    
                 yield TTSChunk(is_done=True)
                 return
             except Exception as e:
+                accumulated_chunks.clear()
                 if attempt < max_retries - 1:
                     await asyncio.sleep(2**attempt)
                 else:

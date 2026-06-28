@@ -239,14 +239,65 @@ class TTSStage(BaseStage):
             raise TTSException("TTS service not configured")
 
         try:
-            tts_result = await self._tts.generate(
-                text=text_to_speak,
-                session_id=context.session_id,
-                message_id=f"{context.message_id}_{context.sentence_index}",
-                trace_id=context.trace_id,
-                voice=context.tts_voice,
-            )
-            context.tts_result = tts_result
+            if hasattr(self._tts, 'synthesize_streaming'):
+                audio_bytes_list = []
+                try:
+                    async for chunk in self._tts.synthesize_streaming(
+                        text=text_to_speak,
+                        voice=context.tts_voice
+                    ):
+                        if context.aborted:
+                            break
+                        if chunk.audio_data:
+                            audio_bytes_list.append(chunk.audio_data)
+                            if context.send_binary_callback:
+                                await context.send_binary_callback(chunk.audio_data)
+                except asyncio.CancelledError:
+                    context.abort()
+                    raise
+                
+                audio_bytes = b"".join(audio_bytes_list)
+                if not audio_bytes:
+                    raise TTSException("TTS returned empty audio")
+                    
+                from app.infrastructure.tts.tts_utils import calculate_audio_duration
+                from app.shared.config import get_settings
+                from pathlib import Path
+                
+                audio_duration_ms = calculate_audio_duration(audio_bytes, format="mp3")
+                
+                storage_base = Path(get_settings().AUDIO_STORAGE_PATH)
+                session_dir = storage_base / context.session_id
+                session_dir.mkdir(parents=True, exist_ok=True)
+                
+                api_voice = getattr(self._tts, 'resolve_voice', lambda v: getattr(self._tts, 'voice', 'aria'))(context.tts_voice or getattr(self._tts, 'voice', 'aria'))
+                chunk_message_id = f"{context.message_id}_{context.sentence_index}"
+                audio_file_id = f"{chunk_message_id}_{api_voice}"
+                if hasattr(self._tts, 'audio_file_id'):
+                    audio_file_id = self._tts.audio_file_id(chunk_message_id, api_voice)
+                
+                audio_file_path = session_dir / f"{audio_file_id}.mp3"
+                try:
+                    audio_file_path.write_bytes(audio_bytes)
+                except Exception as e:
+                    logger.error(f"Failed to save streamed audio: {e}")
+                
+                context.tts_result = TTSResult(
+                    audio_bytes=audio_bytes,
+                    visemes=[],
+                    word_boundaries=[],
+                    audio_duration_ms=audio_duration_ms,
+                    audio_ref=str(audio_file_path)
+                )
+            else:
+                tts_result = await self._tts.generate(
+                    text=text_to_speak,
+                    session_id=context.session_id,
+                    message_id=f"{context.message_id}_{context.sentence_index}",
+                    trace_id=context.trace_id,
+                    voice=context.tts_voice,
+                )
+                context.tts_result = tts_result
 
         except TTSException as e:
             logger.error(f"TTS error: {e} | trace_id={context.trace_id}")
@@ -259,8 +310,75 @@ class TTSStage(BaseStage):
                         message_id=context.message_id,
                     )
                 )
-            context.tts_result = None
-
+def generate_visemes(audio_bytes: bytes) -> list[Any]:
+    import io
+    import numpy as np
+    from pydub import AudioSegment
+    from app.schemas.ws_messages import MouthCue
+    
+    if not audio_bytes:
+        return []
+        
+    try:
+        audio = AudioSegment.from_file(io.BytesIO(audio_bytes), format="mp3")
+        audio = audio.set_channels(1)
+        samples = np.array(audio.get_array_of_samples(), dtype=np.float64)
+        frame_rate = audio.frame_rate
+        
+        if len(samples) < 10:
+            return []
+            
+        window_size = int(frame_rate * 0.05)
+        hop_size = int(frame_rate * 0.02)
+        
+        if window_size > len(samples):
+            window_size = max(10, len(samples) // 4)
+            hop_size = max(1, window_size // 4)
+            
+        if hop_size < 1: hop_size = 1
+        
+        envelope = []
+        i = 0
+        while i + window_size <= len(samples):
+            window = samples[i : i + window_size]
+            rms = np.sqrt(np.mean(window**2))
+            envelope.append(rms)
+            i += hop_size
+            
+        if len(envelope) == 0:
+            if len(samples) > 0:
+                rms = np.sqrt(np.mean(samples**2))
+                envelope = [rms]
+                hop_size = len(samples)
+            else:
+                return []
+                
+        max_rms = np.max(envelope)
+        if max_rms > 0:
+            envelope = [e / max_rms for e in envelope]
+            
+        mouth_cues = []
+        threshold = 0.15
+        is_open = False
+        start_time = 0.0
+        
+        for idx, amplitude in enumerate(envelope):
+            time = idx * (hop_size / frame_rate)
+            if amplitude > threshold and not is_open:
+                start_time = time
+                is_open = True
+            elif amplitude <= threshold and is_open:
+                mouth_cues.append(MouthCue(start=start_time, end=time, value="viseme_aa"))
+                is_open = False
+                
+        if is_open:
+            duration = len(audio) / 1000.0
+            mouth_cues.append(MouthCue(start=start_time, end=duration, value="viseme_aa"))
+            
+        return mouth_cues
+    except Exception as e:
+        logger.error(f"Failed to generate visemes from bytes: {e}")
+        return []
 
 class AnimationStage(BaseStage):
     def __init__(self, animation_service: Any, viseme_generator: Any) -> None:
@@ -277,19 +395,21 @@ class AnimationStage(BaseStage):
 
         chunk_message_id = f"{context.message_id}_{context.sentence_index}"
 
-        # Viseme generation using PyDub is removed to eliminate synchronous blocking.
-        # The frontend now uses realtime AnalyserNode for lip-sync.
-        # We preserve the empty mouth_cues array to satisfy API contracts (e.g. make_visemes_ready).
-        mouth_cues = []
-
-        context.mouth_cues = mouth_cues
-
         safe_tts_result = context.tts_result or TTSResult(
             audio_bytes=b"",
             visemes=[],
             word_boundaries=[],
             audio_duration_ms=len(text_to_animate or "") * 60.0,
         )
+
+        mouth_cues = []
+        if safe_tts_result.audio_bytes:
+            try:
+                mouth_cues = await asyncio.to_thread(generate_visemes, safe_tts_result.audio_bytes)
+            except Exception as e:
+                logger.error(f"Viseme generation error: {e} | trace_id={context.trace_id}")
+
+        context.mouth_cues = mouth_cues
 
         audio_features = analyze_tts_for_animation(
             tts_result=safe_tts_result,
