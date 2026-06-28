@@ -1,4 +1,4 @@
-import React, { KeyboardEvent, useCallback, useEffect, useRef, useMemo } from 'react';
+import React, { KeyboardEvent, useCallback, useEffect, useRef, useMemo, useState } from 'react';
 import { FiSquare } from 'react-icons/fi';
 import { PiPaperclip, PiPaperPlaneTiltFill } from 'react-icons/pi';
 import VoiceModeButton from '../../voice/components/VoiceModeButton';
@@ -7,10 +7,8 @@ import { ConnectionState } from '@/core/realtime/wsConstants';
 const MAX_CHARS = 2000;
 
 interface ChatInputProps {
-  inputValue: string;
-  onInputChange: (value: string) => void;
-  onSend: () => void;
-  onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onSend: (text: string) => void;
+  onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   pipelineState: 'idle' | 'thinking' | 'speaking' | 'error';
   onToggleDocuments: () => void;
@@ -26,8 +24,6 @@ interface ChatInputProps {
 }
 
 export default function ChatInput({
-  inputValue,
-  onInputChange,
   onSend,
   onKeyDown,
   textareaRef,
@@ -37,6 +33,7 @@ export default function ChatInput({
   onStop,
   wsClient,
 }: ChatInputProps) {
+  const [inputValue, setInputValue] = useState('');
   const requestRef = useRef<number>(0);
   const lastActionTime = useRef<number>(0);
 
@@ -82,7 +79,7 @@ export default function ChatInput({
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const el = e.target;
-      onInputChange(el.value);
+      setInputValue(el.value);
 
       const hardcodedMaxHeight = 150;
 
@@ -100,7 +97,7 @@ export default function ChatInput({
         el.style.overflowY = shouldScroll ? 'auto' : 'hidden';
       });
     },
-    [onInputChange]
+    []
   );
 
   const handleKeyDownSafe = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -112,7 +109,9 @@ export default function ChatInput({
       }
       lastActionTime.current = now;
     }
-    onKeyDown(e);
+    if (onKeyDown) {
+      onKeyDown(e);
+    }
   }, [onKeyDown]);
 
   const handleSendSafe = useCallback(() => {
@@ -120,7 +119,8 @@ export default function ChatInput({
     if (now - lastActionTime.current < 500) return;
     if (isInputDisabled || !inputValue.trim()) return;
     lastActionTime.current = now;
-    onSend();
+    onSend(inputValue);
+    setInputValue('');
   }, [isInputDisabled, inputValue, onSend]);
 
   const isGenerating = ['thinking', 'speaking'].includes(pipelineState);

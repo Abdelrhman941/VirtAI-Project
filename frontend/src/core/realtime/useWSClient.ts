@@ -21,9 +21,11 @@ export default function useWSClient(url: string | null) {
 
   useEffect(() => {
     if (url) {
+      wsManager.retain();
       wsManager.connect(url);
-    } else {
-      wsManager.disconnect();
+      return () => {
+        wsManager.release();
+      };
     }
   }, [url]);
 

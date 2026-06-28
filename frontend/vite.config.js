@@ -42,6 +42,16 @@ export default defineConfig({
   optimizeDeps: {
     include: ['lottie-react'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-3d': ['three', '@react-three/fiber', '@react-three/drei'],
+          'vendor-react': ['react', 'react-dom', 'react-router-dom', 'zustand'],
+        },
+      },
+    },
+  },
   test: {
     environment: 'happy-dom',
     exclude: ['node_modules', 'dist', '.idea', '.git', '.cache', 'tests/**/*'],

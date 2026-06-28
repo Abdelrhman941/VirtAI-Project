@@ -68,7 +68,16 @@ class WebSocketHandler:
             return
 
         while True:
-            data = await self.ws.receive_text()
+            try:
+                data = await self.ws.receive_text()
+            except asyncio.exceptions.IncompleteReadError:
+                logger.info(f"[WS] Client disconnected (IncompleteReadError): session {self.session_id}")
+                break
+            except RuntimeError as e:
+                if "disconnect" in str(e).lower() or "close" in str(e).lower():
+                    logger.info(f"[WS] Client disconnected (RuntimeError): session {self.session_id}")
+                    break
+                raise
             try:
                 msg = IncomingMessage(content=data)
                 await self.session_manager.handle_message(self.session_id, msg)

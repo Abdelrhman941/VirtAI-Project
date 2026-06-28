@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState, useMemo, useLayoutEffect } from 'react';
+import { useCallback, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
 import useWSClient, { ConnectionState } from '@/core/realtime/useWSClient';
-import { useSmoothStreaming } from './useSmoothStreaming';
+import { useChatUIStore } from '@/features/chat/store/useChatUIStore';
 import useConversationReducer from '@/features/chat/hooks/useConversationReducer';
 import { toast } from '@/shared/utils/toast';
 import { WSPayloadSchema, WSPayload, Viseme } from '../ClassroomShell';
@@ -54,16 +54,11 @@ export function useClassroomChat({
 
   const { connectionState, isConnected, send, onMessage, reconnect, reconnectError, disconnect } =
     useWSClient(WS_URL);
-
-  const [inputValue, setInputValue] = useState<string>('');
-  const [interimTranscript, setInterimTranscript] = useState<string>('');
   
   const currentSessionIdRef = useRef<string | null>(currentSessionId);
   const sessionRef = useRef(session);
   const isCreatingSessionRef = useRef<boolean>(false);
   const conversationStateRef = useRef(conversationState);
-
-  const { displayText, pushDelta, commitFinal, resetStream } = useSmoothStreaming();
 
   // Sync refs safely
   useLayoutEffect(() => {
@@ -77,9 +72,9 @@ export function useClassroomChat({
 
   useEffect(() => {
     dispatch({ type: 'RESET' });
-    resetStream();
+    useChatUIStore.getState().resetStream();
     resetAvatarAudio();
-  }, [currentSessionId, dispatch, resetAvatarAudio, resetStream]);
+  }, [currentSessionId, dispatch, resetAvatarAudio]);
 
   useEffect(() => {
     if (connectionState === ConnectionState.RECONNECTING || connectionState === ConnectionState.DISCONNECTED || connectionState === ConnectionState.FAILED) { // RECONNECTING or OFFLINE
@@ -112,10 +107,12 @@ export function useClassroomChat({
         resetAvatarAudio(prevMsgId);
         dispatch({ type: 'USER_MESSAGE', payload: { message_id, text } });
         dispatch({ type: 'PIPELINE_STATE', payload: { state: 'thinking' } });
+        useChatUIStore.getState().setPipelineState('thinking');
         sessionRef.current.handleFirstMessage(text).then((newId: string | null) => {
           isCreatingSessionRef.current = false;
           if (!newId) {
             dispatch({ type: 'PIPELINE_STATE', payload: { state: 'idle' } });
+            useChatUIStore.getState().setPipelineState('idle');
             toast.error('Error', 'Failed to start a new conversation.');
           } else {
             // The handleFirstMessage successfully created a session, so the currentSessionId will update shortly.
@@ -129,6 +126,7 @@ export function useClassroomChat({
         }).catch((err: unknown) => {
           isCreatingSessionRef.current = false;
           dispatch({ type: 'PIPELINE_STATE', payload: { state: 'idle' } });
+          useChatUIStore.getState().setPipelineState('idle');
           console.error(err);
         });
       } else {
@@ -137,6 +135,7 @@ export function useClassroomChat({
         resetAvatarAudio(prevMsgId);
         dispatch({ type: 'USER_MESSAGE', payload: { message_id, text } });
         dispatch({ type: 'PIPELINE_STATE', payload: { state: 'thinking' } });
+        useChatUIStore.getState().setPipelineState('thinking');
         sessionRef.current.addUserMessage(
           { id: message_id, role: 'user', content: text, status: 'pending' },
           activeId
@@ -198,7 +197,7 @@ export function useClassroomChat({
         const delta = d.delta ? d.delta.replace(/\[.*?\]/g, '') : '';
         if (!delta) return;
         
-        pushDelta(delta);
+        useChatUIStore.getState().pushDelta(delta);
       }),
       onMessage('chat.final', (rawData: unknown) => {
         const d = validatePayload(rawData);
@@ -206,7 +205,7 @@ export function useClassroomChat({
         
         const safePayload = { ...d, text: d.text ? d.text.replace(/\[.*?\]/g, '') : undefined };
         
-        commitFinal(safePayload.text || '');
+        useChatUIStore.getState().commitFinal();
         dispatch({ type: 'CHAT_FINAL', payload: safePayload });
         if (safePayload.text) {
           sessionRef.current.addAssistantMessage(
@@ -226,10 +225,11 @@ export function useClassroomChat({
         const state = (d.state as 'idle' | 'thinking' | 'speaking' | 'error') || 'idle';
         
         if (state === 'idle' || state === 'thinking' || state === 'error') {
-          resetStream();
+          useChatUIStore.getState().resetStream();
         }
 
         dispatch({ type: 'PIPELINE_STATE', payload: { state, message_id: d.message_id } });
+        useChatUIStore.getState().setPipelineState(state);
         
         if (state === 'idle' && d.message_id) {
           forceAdvanceSequence(d.message_id);
@@ -262,9 +262,9 @@ export function useClassroomChat({
         const d = validatePayload(rawData);
         if (!d || !checkSession(d)) return;
         if (d.is_final) {
-          setInterimTranscript('');
+          useChatUIStore.getState().setInterimTranscript('');
         } else {
-          setInterimTranscript(d.text || '');
+          useChatUIStore.getState().setInterimTranscript(d.text || '');
         }
       }),
     ];
@@ -275,21 +275,13 @@ export function useClassroomChat({
     currentSessionId,
     onTtsReady,
     onVisemesReady,
-    commitFinal,
-    forceAdvanceSequence,
-    pushDelta,
-    resetStream
+    forceAdvanceSequence
   ]);
 
   const wsClient = useMemo(() => ({ send: safeSend, onMessage }), [safeSend, onMessage]);
 
-  const patchedConversationState = useMemo(() => ({
-    ...conversationState,
-    currentMessage: displayText
-  }), [conversationState, displayText]);
-
   return {
-    conversationState: patchedConversationState,
+    conversationState,
     connectionState,
     isConnected,
     reconnect,
@@ -297,9 +289,6 @@ export function useClassroomChat({
     disconnect,
     safeSend,
     commitAndSend,
-    inputValue,
-    setInputValue,
-    interimTranscript,
     onMessage,
     wsClient
   };

@@ -42,8 +42,6 @@ export interface AssistantPanelProps {
   
   // Chat Props
   messages?: ISession['messages'];
-  currentMessage: string;
-  interimTranscript: string;
   chatError: string | null;
   avatarName: string;
   chatScrollRef: RefObject<HTMLDivElement>;
@@ -52,10 +50,8 @@ export interface AssistantPanelProps {
   pipelineState: PipelineState | string;
   
   // Input Props
-  inputValue: string;
-  onInputChange: (val: string) => void;
-  onSendMessage: () => void;
-  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onSendMessage: (text: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   textareaRef: RefObject<HTMLTextAreaElement>;
   onToggleDocuments: () => void;
   onBeforeVoiceStart: () => Promise<boolean>;
@@ -63,7 +59,7 @@ export interface AssistantPanelProps {
   wsClient?: any;
 }
 
-export function AssistantPanel({
+export const AssistantPanel = React.memo(function AssistantPanel({
   isExplainActive,
   isDiagramOpen,
   isSummaryOpen,
@@ -83,16 +79,12 @@ export function AssistantPanel({
   onQuizClose,
   currentSessionId,
   messages,
-  currentMessage,
-  interimTranscript,
   chatError,
   avatarName,
   chatScrollRef,
   messagesEndRef,
   onChatScroll,
   pipelineState,
-  inputValue,
-  onInputChange,
   onSendMessage,
   onKeyDown,
   textareaRef,
@@ -165,19 +157,14 @@ export function AssistantPanel({
     <>
       <MessageList
         messages={messages || []}
-        currentMessage={currentMessage}
-        interimTranscript={interimTranscript}
         error={chatError}
         avatarName={avatarName}
         chatScrollRef={chatScrollRef}
         messagesEndRef={messagesEndRef}
         onScroll={onChatScroll}
-        pipelineState={pipelineState as any}
       />
       <div className="mt-auto">
         <ChatInput
-          inputValue={inputValue}
-          onInputChange={onInputChange}
           onSend={onSendMessage}
           onKeyDown={onKeyDown}
           textareaRef={textareaRef}
@@ -190,4 +177,4 @@ export function AssistantPanel({
       </div>
     </>
   );
-}
+});

@@ -265,7 +265,31 @@ class WSManager {
     }
   }
 
+  private connectionRefs: number = 0;
+  private disconnectTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+  public retain() {
+    this.connectionRefs++;
+    if (this.disconnectTimeoutTimer) {
+      clearTimeout(this.disconnectTimeoutTimer);
+      this.disconnectTimeoutTimer = null;
+    }
+  }
+
+  public release() {
+    this.connectionRefs = Math.max(0, this.connectionRefs - 1);
+    if (this.connectionRefs === 0) {
+      // Delay actual disconnection to handle React 18 Strict Mode
+      this.disconnectTimeoutTimer = setTimeout(() => {
+        this.disconnect(true);
+      }, 100);
+    }
+  }
+
   public disconnect(intentional = true) {
+    if (intentional) {
+      this.connectionRefs = 0;
+    }
     this.isIntentionalClose = intentional;
     this.isConnecting = false;
     if (intentional) {

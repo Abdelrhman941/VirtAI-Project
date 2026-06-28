@@ -25,7 +25,16 @@ class ExplainHandler:
 
         try:
             while True:
-                raw = await self.websocket.receive_text()
+                try:
+                    raw = await self.websocket.receive_text()
+                except asyncio.exceptions.IncompleteReadError:
+                    logger.info("[WS] Explain websocket disconnected (IncompleteReadError).")
+                    break
+                except RuntimeError as e:
+                    if "disconnect" in str(e).lower() or "close" in str(e).lower():
+                        logger.info("[WS] Explain websocket disconnected (RuntimeError).")
+                        break
+                    raise
                 try:
                     data = json.loads(raw)
                     msg_type = data.get("type")
@@ -38,23 +47,25 @@ class ExplainHandler:
         finally:
             if self._main_task and not self._main_task.done():
                 self._main_task.cancel()
+                try:
+                    await self._main_task
+                except asyncio.CancelledError:
+                    pass
 
     async def _start_presentation(self):
         try:
             async for event in self.explain_use_case.start_or_resume(
                 self.user_id, self.document_id
             ):
-                await self.websocket.send_json(event)
+                try:
+                    await self.websocket.send_json(event)
+                except (RuntimeError, asyncio.exceptions.IncompleteReadError) as e:
+                    logger.warning(f"[WS] Dead socket write attempt: {e}")
+                    return
         except asyncio.CancelledError:
             pass
         except Exception as e:
             logger.error(f"Error in _start_presentation: {e}")
-            import traceback
-            traceback.print_exc()
-            try:
-                await self.websocket.send_json({"type": "error", "message": str(e)})
-            except Exception:
-                pass
 
     async def _handle_interruption(self, data: dict):
         if self._main_task and not self._main_task.done():
@@ -74,16 +85,14 @@ class ExplainHandler:
                 async for event in self.explain_use_case.handle_user_input(
                     self.user_id, self.document_id, user_text
                 ):
-                    await self.websocket.send_json(event)
+                    try:
+                        await self.websocket.send_json(event)
+                    except (RuntimeError, asyncio.exceptions.IncompleteReadError) as e:
+                        logger.warning(f"[WS] Dead socket write attempt: {e}")
+                        return
             except asyncio.CancelledError:
                 pass
             except Exception as e:
                 logger.error(f"Error in handle_user_input: {e}")
-                import traceback
-                traceback.print_exc()
-                try:
-                    await self.websocket.send_json({"type": "error", "message": str(e)})
-                except Exception:
-                    pass
 
         self._main_task = asyncio.create_task(_process_input())
