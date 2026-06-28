@@ -109,8 +109,6 @@ class ExplainUseCase:
             if chunk.token:
                 yield SlideContentTokens(tokens=chunk.token).model_dump()
 
-        yield {"type": "done"}
-
         yield SlideEndEvent(slide_index=current_slide_index).model_dump()
 
         state_data["state"] = PresentationState.AWAITING.value
