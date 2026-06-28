@@ -14,6 +14,17 @@ interface ExplainWSProps {
 import { useAuthStore } from '@/features/auth/store/authStore';
 
 export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChange, onEnd }: ExplainWSProps) {
+  const onTokensRef = useRef(onTokens);
+  const onStateChangeRef = useRef(onStateChange);
+  const onSlideChangeRef = useRef(onSlideChange);
+  const onEndRef = useRef(onEnd);
+
+  useEffect(() => {
+    onTokensRef.current = onTokens;
+    onStateChangeRef.current = onStateChange;
+    onSlideChangeRef.current = onSlideChange;
+    onEndRef.current = onEnd;
+  }, [onTokens, onStateChange, onSlideChange, onEnd]);
   const token = useAuthStore(state => state.accessToken);
   const wsUrl = documentId && token
     ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/v1/rag/explain/${documentId}?token=${token}`
@@ -28,48 +39,48 @@ export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChang
     const unsubs = [
       onMessage('SlideStartEvent', (data: any) => {
         setCurrentSlide(data.slide_index);
-        onSlideChange(data.slide_index, data.total_slides || 0);
+        onSlideChangeRef.current(data.slide_index, data.total_slides || 0);
         setCurrentState('EXPLAINING');
-        onStateChange('EXPLAINING');
+        onStateChangeRef.current('EXPLAINING');
       }),
       onMessage('SlideContentTokens', (data: any) => {
-        onTokens(data.tokens);
+        onTokensRef.current(data.tokens);
       }),
       onMessage('AwaitInputEvent', () => {
         setCurrentState('AWAITING');
-        onStateChange('AWAITING');
+        onStateChangeRef.current('AWAITING');
       }),
       onMessage('SlideEndEvent', (data: any) => {
         if (data.slide_index === -1) {
-          onEnd();
+          onEndRef.current();
         }
       }),
       onMessage('error', (data: any) => {
         console.error('Explain WS Error:', data.message);
-        onTokens(`\n\n**Error:** ${data.message || 'An unexpected error occurred during analysis.'}\n\n`);
+        onTokensRef.current(`\n\n**Error:** ${data.message || 'An unexpected error occurred during analysis.'}\n\n`);
         setCurrentState('AWAITING');
-        onStateChange('AWAITING');
+        onStateChangeRef.current('AWAITING');
       }),
       onMessage('done', () => {
         setCurrentState('AWAITING');
-        onStateChange('AWAITING');
+        onStateChangeRef.current('AWAITING');
       })
     ];
 
     return () => unsubs.forEach(unsub => unsub?.());
-  }, [onMessage, onTokens, onStateChange, onSlideChange, onEnd]);
+  }, [onMessage]);
 
   const sendQuestion = useCallback((text: string) => {
     setCurrentState('ANSWERING');
-    onStateChange('ANSWERING');
+    onStateChangeRef.current('ANSWERING');
     send({ type: 'chat.user_message', text });
-  }, [send, onStateChange]);
+  }, [send]);
 
   const sendContinue = useCallback(() => {
     setCurrentState('EXPLAINING');
-    onStateChange('EXPLAINING');
+    onStateChangeRef.current('EXPLAINING');
     send({ type: 'chat.user_message', text: 'continue' });
-  }, [send, onStateChange]);
+  }, [send]);
 
   const sendPauseOrStop = useCallback(() => {
     // We send client.speech_stopped to interrupt the backend
