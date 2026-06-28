@@ -91,8 +91,12 @@ class WSConnectionManager:
                 fid = meta.get("family_id")
                 if uid and uid in self._user_to_ws:
                     self._user_to_ws[uid].discard(websocket)
+                    if not self._user_to_ws[uid]:
+                        del self._user_to_ws[uid]
                 if fid and fid in self._family_to_ws:
                     self._family_to_ws[fid].discard(websocket)
+                    if not self._family_to_ws[fid]:
+                        del self._family_to_ws[fid]
 
     async def stamp_and_record(self, session_id: str, payload: dict[str, Any]) -> str:
         """Attach seq_id, persist message to replay history, and return serialized JSON."""

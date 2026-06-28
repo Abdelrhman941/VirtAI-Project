@@ -6,19 +6,7 @@ from loguru import logger
 from pydantic import ValidationError
 
 from app.application.chat.session_manager import SessionManager, ConversationSession
-
-
-class FastAPIOutboundSender(OutboundSender):
-    def __init__(self, websocket: WebSocket):
-        self.ws = websocket
-
-    async def send_event(self, event: DomainEvent) -> None:
-        try:
-            payload = {"event": event.__class__.__name__, "content": event.content}
-            await self.ws.send_json(payload)
-        except Exception as e:
-            logger.error(f"[WS] Error sending outbound event: {e}")
-
+from app.presentation.ws.outbound_sender import OutboundSender
 
 class WebSocketHandler:
     """
@@ -37,6 +25,10 @@ class WebSocketHandler:
         self.user_id = user_id
         self.session: ConversationSession | None = kwargs.get("session")
         self.session_id: str | None = self.session.session_id if getattr(self.session, "session_id", None) else None
+        
+        self.connection_manager = kwargs.get("connection_manager")
+        self.avatar_id = kwargs.get("avatar_id")
+        self.voice_id = kwargs.get("voice_id")
 
     async def run(self) -> None:
         try:
@@ -46,17 +38,12 @@ class WebSocketHandler:
             logger.info(f"[WS] Client disconnected: session {self.session_id}")
         except Exception as e:
             logger.error(f"[WS] Unexpected error: {e}")
-        finally:
-            self._teardown()
 
     async def _accept_and_register(self) -> None:
         # Connection is already accepted by the router before handler.run()
         pass
 
     async def _message_loop(self) -> None:
-        if not self.session_id:
-            return
-
         while True:
             try:
                 data = await self.ws.receive_text()
@@ -70,25 +57,41 @@ class WebSocketHandler:
                 logger.error(f"[WS] Error receiving text: {e}")
                 break
             try:
-                # Forward to pipeline
-                if self.session and hasattr(self.session, "pipeline"):
-                    from app.schemas.ws_messages import ChatUserMessage
-                    import json
-                    try:
-                        msg_dict = json.loads(data)
-                        if msg_dict.get("type") == "chat.user_message":
-                            payload = ChatUserMessage(**msg_dict.get("data", {}))
-                            await self.session.pipeline.process_user_message(payload)
-                    except Exception as parse_e:
-                        logger.error(f"[WS] Parse error: {parse_e}")
+                import json
+                msg_dict = json.loads(data)
+                msg_type = msg_dict.get("type")
+
+                if msg_type == "ping":
+                    await self.ws.send_json({"type": "pong"})
+                    continue
+
+                if msg_type == "chat.user_message":
+                    # Lazy session creation
+                    if not self.session_id:
+                        new_session = await self.session_manager.create_session(
+                            user_id=self.user_id,
+                            avatar_id=self.avatar_id,
+                            voice_id=self.voice_id
+                        )
+                        self.session = new_session
+                        self.session_id = new_session.session_id
+                        if self.connection_manager:
+                            await self.connection_manager.register(
+                                self.session_id,
+                                self.ws,
+                                self.user_id,
+                                getattr(self, "_family_id", None)
+                            )
+                        logger.info(f"[WS] Lazy session created | session_id={self.session_id}")
+
+                    # Forward to pipeline
+                    if self.session and hasattr(self.session, "pipeline"):
+                        from app.schemas.ws_messages import ChatUserMessage
+                        payload = ChatUserMessage(**msg_dict.get("data", {}))
+                        await self.session.pipeline.process_user_message(payload)
             except ValidationError as e:
                 logger.error(f"[WS] Validation error: {e}")
             except ValueError as e:
                 logger.error(f"[WS] Invalid state/session: {e}")
             except Exception as e:
                 logger.error(f"[WS] Error processing message: {e}")
-
-    def _teardown(self) -> None:
-        if self.session_id:
-            self.session_manager.cleanup_session(self.session_id)
-            logger.info(f"[WS] Session {self.session_id} cleaned up")

@@ -224,8 +224,8 @@ export function useAvatarAnimations(
       nextAction.setEffectiveWeight(FULL_WEIGHT);
 
       if (prevAction && prevAction !== nextAction) {
-        // warp=false prevents time-scale distortion during blending
-        prevAction.crossFadeTo(nextAction, fadeTime, false);
+        // warp=true enables time-scale syncing for realistic blend
+        prevAction.crossFadeTo(nextAction, fadeTime, true);
       } else {
         nextAction.fadeIn(fadeTime);
       }
@@ -382,7 +382,7 @@ export function useAvatarAnimations(
       return;
     }
 
-    if (pipelineState === 'thinking' || pipelineState === 'error') {
+    if (pipelineState === 'thinking' || pipelineState === 'error' || pipelineState === 'idle') {
       timelineStateRef.current = {
         phase: 'idle',
         timeInPhase: INITIAL_TIME,

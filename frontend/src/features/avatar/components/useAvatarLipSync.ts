@@ -8,11 +8,52 @@ const TWO_PI = Math.PI * 2;
 const HEAD_BOB_PERIOD = TWO_PI / HEAD_BOB_FREQUENCY;
 const FALLBACK_DAMPING = 5;
 const ORIGIN_ZERO = 0;
-const ACTIVE_VISEME_INFLUENCE = 0.65;
 const INACTIVE_VISEME_INFLUENCE = 0;
 const POINTER_RESET_INDEX = 0;
 const ARRAY_END_OFFSET = 1;
 const FALLBACK_VISEME = 'viseme_sil';
+
+const VISEME_WEIGHT_MAP: Record<string, number> = {
+  'viseme_PP': 1.0,
+  'viseme_FF': 0.7,
+  'viseme_TH': 0.7,
+  'viseme_DD': 0.7,
+  'viseme_kk': 0.8,
+  'viseme_CH': 0.8,
+  'viseme_SS': 0.7,
+  'viseme_nn': 0.8,
+  'viseme_RR': 0.8,
+  'viseme_aa': 1.0,
+  'viseme_E': 0.8,
+  'viseme_I': 0.8,
+  'viseme_O': 1.0,
+  'viseme_U': 0.95,
+  'viseme_oh': 1.0,
+  'viseme_ou': 0.95,
+  'viseme_ih': 0.8,
+  'viseme_sil': 0.0,
+};
+
+const JAW_WEIGHT_MAP: Record<string, number> = {
+  'viseme_PP': 0.0,
+  'viseme_FF': 0.1,
+  'viseme_TH': 0.1,
+  'viseme_DD': 0.15,
+  'viseme_kk': 0.2,
+  'viseme_CH': 0.2,
+  'viseme_SS': 0.1,
+  'viseme_nn': 0.15,
+  'viseme_RR': 0.2,
+  'viseme_aa': 0.6,
+  'viseme_E': 0.3,
+  'viseme_I': 0.2,
+  'viseme_O': 0.5,
+  'viseme_U': 0.3,
+  'viseme_oh': 0.5,
+  'viseme_ou': 0.4,
+  'viseme_ih': 0.2,
+  'viseme_sil': 0.0,
+};
 
 const BLINK_DURATION = 0.15;
 const INITIAL_BLINK_TIME = 0;
@@ -281,10 +322,9 @@ export function useAvatarLipSync({
 
           if (idx !== undefined && idx < influences.length) {
             const currentValue = influences[idx] || TARGET_ZERO;
-            // If speed is SPEED_IMMEDIATE, set immediately (like blink), else damp
             influences[idx] = speed === SPEED_IMMEDIATE
               ? targetValue
-              : THREE.MathUtils.damp(currentValue, targetValue, speed, delta);
+              : THREE.MathUtils.lerp(currentValue, targetValue, Math.min(delta * speed, 1.0));
           }
         };
 
@@ -302,13 +342,15 @@ export function useAvatarLipSync({
         // Visemes
         for (let i = ORIGIN_ZERO; i < visemeKeysList.length; i++) {
           const vKey = visemeKeysList[i];
-          const target = vKey === activeVisemeName ? ACTIVE_VISEME_INFLUENCE : INACTIVE_VISEME_INFLUENCE;
+          let target = INACTIVE_VISEME_INFLUENCE;
+          if (vKey === activeVisemeName) {
+            target = VISEME_WEIGHT_MAP[vKey] !== undefined ? VISEME_WEIGHT_MAP[vKey] : 0.75;
+          }
           safelySetInfluence(vKey, target, DEFAULT_DAMP_SPEED);
         }
 
         // Jaw Kinematics
-        const isWideViseme = activeVisemeName === 'viseme_aa' || activeVisemeName === 'viseme_O' || activeVisemeName === 'viseme_I';
-        const jawTarget = isWideViseme ? JAW_OPEN_WIDE : JAW_CLOSED;
+        const jawTarget = activeVisemeName ? (JAW_WEIGHT_MAP[activeVisemeName] !== undefined ? JAW_WEIGHT_MAP[activeVisemeName] : 0.0) : 0.0;
         safelySetInfluence('jawOpen', jawTarget, DEFAULT_DAMP_SPEED);
       });
     } else if (targetMeshes.length === ORIGIN_ZERO && groupRef.current) {

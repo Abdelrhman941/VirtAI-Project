@@ -29,13 +29,7 @@ export default function useWSClient(url: string | null) {
     }
   }, [url]);
 
-  useEffect(() => {
-    const currentState = wsManager.getStatus().connectionState;
-    if (accessToken && (currentState === ConnectionState.DISCONNECTED || currentState === ConnectionState.FAILED || currentState === ConnectionState.RECONNECTING)) {
-      // Re-trigger connection if we just logged in or if we were waiting for the token
-      wsManager.connect(url);
-    }
-  }, [accessToken, url]);
+
 
   const send = useCallback((message: WSOutgoingMessage) => {
     wsManager.send(message);

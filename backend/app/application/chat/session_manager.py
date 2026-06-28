@@ -382,6 +382,12 @@ class SessionManager:
         if session_to_clean:
             session_to_clean.cleanup()
             await session_to_clean.pipeline.invalidate_context(session_id)
+            try:
+                from app.presentation.http.v1.dependencies import get_ws_connection_manager
+                cm = get_ws_connection_manager()
+                await cm.cleanup_session(session_id)
+            except Exception as e:
+                logger.error(f"Failed to cleanup connection manager for {session_id}: {e}")
         logger.info(f"Session removed | id={session_id}")
 
     async def remove_user_sessions(self, user_id: str) -> None:
@@ -398,6 +404,12 @@ class SessionManager:
         for session in sessions_to_clean:
             session.cleanup()
             await session.pipeline.invalidate_context(session.session_id)
+            try:
+                from app.presentation.http.v1.dependencies import get_ws_connection_manager
+                cm = get_ws_connection_manager()
+                await cm.cleanup_session(session.session_id)
+            except Exception as e:
+                logger.error(f"Failed to cleanup connection manager for {session.session_id}: {e}")
 
         if sessions_to_clean:
             logger.info(f"Removed {len(sessions_to_clean)} sessions for user={user_id}")
@@ -413,6 +425,12 @@ class SessionManager:
         for session in idle_sessions:
             session.cleanup()
             await session.pipeline.invalidate_context(session.session_id)
+            try:
+                from app.presentation.http.v1.dependencies import get_ws_connection_manager
+                cm = get_ws_connection_manager()
+                await cm.cleanup_session(session.session_id)
+            except Exception as e:
+                logger.error(f"Failed to cleanup connection manager for {session.session_id}: {e}")
 
         if cleaned:
             logger.info(f"Cleaned up {cleaned} idle sessions")

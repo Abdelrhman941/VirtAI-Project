@@ -62,6 +62,9 @@ class _FakeWebSocket(WebSocket):
     async def close(self, code: int = 1000, reason: str | None = None) -> None:
         self.closed = True
 
+    async def send_json(self, data: dict) -> None:
+        pass
+
     async def receive_text(self) -> str:
         return '{"type": "auth", "token": "valid.mock.token"}'
 
@@ -93,8 +96,9 @@ class _FakeConnectionManager(WSConnectionManager):
         super().__init__()
         self.unregister_calls: list[str] = []
 
-    async def unregister(self, session_id: str, websocket) -> None:
+    async def unregister(self, session_id: str, websocket) -> bool:
         self.unregister_calls.append(session_id)
+        return True
 
 
 def _mock_decode_token(token: str, expected_type: str = "access"):
