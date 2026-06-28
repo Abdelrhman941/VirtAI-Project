@@ -270,4 +270,38 @@ async def websocket_endpoint(
                 f"[WS] Session disconnected (kept for resume) | id={handler.session.session_id}"
             )
 
+@router.websocket("/rag/explain/{document_id}")
+async def explain_websocket(
+    websocket: WebSocket,
+    document_id: str,
+    token: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    chat_use_case: ChatUseCase = Depends(get_chat_use_case),
+):
+    """
+    WebSocket endpoint for explaining a specific document slide by slide.
+    URL: ws://localhost:8000/api/v1/rag/explain/{document_id}?token=...
+    """
+    if not token:
+        logger.warning("[WS] Explain connection rejected: Missing token")
+        await websocket.close(code=4003, reason="Token missing")
+        return
 
+    try:
+        token_payload = decode_auth_token(token, expected_type="access")
+    except Exception as e:
+        logger.warning(f"[WS] Explain connection rejected: Invalid token - {e}")
+        await websocket.close(code=4003, reason="Invalid token")
+        return
+
+    await websocket.accept()
+    logger.info(f"[WS] Explain connection accepted | document={document_id} | user={token_payload.user_id}")
+    
+    handler = ExplainHandler(
+        websocket=websocket,
+        document_id=document_id,
+        db=db,
+        user_id=token_payload.user_id,
+        chat_use_case=chat_use_case,
+    )
+    await handler.run()

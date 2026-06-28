@@ -69,18 +69,24 @@ export class UploadService {
           newDocs = newDocs.map(d => {
             if (d.id === docId) {
               found = true;
+              const incomingStage = doc.stage || doc.current_stage;
+              const incomingPct = doc.progress_pct !== undefined ? doc.progress_pct : doc.progress_pct;
+              const incomingStatus = doc.status;
+
               if (
-                d.current_stage !== doc.current_stage ||
-                d.progress_pct !== doc.progress_pct ||
-                d.status !== doc.status ||
-                d.chunks_processed !== doc.processed_chunks
+                (incomingStage && d.current_stage !== incomingStage) ||
+                (incomingPct !== undefined && d.progress_pct !== incomingPct) ||
+                (incomingStatus && d.status !== incomingStatus) ||
+                (doc.processed_chunks !== undefined && d.chunks_processed !== doc.processed_chunks)
               ) {
                 changed = true;
                 return {
                   ...d,
-                  ...doc,
+                  current_stage: incomingStage || d.current_stage,
+                  progress_pct: incomingPct !== undefined ? incomingPct : d.progress_pct,
+                  status: incomingStatus || d.status,
                   id: docId,
-                  chunks_processed: doc.processed_chunks
+                  chunks_processed: doc.processed_chunks !== undefined ? doc.processed_chunks : d.chunks_processed
                 };
               }
             }
@@ -123,7 +129,7 @@ export class UploadService {
           this.checkActiveDocuments();
         }
       }
-    }, 10000);
+    }, 3000);
   }
 
   private async checkActiveDocuments() {

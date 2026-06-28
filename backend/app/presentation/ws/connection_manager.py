@@ -215,14 +215,17 @@ class WSConnectionManager:
                                         )
                             elif event == "doc_status":
                                 sid = data.get("session_id")
-                                if sid:
+                                uid = data.get("user_id")
+                                if uid:
                                     async with self._lock:
-                                        ws = self._active.get(sid)
-                                        if ws:
-                                            payload = {
-                                                "type": "doc_status",
-                                                "data": data.get("data", {})
-                                            }
+                                        # If session_id is tied, we could prioritize it, but generally progress should go to all user tabs
+                                        sockets = set(self._user_to_ws.get(uid, []))
+                                        
+                                        payload = {
+                                            "type": "doc_status",
+                                            "data": data.get("data", {})
+                                        }
+                                        for ws in sockets:
                                             try:
                                                 await ws.send_text(json.dumps(payload))
                                             except Exception:

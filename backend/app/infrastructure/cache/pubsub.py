@@ -57,6 +57,7 @@ async def publish_doc_progress(user_id: str, session_id: str | None, document_id
     channel = f"virtai:ws:events:{user_id}"
     payload = {
         "event": "doc_status",
+        "user_id": user_id,
         "session_id": session_id,
         "data": {
             "document_id": document_id,
