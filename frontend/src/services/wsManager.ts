@@ -138,8 +138,7 @@ class WSManager {
     
     try {
       const socketUrl = buildResumeUrl(url, this.sessionState) || url;
-      // Removed token from subprotocols
-      const socket = new WebSocket(socketUrl);
+      const socket = new WebSocket(socketUrl, ["access_token", token]);
       this.ws = socket;
       
       socket.onopen = () => {

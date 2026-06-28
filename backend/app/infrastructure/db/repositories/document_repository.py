@@ -136,8 +136,6 @@ class DocumentRepository:
     async def list_by_user(self, user_id: UUID | str, session_id: str | None = None) -> list[Document]:
         uid = require_uuid(user_id)
         stmt = select(Document).where(Document.user_id == uid)
-        if session_id:
-            stmt = stmt.where(Document.session_id == session_id)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
@@ -147,8 +145,6 @@ class DocumentRepository:
             Document.user_id == uid,
             Document.status.in_([DocumentStatus.PENDING.value, DocumentStatus.PROCESSING.value, DocumentStatus.QUEUED.value])
         )
-        if session_id:
-            stmt = stmt.where(Document.session_id == session_id)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
