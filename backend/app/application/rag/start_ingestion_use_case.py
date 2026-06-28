@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.rag.stage_machine import IngestionStage
 from app.domain.storage.ports import StorageProvider
 from app.infrastructure.db.models import Document, DocumentChunk
-from app.infrastructure.db.repositories.document_crud_repository import DocumentCrudRepository
+from app.infrastructure.db.repositories.document_repository import DocumentRepository
 from app.infrastructure.db.repositories.ingestion_state_repository import IngestionStateRepository
 from app.shared.ids import parse_uuid
 
@@ -33,7 +33,7 @@ class StartIngestionUseCase:
         ext: str,
         file_stream: AsyncIterable[bytes],
     ) -> dict[str, Any]:
-        crud_repo = DocumentCrudRepository(self.db)
+        crud_repo = DocumentRepository(self.db)
         state_repo = IngestionStateRepository(self.db)
 
         # 1. Check dedup and stale logic

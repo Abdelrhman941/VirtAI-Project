@@ -12,10 +12,19 @@ from app.presentation.ws.gateway import WebSocketHandler
 
 class FakePipeline:
     def __init__(self):
-        self.process_user_message_calls = []
+        self.process_message_calls = []
 
-    async def process_user_message(self, payload):
-        self.process_user_message_calls.append(payload)
+    async def process_message(
+        self,
+        message_id: str,
+        text: str,
+        session_id: str,
+        send_callback,
+        send_binary_callback=None,
+        trace_id=None,
+        user_id=None,
+    ):
+        self.process_message_calls.append({"message_id": message_id, "text": text})
 
 
 class FakeSession:
@@ -54,15 +63,15 @@ async def test_websocket_handler_lifecycle():
         WebSocketDisconnect()
     ]
     
-    async def mock_receive_text():
+    async def mock_receive():
         if not messages:
             raise asyncio.exceptions.IncompleteReadError(b'', None)
         msg = messages.pop(0)
         if isinstance(msg, Exception):
             raise msg
-        return msg
+        return {"type": "websocket.receive", "text": msg}
 
-    ws.receive_text = mock_receive_text
+    ws.receive = mock_receive
     
     # Track sent messages
     sent_messages = []
@@ -98,8 +107,8 @@ async def test_websocket_handler_lifecycle():
     assert handler.session.session_id == "lazy-session-123"
 
     # Verify Pipeline received message
-    assert len(handler.session.pipeline.process_user_message_calls) == 1
-    payload = handler.session.pipeline.process_user_message_calls[0]
-    assert payload.text == "hello"
-    assert str(payload.message_id) == "123e4567-e89b-12d3-a456-426614174000"
+    assert len(handler.session.pipeline.process_message_calls) == 1
+    payload = handler.session.pipeline.process_message_calls[0]
+    assert payload["text"] == "hello"
+    assert str(payload["message_id"]) == "123e4567-e89b-12d3-a456-426614174000"
 

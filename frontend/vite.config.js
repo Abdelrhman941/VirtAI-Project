@@ -45,9 +45,16 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-3d': ['three', '@react-three/fiber', '@react-three/drei'],
-          'vendor-react': ['react', 'react-dom', 'react-router-dom', 'zustand'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('three') || id.includes('@react-three')) {
+              return 'vendor-3d';
+            }
+            if (id.includes('react') || id.includes('zustand')) {
+              return 'vendor-react';
+            }
+            return 'vendor';
+          }
         },
       },
     },

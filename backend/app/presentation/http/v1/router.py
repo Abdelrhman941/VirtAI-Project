@@ -257,23 +257,23 @@ async def websocket_endpoint(
         logger.info("[WS] Ready sent | session=%s", session_id)
         await handler.run()
     except WebSocketDisconnect:
-        logger.info(f"[WS] Client disconnected | session={handler.session.session_id or 'pending'}")
+        logger.info(f"[WS] Client disconnected | session={handler.session_id or 'pending'}")
     except Exception as e:
         logger.error(
-            f"[WS] Handler error | session={handler.session.session_id or 'pending'} | error={e}",
+            f"[WS] Handler error | session={handler.session_id or 'pending'} | error={e}",
             exc_info=True,
         )
     finally:
-        if handler and getattr(handler, "session", None) and handler.session.session_id:
-            was_active = await connection_manager.unregister(handler.session.session_id, websocket)
+        if handler and handler.session_id:
+            was_active = await connection_manager.unregister(handler.session_id, websocket)
             if was_active:
-                await session_manager.disconnect_session(handler.session.session_id)
+                await session_manager.disconnect_session(handler.session_id)
                 logger.info(
-                    f"[WS] Session disconnected (kept for resume) | id={handler.session.session_id}"
+                    f"[WS] Session disconnected (kept for resume) | id={handler.session_id}"
                 )
             else:
                 logger.info(
-                    f"[WS] Old socket unregistered, session {handler.session.session_id} remains active via new socket"
+                    f"[WS] Old socket unregistered, session {handler.session_id} remains active via new socket"
                 )
 
 @router.websocket("/rag/explain/{document_id}")

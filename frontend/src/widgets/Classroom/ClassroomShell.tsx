@@ -110,7 +110,8 @@ export default function ClassroomShell() {
     forceAdvanceSequence,
     resetAvatarAudio,
     getIsAudioPlaying,
-    getNextPlaybackTime
+    getNextPlaybackTime,
+    getAnalyserNode
   } = useClassroomAudio();
 
   const [isExplainActive, setIsExplainActive] = useState(false);
@@ -366,15 +367,7 @@ export default function ClassroomShell() {
     }
   }, [isConnected, currentSessionId, commitAndSend, getActiveRefs]);
 
-  const onKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSendMessage();
-      }
-    },
-    [handleSendMessage]
-  );
+
 
   const ensureVoiceSession = useCallback(async () => {
     PCMRecorder.preWarmWorklet();
@@ -501,6 +494,7 @@ export default function ClassroomShell() {
                   playbackStartTimeRef={playbackStartTimeRef}
                   getIsAudioPlaying={getIsAudioPlaying}
                   getNextPlaybackTime={getNextPlaybackTime}
+                  getAnalyserNode={getAnalyserNode}
                 />
               </Suspense>
             </aside>
@@ -534,7 +528,7 @@ export default function ClassroomShell() {
                 onChatScroll={handleChatScroll}
                 pipelineState={pipelineState}
                 onSendMessage={handleSendMessage}
-                onKeyDown={onKeyDown}
+
                 textareaRef={desktopTextareaRef}
                 onToggleDocuments={toggleDocuments}
                 onBeforeVoiceStart={ensureVoiceSession}
@@ -560,6 +554,7 @@ export default function ClassroomShell() {
                   playbackStartTimeRef={playbackStartTimeRef}
                   getIsAudioPlaying={getIsAudioPlaying}
                   getNextPlaybackTime={getNextPlaybackTime}
+                  getAnalyserNode={getAnalyserNode}
                 />
               </Suspense>
             </aside>
@@ -593,7 +588,7 @@ export default function ClassroomShell() {
                 onChatScroll={handleChatScroll}
                 pipelineState={pipelineState}
                 onSendMessage={handleSendMessage}
-                onKeyDown={onKeyDown}
+
                 textareaRef={mobileTextareaRef}
                 onToggleDocuments={toggleDocuments}
                 onBeforeVoiceStart={ensureVoiceSession}

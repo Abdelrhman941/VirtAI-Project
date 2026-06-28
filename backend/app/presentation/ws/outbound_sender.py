@@ -86,6 +86,7 @@ class OutboundSender:
                 "type": message_type,
                 "data": message.model_dump(exclude_none=True),
             }
+            logger.info(f"[WS OUT] {message_type} | session_id={session_id} | data={envelope['data']}")
 
             if session_pending or not session_id:
                 serialized = json.dumps(envelope)

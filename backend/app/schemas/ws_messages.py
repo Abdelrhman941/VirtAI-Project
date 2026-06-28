@@ -244,6 +244,7 @@ class ChatFinal(BaseModel):
     # Phase 2: canonical server timestamp for the persisted assistant message.
     # Clients that don't read this field yet are unaffected (additive).
     created_at: str | None = Field(None, description="ISO-8601 UTC timestamp of persisted message")
+    db_message_id: str | None = Field(None, description="Database row UUID for the message")
 
 
 class UserMessageEcho(BaseModel):

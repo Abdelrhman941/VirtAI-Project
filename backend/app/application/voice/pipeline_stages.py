@@ -277,23 +277,10 @@ class AnimationStage(BaseStage):
 
         chunk_message_id = f"{context.message_id}_{context.sentence_index}"
 
+        # Viseme generation using PyDub is removed to eliminate synchronous blocking.
+        # The frontend now uses realtime AnalyserNode for lip-sync.
+        # We preserve the empty mouth_cues array to satisfy API contracts (e.g. make_visemes_ready).
         mouth_cues = []
-        try:
-            if (
-                context.tts_result
-                and getattr(context.tts_result, "audio_ref", None)
-                and self._viseme_generator
-            ):
-                mouth_cues = await self._viseme_generator.generate_from_audio(
-                    audio_path=context.tts_result.audio_ref,
-                    text=text_to_animate,
-                    session_id=context.session_id,
-                    message_id=chunk_message_id,
-                )
-        except Exception as e:
-            logger.warning(
-                f"Viseme generation failed, falling back to empty cues: {e} | trace_id={context.trace_id}"
-            )
 
         context.mouth_cues = mouth_cues
 

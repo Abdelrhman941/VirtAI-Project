@@ -267,7 +267,7 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
         reconciled = true;
         return old.map((m) => (
           m.id === message.id
-            ? { ...m, ...nextMessage, status: nextMessage.status ?? m.status }
+            ? { ...m, ...nextMessage, status: canonicalTimestamp ? 'sent' : m.status }
             : m
         ));
       }

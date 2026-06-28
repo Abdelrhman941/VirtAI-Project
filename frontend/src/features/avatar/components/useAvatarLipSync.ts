@@ -98,6 +98,7 @@ export interface UseAvatarLipSyncProps {
   playbackStartTimeRef?: React.MutableRefObject<number | null>;
   getIsAudioPlaying?: () => boolean;
   getNextPlaybackTime?: () => number;
+  getAnalyserNode?: () => AnalyserNode | null;
   groupRef: React.RefObject<THREE.Group | null>;
 }
 
@@ -109,6 +110,7 @@ export function useAvatarLipSync({
   playbackStartTimeRef,
   getIsAudioPlaying,
   getNextPlaybackTime,
+  getAnalyserNode,
   groupRef,
 }: UseAvatarLipSyncProps) {
   const visemeKeysList = useMemo(() => [
@@ -124,6 +126,10 @@ export function useAvatarLipSync({
     lastAudioTime: 0,
     lastFrameTime: 0,
   });
+  
+  // Realtime Audio Analysis Refs
+  const audioDataArrayRef = useRef<Uint8Array | null>(null);
+  const smoothedVolumeRef = useRef<number>(0);
 
   const pipelineStateRef = useRef(pipelineState);
   useEffect(() => {
@@ -243,7 +249,40 @@ export function useAvatarLipSync({
       }
 
       let activeVisemeName: string | null = null;
-      if (isEffectivelySpeaking && mouthCuesRef?.current) {
+      let realtimeVolume = 0;
+      let usingRealtime = false;
+
+      // Prioritize Realtime AnalyserNode Lip-Sync
+      if (getAnalyserNode) {
+        const analyser = getAnalyserNode();
+        if (analyser) {
+          usingRealtime = true;
+          if (!audioDataArrayRef.current || audioDataArrayRef.current.length !== analyser.frequencyBinCount) {
+            audioDataArrayRef.current = new Uint8Array(analyser.frequencyBinCount);
+          }
+          analyser.getByteFrequencyData(audioDataArrayRef.current);
+          
+          let sum = 0;
+          for (let i = 0; i < audioDataArrayRef.current.length; i++) {
+            sum += audioDataArrayRef.current[i];
+          }
+          const average = sum / audioDataArrayRef.current.length;
+          // Normalize (0-255 to 0-1) and scale up a bit for emphasis
+          const normalizedVolume = Math.min((average / 255.0) * 2.5, 1.0);
+          
+          // EMA Smoothing (Attack 0.6, Release 0.2)
+          if (normalizedVolume > smoothedVolumeRef.current) {
+            smoothedVolumeRef.current = smoothedVolumeRef.current * 0.4 + normalizedVolume * 0.6;
+          } else {
+            smoothedVolumeRef.current = smoothedVolumeRef.current * 0.8 + normalizedVolume * 0.2;
+          }
+          
+          realtimeVolume = smoothedVolumeRef.current;
+        }
+      }
+
+      // Fallback to Viseme Payload
+      if (!usingRealtime && isEffectivelySpeaking && mouthCuesRef?.current) {
         const cues = mouthCuesRef.current;
         
         if (cues !== lastCuesRef.current) {
@@ -303,7 +342,7 @@ export function useAvatarLipSync({
           const nextViseme = VISEME_MAP[cueValue] || (rawValue.toLowerCase().startsWith('viseme_') ? rawValue : FALLBACK_VISEME);
           
           if (activeVisemeName !== nextViseme) {
-            if (Math.random() < 0.05) { // Sample logs to avoid flooding
+            if (Math.random() < 0.01) { // Sample logs to avoid flooding
                 console.log(`[Runtime Evidence] Lip-Sync Update - Time: ${currentTime.toFixed(3)}s, Viseme: ${nextViseme}, Index: ${index}`);
             }
           }
@@ -340,18 +379,30 @@ export function useAvatarLipSync({
         safelySetInfluence('mouthSmileRight', targetSmile);
 
         // Visemes
-        for (let i = ORIGIN_ZERO; i < visemeKeysList.length; i++) {
-          const vKey = visemeKeysList[i];
-          let target = INACTIVE_VISEME_INFLUENCE;
-          if (vKey === activeVisemeName) {
-            target = VISEME_WEIGHT_MAP[vKey] !== undefined ? VISEME_WEIGHT_MAP[vKey] : 0.75;
+        if (usingRealtime) {
+          // Reset legacy visemes
+          for (let i = 0; i < visemeKeysList.length; i++) {
+            safelySetInfluence(visemeKeysList[i], INACTIVE_VISEME_INFLUENCE, DEFAULT_DAMP_SPEED);
           }
-          safelySetInfluence(vKey, target, DEFAULT_DAMP_SPEED);
-        }
+          // Map realtime volume to 'viseme_O' or similar wide open mouth
+          // Since the EMA is already smoothed, we can use SPEED_IMMEDIATE or a high speed
+          safelySetInfluence('viseme_O', realtimeVolume, SPEED_IMMEDIATE);
+          safelySetInfluence('jawOpen', realtimeVolume * 0.5, SPEED_IMMEDIATE);
+        } else {
+          // Legacy Viseme Payload logic
+          for (let i = ORIGIN_ZERO; i < visemeKeysList.length; i++) {
+            const vKey = visemeKeysList[i];
+            let target = INACTIVE_VISEME_INFLUENCE;
+            if (vKey === activeVisemeName) {
+              target = VISEME_WEIGHT_MAP[vKey] !== undefined ? VISEME_WEIGHT_MAP[vKey] : 0.75;
+            }
+            safelySetInfluence(vKey, target, DEFAULT_DAMP_SPEED);
+          }
 
-        // Jaw Kinematics
-        const jawTarget = activeVisemeName ? (JAW_WEIGHT_MAP[activeVisemeName] !== undefined ? JAW_WEIGHT_MAP[activeVisemeName] : 0.0) : 0.0;
-        safelySetInfluence('jawOpen', jawTarget, DEFAULT_DAMP_SPEED);
+          // Jaw Kinematics
+          const jawTarget = activeVisemeName ? (JAW_WEIGHT_MAP[activeVisemeName] !== undefined ? JAW_WEIGHT_MAP[activeVisemeName] : 0.0) : 0.0;
+          safelySetInfluence('jawOpen', jawTarget, DEFAULT_DAMP_SPEED);
+        }
       });
     } else if (targetMeshes.length === ORIGIN_ZERO && groupRef.current) {
       const currentPipelineState = pipelineStateRef.current;

@@ -42,6 +42,8 @@ export function createEventRouter(): EventRouter {
         const message: WSIncomingMessage =
           typeof event.data === 'string' ? (JSON.parse(event.data) as WSIncomingMessage) : (event.data as WSIncomingMessage);
 
+        console.log(`[WS IN] ${message.type}`, message.data);
+
         if (Number.isFinite(message.seq_id)) {
           callbacks.onSeq(Number(message.seq_id));
         }

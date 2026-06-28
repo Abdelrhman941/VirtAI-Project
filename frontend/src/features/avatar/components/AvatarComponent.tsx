@@ -18,6 +18,7 @@ export interface AvatarComponentProps {
   playbackStartTimeRef?: React.MutableRefObject<number | null>;
   getIsAudioPlaying?: () => boolean;
   getNextPlaybackTime?: () => number;
+  getAnalyserNode?: () => AnalyserNode | null;
 }
 
 interface GLTFResult {
@@ -33,7 +34,8 @@ export function AvatarComponent({
   getAudioContext,
   playbackStartTimeRef,
   getIsAudioPlaying,
-  getNextPlaybackTime
+  getNextPlaybackTime,
+  getAnalyserNode
 }: AvatarComponentProps) {
   const groupRef = useRef<THREE.Group>(null);
   const avatarUrl = `/models/${avatarId}.glb`;
@@ -107,6 +109,7 @@ export function AvatarComponent({
     playbackStartTimeRef,
     getIsAudioPlaying,
     getNextPlaybackTime,
+    getAnalyserNode,
     groupRef
   });
 

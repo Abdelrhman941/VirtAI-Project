@@ -84,6 +84,7 @@ const MessageList = React.memo(function MessageList({
                 }
               }}
             />
+          ))}
           <StreamingLayer avatarName={avatarName} />
           <div ref={messagesEndRef} />
         </div>

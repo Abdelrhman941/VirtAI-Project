@@ -86,7 +86,27 @@ class WSManager {
     if (!url) return;
     
     // If connecting to a new URL (e.g. new session), disconnect old and reset state
-    if (this.url && this.url !== url) {
+    const isUrlUpgrade = () => {
+      if (!this.url || !url) return false;
+      try {
+        // Simple string manipulation to check if the only difference is the session_id param
+        const urlA = new URL(this.url.replace('ws://', 'http://').replace('wss://', 'https://'));
+        const urlB = new URL(url.replace('ws://', 'http://').replace('wss://', 'https://'));
+        urlA.searchParams.delete('session_id');
+        urlB.searchParams.delete('session_id');
+        return urlA.toString() === urlB.toString();
+      } catch {
+        return false;
+      }
+    };
+
+    if (this.url !== url) {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN && isUrlUpgrade()) {
+        if (import.meta.env.DEV) console.log('[WS] Upgrading session_id without reconnecting');
+        this.url = url;
+        return;
+      }
+
       // Close old socket but don't reset token state
       if (this.ws) {
         this.ws.onopen = null;

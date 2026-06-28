@@ -48,8 +48,8 @@ export function useClassroomChat({
   const currentSessionId = session.currentSessionId;
   const status = session.status;
   
-  const WS_URL = status === 'success' && currentSessionId 
-    ? buildWsUrl(wsAvatarId, activeVoiceId, currentSessionId) 
+  const WS_URL = status === 'success' 
+    ? buildWsUrl(wsAvatarId, activeVoiceId, currentSessionId || undefined) 
     : null;
 
   const { connectionState, isConnected, send, onMessage, reconnect, reconnectError, disconnect } =
@@ -120,8 +120,8 @@ export function useClassroomChat({
               { id: message_id, role: 'user', content: text, status: 'pending' },
               newId
             );
-            // The message will be queued by the core WS queue until connection is established.
-            send({ type: 'chat.user_message', message_id, text });
+            // Pass the new session_id to the backend so it binds this existing websocket to the new session
+            send({ type: 'chat.user_message', data: { session_id: newId, message_id, text } });
           }
         }).catch((err: unknown) => {
           isCreatingSessionRef.current = false;
@@ -140,7 +140,7 @@ export function useClassroomChat({
           { id: message_id, role: 'user', content: text, status: 'pending' },
           activeId
         );
-        send({ type: 'chat.user_message', message_id, text });
+        send({ type: 'chat.user_message', data: { message_id, text } });
       }
     },
     [dispatch, send, currentSessionId, resetAvatarAudio, getAudioContext]

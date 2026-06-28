@@ -12,6 +12,7 @@ export interface Viseme {
 
 export function useGaplessAudioQueue() {
   const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserNodeRef = useRef<AnalyserNode | null>(null);
   const nextPlaybackTimeRef = useRef<number>(0);
   const scheduledNodesRef = useRef<AudioBufferSourceNode[]>([]);
   const visemeBaseStartTimeRef = useRef<number | null>(null);
@@ -25,6 +26,10 @@ export function useGaplessAudioQueue() {
     if (!audioContextRef.current) {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       audioContextRef.current = new AudioCtx();
+      analyserNodeRef.current = audioContextRef.current.createAnalyser();
+      analyserNodeRef.current.fftSize = 256;
+      analyserNodeRef.current.smoothingTimeConstant = 0.8;
+      analyserNodeRef.current.connect(audioContextRef.current.destination);
     }
     if (audioContextRef.current.state === 'suspended') {
       audioContextRef.current.resume();
@@ -146,7 +151,11 @@ export function useGaplessAudioQueue() {
           const source = ctx.createBufferSource();
           activeSourceNodeRef.current = source;
           source.buffer = audioBuffer;
-          source.connect(ctx.destination);
+          if (analyserNodeRef.current) {
+            source.connect(analyserNodeRef.current);
+          } else {
+            source.connect(ctx.destination);
+          }
           scheduledNodesRef.current.push(source);
 
           source.onended = () => {
@@ -198,6 +207,10 @@ export function useGaplessAudioQueue() {
     return () => {
       isMountedRef.current = false;
       flushQueue();
+      if (analyserNodeRef.current) {
+        analyserNodeRef.current.disconnect();
+        analyserNodeRef.current = null;
+      }
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close().catch(() => {});
       }
@@ -247,5 +260,6 @@ export function useGaplessAudioQueue() {
     playbackStartTimeRef: visemeBaseStartTimeRef,
     getIsAudioPlaying,
     getNextPlaybackTime,
+    getAnalyserNode: useCallback(() => analyserNodeRef.current, []),
   };
 }

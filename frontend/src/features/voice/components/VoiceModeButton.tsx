@@ -38,7 +38,7 @@ export default function VoiceModeButton({
 }: VoiceModeButtonProps) {
 
   // Use realtime ASR hook for voice + transcript state (Requirement 1.1, 1.4)
-  const { isListening, isPaused, isProcessing, interimText, error, startListening, stopListening } =
+  const { isListening, isPaused, isProcessing, interimText, error, canRetry, clearError, startListening, stopListening } =
     useRealtimeASR(wsClient, pipelineState);
 
   // Determine button state and styling
@@ -103,6 +103,15 @@ export default function VoiceModeButton({
       <button
         className={`w-[52px] h-[52px] rounded-full bg-dark-secondary hover:bg-dark-tertiary flex items-center justify-center transition-colors text-white/70 hover:text-white voice-mode-btn ${buttonState}`}
         onClick={async () => {
+          if (error && canRetry) {
+            clearError();
+            stopListening();
+            const canStart = onBeforeStart ? await onBeforeStart() : true;
+            if (canStart) {
+              startListening();
+            }
+            return;
+          }
           if (!!error) return;
           if (isListening) {
             stopListening();
@@ -113,9 +122,9 @@ export default function VoiceModeButton({
             startListening();
           }
         }}
-        title={buttonTitle}
-        aria-label={ariaLabel}
-        disabled={!!error}
+        title={error && canRetry ? 'Click to Retry' : buttonTitle}
+        aria-label={error && canRetry ? 'Retry voice mode' : ariaLabel}
+        disabled={!!error && !canRetry}
         type="button"
       >
         <ButtonIcon className="voice-mode-icon" size={22} />

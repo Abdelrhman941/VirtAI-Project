@@ -73,13 +73,15 @@ export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChang
   const sendQuestion = useCallback((text: string) => {
     setCurrentState('ANSWERING');
     onStateChangeRef.current('ANSWERING');
-    send({ type: 'chat.user_message', text });
+    const message_id = crypto.randomUUID();
+    send({ type: 'chat.user_message', data: { message_id, text } });
   }, [send]);
 
   const sendContinue = useCallback(() => {
     setCurrentState('EXPLAINING');
     onStateChangeRef.current('EXPLAINING');
-    send({ type: 'chat.user_message', text: 'continue' });
+    const message_id = crypto.randomUUID();
+    send({ type: 'chat.user_message', data: { message_id, text: 'continue' } });
   }, [send]);
 
   const sendPauseOrStop = useCallback(() => {

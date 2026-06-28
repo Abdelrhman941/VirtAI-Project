@@ -102,17 +102,21 @@ export default function ChatInput({
 
   const handleKeyDownSafe = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       const now = Date.now();
       if (now - lastActionTime.current < 500) {
-        e.preventDefault();
         return;
       }
+      if (isInputDisabled || !inputValue.trim()) return;
       lastActionTime.current = now;
+      onSend(inputValue);
+      setInputValue('');
+      return;
     }
     if (onKeyDown) {
       onKeyDown(e);
     }
-  }, [onKeyDown]);
+  }, [onKeyDown, inputValue, isInputDisabled, onSend]);
 
   const handleSendSafe = useCallback(() => {
     const now = Date.now();

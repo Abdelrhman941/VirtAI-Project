@@ -46,7 +46,20 @@ class WebSocketHandler:
     async def _message_loop(self) -> None:
         while True:
             try:
-                data = await self.ws.receive_text()
+                msg = await self.ws.receive()
+                if msg["type"] == "websocket.disconnect":
+                    logger.info(f"[WS] Client disconnected: session {self.session_id}")
+                    break
+                elif msg["type"] == "websocket.receive":
+                    if "text" in msg:
+                        data = msg["text"]
+                    elif "bytes" in msg:
+                        # Ignore binary messages for now, but do not crash.
+                        continue
+                    else:
+                        continue
+                else:
+                    continue
             except asyncio.exceptions.IncompleteReadError:
                 logger.info(f"[WS] Client disconnected (IncompleteReadError): session {self.session_id}")
                 break
@@ -54,11 +67,23 @@ class WebSocketHandler:
                 logger.info(f"[WS] Client disconnected (RuntimeError): session {self.session_id} - {e}")
                 break
             except Exception as e:
-                logger.error(f"[WS] Error receiving text: {e}")
+                logger.error(f"[WS] Error receiving data: {e}")
                 break
             try:
                 import json
-                msg_dict = json.loads(data)
+                try:
+                    msg_dict = json.loads(data)
+                except json.JSONDecodeError as e:
+                    logger.error(f"[WS] JSON parse error: {e}")
+                    sender = OutboundSender(self.ws, self.connection_manager)
+                    await sender.safe_send_error(
+                        code="INVALID_MESSAGE",
+                        message="Invalid JSON payload",
+                        session_id=self.session_id,
+                        session_pending=False,
+                        connected=True
+                    )
+                    continue
                 msg_type = msg_dict.get("type")
 
                 if msg_type == "ping":
@@ -66,7 +91,23 @@ class WebSocketHandler:
                     continue
 
                 if msg_type == "chat.user_message":
-                    # Lazy session creation
+                    from app.schemas.ws_messages import ChatUserMessage
+                    payload = ChatUserMessage(**msg_dict.get("data", {}))
+
+                    # 1) If message has a session_id but we don't, bind to it (frontend created it via REST)
+                    if payload.session_id and not self.session_id:
+                        self.session_id = payload.session_id
+                        self.session = await self.session_manager.get_session(self.session_id)
+                        if self.connection_manager and self.session:
+                            await self.connection_manager.register(
+                                self.session_id,
+                                self.ws,
+                                self.user_id,
+                                getattr(self, "_family_id", None)
+                            )
+                        logger.info(f"[WS] Bound WS to REST session | session_id={self.session_id}")
+                    
+                    # 2) Lazy session creation (fallback if frontend didn't create one)
                     if not self.session_id:
                         new_session = await self.session_manager.create_session(
                             user_id=self.user_id,
@@ -86,11 +127,40 @@ class WebSocketHandler:
 
                     # Forward to pipeline
                     if self.session and hasattr(self.session, "pipeline"):
-                        from app.schemas.ws_messages import ChatUserMessage
-                        payload = ChatUserMessage(**msg_dict.get("data", {}))
-                        await self.session.pipeline.process_user_message(payload)
+                        
+                        sender = OutboundSender(self.ws, self.connection_manager)
+                        
+                        async def send_callback(msg: Any) -> None:
+                            await sender.send_protocol_message(msg, self.session_id, False, True)
+
+                        async def send_binary_callback(data: bytes) -> None:
+                            await sender.send_binary(data)
+
+                        await self.session.pipeline.process_message(
+                            message_id=payload.message_id,
+                            text=payload.text,
+                            session_id=self.session_id,
+                            send_callback=send_callback,
+                            send_binary_callback=send_binary_callback,
+                            user_id=self.user_id,
+                        )
+
+                elif msg_type == "chat.abort":
+                    if self.session and hasattr(self.session, "pipeline"):
+                        self.session.pipeline.abort()
+                        logger.info(f"[WS] Aborted generation for session {self.session_id}")
+
             except ValidationError as e:
                 logger.error(f"[WS] Validation error: {e}")
+                sender = OutboundSender(self.ws, self.connection_manager)
+                await sender.safe_send_error(
+                    code="INVALID_MESSAGE",
+                    message="Message validation failed",
+                    session_id=self.session_id,
+                    session_pending=False,
+                    connected=True,
+                    details={"errors": e.errors()}
+                )
             except ValueError as e:
                 logger.error(f"[WS] Invalid state/session: {e}")
             except Exception as e:
