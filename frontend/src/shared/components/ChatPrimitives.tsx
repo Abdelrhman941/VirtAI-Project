@@ -65,7 +65,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             </div>
           )}
           
-          <div className={`message-bubble ${isUser ? (isInterim ? '' : 'user-bubble-content relative') : (isTyping ? 'typing-indicator' : 'flex flex-col gap-2 w-full')}`}>
+          <div className={`message-bubble ${isUser ? (isInterim ? '' : 'user-bubble-content relative') : (isTyping ? 'typing-indicator' : 'bg-transparent shadow-none border-none flex flex-col gap-2 w-full')}`}>
             {children}
             
             {isUser && !isInterim && timeString && (

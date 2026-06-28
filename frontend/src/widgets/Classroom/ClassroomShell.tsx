@@ -465,7 +465,7 @@ export default function ClassroomShell() {
           <div className="hidden lg:flex flex-row w-full flex-1 min-h-0 gap-6">
 
             {/* Avatar Panel (Left) */}
-            <aside className="flex-[3] min-w-0 min-h-0 relative overflow-hidden flex items-center justify-center">
+            <aside className="flex-[3] min-w-0 min-h-0 relative overflow-hidden flex items-center justify-center bg-dark-secondary/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl">
               <AvatarCanvasWrapper
                 avatarId={activeAvatarId}
                 pipelineState={conversationState.pipelineState}
@@ -479,7 +479,7 @@ export default function ClassroomShell() {
             </aside>
 
             {/* Chat Panel (Right) */}
-            <section className="flex-[7] min-w-0 min-h-0 flex flex-col relative">
+            <section className="flex-[7] min-w-0 min-h-0 flex flex-col relative bg-dark-secondary/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl">
               <AssistantPanel
                 isExplainActive={isExplainActive}
                 isDiagramOpen={isDiagramOpen}
@@ -540,7 +540,7 @@ export default function ClassroomShell() {
           <div className="flex lg:hidden flex-col w-full flex-1 min-h-0 gap-4 pb-16">
 
             {/* Avatar Container: exactly 40% of available height */}
-            <aside className="h-[40%] min-h-0 relative overflow-hidden flex items-center justify-center">
+            <aside className="h-[40%] min-h-0 relative overflow-hidden flex items-center justify-center bg-dark-secondary/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl mx-4">
               <AvatarCanvasWrapper
                 avatarId={activeAvatarId}
                 pipelineState={conversationState.pipelineState}
@@ -554,7 +554,7 @@ export default function ClassroomShell() {
             </aside>
 
             {/* Chat Container: remaining 60% height */}
-            <section className="h-[60%] min-h-0 flex flex-col relative">
+            <section className="h-[60%] min-h-0 flex flex-col relative bg-dark-secondary/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl mx-4">
               <AssistantPanel
                 isSummaryOpen={isSummaryOpen}
                 onSummaryClose={() => setIsSummaryOpen(false)}

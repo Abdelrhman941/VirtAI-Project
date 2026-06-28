@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuizSession } from '../hooks/useQuizSession';
 import { QuizViewer } from './QuizViewer';
+import { QuizDashboard } from './Dashboard/QuizDashboard';
 import { DocumentPicker } from '@/features/diagrams/components/DocumentPicker';
 import { FiLoader, FiAlertCircle } from 'react-icons/fi';
 
@@ -12,6 +13,7 @@ interface QuizContainerProps {
 
 export function QuizContainer({ isOpen, onClose, sessionId }: QuizContainerProps) {
   const { state, quizData, error, startQuiz, reset } = useQuizSession();
+  const [dashboardAttemptId, setDashboardAttemptId] = React.useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -21,6 +23,7 @@ export function QuizContainer({ isOpen, onClose, sessionId }: QuizContainerProps
 
   const handleClose = () => {
     reset();
+    setDashboardAttemptId(null);
     onClose();
   };
 
@@ -78,7 +81,19 @@ export function QuizContainer({ isOpen, onClose, sessionId }: QuizContainerProps
         )}
 
         {state === 'ready' && quizData && (
-          <QuizViewer quiz={quizData} onRetake={reset} />
+          dashboardAttemptId ? (
+            <QuizDashboard 
+              quizId={quizData.id} 
+              attemptId={dashboardAttemptId} 
+              onBack={() => setDashboardAttemptId(null)} 
+            />
+          ) : (
+            <QuizViewer 
+              quiz={quizData} 
+              onRetake={reset} 
+              onViewAnalytics={(attemptId) => setDashboardAttemptId(attemptId)}
+            />
+          )
         )}
 
       </div>

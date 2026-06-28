@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.rag.diagram_use_case import DiagramDomainException, DiagramUseCase
-from app.application.rag.quiz_use_case import QuizDomainException, QuizUseCase
+from app.application.rag.quiz_use_case import QuizDomainException, QuizUseCase, QuizAttemptModel
 from app.application.rag.summary_use_case import SummaryUseCase
 from app.application.rag.visualization_use_case import (
     VisualizationDomainException,
@@ -96,6 +96,71 @@ async def get_quiz(
         return quiz_data
     except QuizDomainException as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/quiz/{quiz_id}/attempt")
+async def submit_quiz_attempt(
+    quiz_id: str,
+    attempt: QuizAttemptModel,
+    request: Request,
+    user: UserEntity = Depends(_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Submit a quiz attempt and save telemetry data."""
+    q_uuid = parse_uuid(quiz_id)
+    if not q_uuid:
+        raise HTTPException(status_code=400, detail="Invalid quiz ID")
+
+    provider = request.app.state.model_policy.router.get_llm_chain()
+    use_case = QuizUseCase(llm=provider)
+    try:
+        attempt_id = await use_case.submit_attempt(db, quiz_id, str(user.id), attempt)
+        return {"attempt_id": attempt_id}
+    except QuizDomainException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/quiz/{quiz_id}/analytics")
+async def get_quiz_analytics(
+    quiz_id: str,
+    request: Request,
+    user: UserEntity = Depends(_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get aggregated analytics for a quiz."""
+    q_uuid = parse_uuid(quiz_id)
+    if not q_uuid:
+        raise HTTPException(status_code=400, detail="Invalid quiz ID")
+
+    provider = request.app.state.model_policy.router.get_llm_chain()
+    use_case = QuizUseCase(llm=provider)
+    try:
+        analytics = await use_case.get_analytics(db, quiz_id, str(user.id))
+        return analytics
+    except QuizDomainException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.get("/quiz/attempt/{attempt_id}/insights")
+async def get_quiz_insights(
+    attempt_id: str,
+    request: Request,
+    locale: Locale = Locale.EN,
+    user: UserEntity = Depends(_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate LLM insights for a quiz attempt asynchronously."""
+    a_uuid = parse_uuid(attempt_id)
+    if not a_uuid:
+        raise HTTPException(status_code=400, detail="Invalid attempt ID")
+
+    provider = request.app.state.model_policy.router.get_llm_chain()
+    use_case = QuizUseCase(llm=provider)
+    try:
+        insights = await use_case.get_insights(db, attempt_id, str(user.id), locale)
+        return {"insights": insights}
+    except QuizDomainException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
 
 
 @router.post("/diagram/{document_id}")
