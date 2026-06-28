@@ -39,9 +39,11 @@ class RetrievalUseCase:
         self,
         embedder: EmbeddingProvider,
         vector_store: VectorStore,
-        reranker: RerankerPort | None = None,
+        reranker: RerankerPort,
         budget_manager: TokenBudgetManager | None = None,
     ):
+        if not reranker:
+            raise ValueError("RerankerPort is strictly required for RetrievalUseCase")
         self.embedder = embedder
         self.vector_store = vector_store
         self.reranker = reranker
@@ -75,8 +77,8 @@ class RetrievalUseCase:
                 return RetrievalResult(status=RetrievalStatus.NO_RESULTS)
 
             sizing = TASK_RETRIEVAL_SIZES.get(task_type, TASK_RETRIEVAL_SIZES[TaskType.SIMPLE_QA])
-            actual_fetch_limit = sizing.fetch_limit
             actual_top_k = max(top_k, sizing.top_n)
+            actual_fetch_limit = actual_top_k * 3
 
             # 1. Hybrid Search
             results = await self.vector_store.hybrid_search(
@@ -95,19 +97,15 @@ class RetrievalUseCase:
 
             chunks = [chunk for chunk, _ in results]
 
-            used_reranker = False
-            if self.reranker:
-                try:
-                    # Note: Reranker execution uses run_in_executor safely under the hood
-                    ranked_results = await self.reranker.rerank(
-                        query=query, chunks=chunks, top_k=actual_top_k
-                    )
-                    results = ranked_results
-                    used_reranker = True
-                except Exception as e:
-                    logger.error(f"Reranker failed (Query: {query[:50]}): {e}", exc_info=True)
-                    # Fallback to un-reranked results
-                    # (results is already set to the hybrid search chunks)
+            try:
+                # Mandatory reranking
+                results = await self.reranker.rerank(
+                    query=query, chunks=chunks, top_k=actual_top_k
+                )
+                used_reranker = True
+            except Exception as e:
+                logger.error(f"Reranker failed (Query: {query[:50]}): {e}", exc_info=True)
+                raise  # Crash if reranker fails in mandatory mode
 
             # 3. Apply dynamic decay for source diversity
             source_counts: dict[str, int] = {}

@@ -22,10 +22,9 @@ import re
 from loguru import logger
 
 try:
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from langchain_text_splitters import MarkdownTextSplitter
 except ImportError:
-    RecursiveCharacterTextSplitter = None
-    logger.warning("langchain text_splitter not installed — SmartChunker unavailable")
+    pass
 
 
 class SmartChunker:
@@ -76,28 +75,13 @@ class SmartChunker:
             self.tokenizer = None
             logger.warning("tiktoken not installed — Token validation unavailable")
 
-        if RecursiveCharacterTextSplitter is None:
-            raise ImportError(
-                "langchain text_splitter is required for SmartChunker. "
-                "Install with: pip install langchain-text-splitters"
-            )
-
-        self._splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=overlap_size,
-            separators=self.SEPARATORS,
-            keep_separator=True,
-        )
+        # Splitting logic now handled natively within chunk()
 
     def chunk_text(self, raw_text: str) -> list[str]:
         """
         Simple text chunking (no metadata tracking).
-
-        Convenience method for when you just need text chunks.
         """
-        clean = raw_text.replace("\x00", "")
-        clean = re.sub(r"\n{3,}", "\n\n", clean)
-        return self._splitter.split_text(clean)
+        return self.chunk(raw_text)
 
     def chunk(self, text: str) -> list[str]:
         """
@@ -239,24 +223,13 @@ class SmartChunker:
             if len(tokens) <= self.max_tokens:
                 safe_chunks.append(chunk)
             else:
-                # Sub-chunk fallback using RecursiveCharacterTextSplitter with strict length limits
-                fallback_splitter = RecursiveCharacterTextSplitter(
-                    chunk_size=self.chunk_size // 2,
-                    chunk_overlap=self.overlap_size // 2,
-                    separators=["\n\n", "\n", " ", ""],
+                # Absolute worst case fallback: truncate directly
+                logger.warning(
+                    f"Chunk still exceeded max_tokens ({len(tokens)} > {self.max_tokens}). Truncating directly."
                 )
-                sub_chunks = fallback_splitter.split_text(chunk)
-                for sub in sub_chunks:
-                    sub_tokens = self.tokenizer.encode(sub, disallowed_special=())
-                    if len(sub_tokens) <= self.max_tokens:
-                        safe_chunks.append(sub)
-                    else:
-                        # Absolute worst case fallback: truncate
-                        logger.warning(
-                            f"Chunk still exceeded max_tokens ({len(sub_tokens)} > {self.max_tokens}) after sub-chunking. Truncating."
-                        )
-                        truncated_tokens = sub_tokens[: self.max_tokens]
-                        safe_chunks.append(self.tokenizer.decode(truncated_tokens))
+                truncated_tokens = tokens[: self.max_tokens]
+                safe_chunks.append(self.tokenizer.decode(truncated_tokens))
+
 
         return safe_chunks
 

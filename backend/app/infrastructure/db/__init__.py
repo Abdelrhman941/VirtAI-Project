@@ -16,9 +16,7 @@ from app.infrastructure.db.models import (
 )
 from app.infrastructure.db.repositories.avatar_repository import AvatarRepository
 from app.infrastructure.db.repositories.chat_repository import ChatRepository
-from app.infrastructure.db.repositories.document_crud_repository import DocumentCrudRepository
-from app.infrastructure.db.repositories.document_integrity_service import DocumentIntegrityService
-from app.infrastructure.db.repositories.ingestion_state_repository import IngestionStateRepository
+from app.infrastructure.db.repositories.document_repository import DocumentRepository
 from app.infrastructure.db.repositories.user_repository import UserRepository
 
 __all__ = [
@@ -39,7 +37,5 @@ __all__ = [
     "UserRepository",
     "ChatRepository",
     "AvatarRepository",
-    "DocumentCrudRepository",
-    "IngestionStateRepository",
-    "DocumentIntegrityService",
+    "DocumentRepository",
 ]
