@@ -40,10 +40,18 @@ class FakeSession:
 class FakeSessionManager:
     def __init__(self):
         self.created = False
+        self._last_session: FakeSession | None = None
 
     async def create_session(self, user_id, avatar_id, voice_id):
         self.created = True
-        return FakeSession("lazy-session-123")
+        self._last_session = FakeSession("lazy-session-123")
+        return self._last_session
+
+    async def get_session(self, session_id: str):
+        """Return the last created session (simulates the session being alive)."""
+        if self._last_session and self._last_session.session_id == session_id:
+            return self._last_session
+        return None
 
 
 class FakeConnectionManager:

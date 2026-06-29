@@ -131,6 +131,7 @@ async def test_ws_does_not_create_session_on_connect_when_not_resuming(
             created_handler["session"] = kwargs["session"]
             created_handler["requested_session_id"] = kwargs.get("requested_session_id")
             self.session = kwargs["session"] or SimpleNamespace(session_id="")
+            self.session_id = None  # no lazy session created in this test
 
         async def run(self):
             return None
@@ -181,6 +182,7 @@ async def test_ws_resume_uses_existing_session(monkeypatch: pytest.MonkeyPatch) 
             created_handler["session"] = kwargs["session"]
             created_handler["requested_session_id"] = kwargs.get("requested_session_id")
             self.session = kwargs["session"] or SimpleNamespace(session_id="")
+            self.session_id = getattr(self.session, "session_id", None)
 
         async def run(self):
             return None
@@ -223,6 +225,7 @@ async def test_ws_non_resume_forwards_requested_session_id(monkeypatch: pytest.M
         def __init__(self, **kwargs):
             created_handler["requested_session_id"] = kwargs.get("requested_session_id")
             self.session = kwargs["session"] or SimpleNamespace(session_id="")
+            self.session_id = None  # non-resume: no session assigned yet
 
         async def run(self):
             return None
