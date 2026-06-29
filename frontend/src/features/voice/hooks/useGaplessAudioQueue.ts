@@ -15,10 +15,11 @@ export interface Viseme {
 function convertInt16ToFloat32(buffer: ArrayBuffer): Float32Array {
   const byteLength = buffer.byteLength;
   const validLength = byteLength - (byteLength % 2);
-  const int16Array = new Int16Array(buffer, 0, validLength / 2);
-  const float32Array = new Float32Array(int16Array.length);
-  for (let i = 0; i < int16Array.length; i++) {
-    float32Array[i] = int16Array[i] / (int16Array[i] < 0 ? 32768 : 32767);
+  const view = new DataView(buffer);
+  const float32Array = new Float32Array(validLength / 2);
+  for (let i = 0; i < validLength; i += 2) {
+    const val = view.getInt16(i, true);
+    float32Array[i / 2] = val / 32768.0;
   }
   return float32Array;
 }
@@ -324,9 +325,10 @@ export function useGaplessAudioQueue() {
             scheduledNodesRef.current = scheduledNodesRef.current.filter((n) => n !== source);
           };
 
-          source.start(scheduleTime);
+          const startTime = Math.max(ctx.currentTime + 0.1, nextPlaybackTimeRef.current);
+          source.start(startTime);
           
-          nextPlaybackTimeRef.current = scheduleTime + newDuration;
+          nextPlaybackTimeRef.current = startTime + newDuration;
         })
         .catch((err) => {
           if (err.name === 'AbortError') return;
