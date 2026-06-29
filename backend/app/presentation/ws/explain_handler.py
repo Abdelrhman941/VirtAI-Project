@@ -63,9 +63,16 @@ class ExplainHandler:
                     logger.warning(f"[WS] Dead socket write attempt: {e}")
                     return
         except asyncio.CancelledError:
-            pass
+            try:
+                await self.explain_use_case.db.rollback()
+            except Exception:
+                pass
         except Exception as e:
             logger.error(f"Error in _start_presentation: {e}")
+            try:
+                await self.explain_use_case.db.rollback()
+            except Exception:
+                pass
 
     async def _handle_interruption(self, data: dict):
         if self._main_task and not self._main_task.done():
@@ -91,8 +98,15 @@ class ExplainHandler:
                         logger.warning(f"[WS] Dead socket write attempt: {e}")
                         return
             except asyncio.CancelledError:
-                pass
+                try:
+                    await self.explain_use_case.db.rollback()
+                except Exception:
+                    pass
             except Exception as e:
                 logger.error(f"Error in handle_user_input: {e}")
+                try:
+                    await self.explain_use_case.db.rollback()
+                except Exception:
+                    pass
 
         self._main_task = asyncio.create_task(_process_input())

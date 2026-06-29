@@ -133,7 +133,11 @@ class Document(Base):
     document_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     file_size: Mapped[int] = mapped_column(Integer, default=0)
     retrieval_scope: Mapped[str] = mapped_column(String(30), default="GLOBAL")
-    scope_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    scope_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("chat_sessions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     storage_key: Mapped[str] = mapped_column(String(500), default="")
 
     __table_args__ = (

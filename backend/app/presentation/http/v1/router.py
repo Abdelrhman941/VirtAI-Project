@@ -301,6 +301,7 @@ async def explain_websocket(
         return
 
     await websocket.accept()
+    await websocket.send_json({"type": "ready", "session_id": document_id})
     logger.info(f"[WS] Explain connection accepted | document={document_id} | user={token_payload.user_id}")
     
     handler = ExplainHandler(

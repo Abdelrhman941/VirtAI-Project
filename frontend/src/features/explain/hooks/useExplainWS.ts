@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import useWSClient from '@/core/realtime/useWSClient';
+import { WSManager } from '@/services/wsManager';
 
 export type PresentationState = 'EXPLAINING' | 'AWAITING' | 'ANSWERING';
 
@@ -30,7 +31,12 @@ export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChang
     ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/v1/rag/explain/${documentId}?token=${token}`
     : null;
 
-  const { connectionState, isConnected, send, onMessage, disconnect } = useWSClient(wsUrl);
+  const managerRef = useRef<WSManager>();
+  if (!managerRef.current) {
+    managerRef.current = new WSManager();
+  }
+
+  const { connectionState, isConnected, send, onMessage, disconnect } = useWSClient(wsUrl, managerRef.current);
 
   const [currentState, setCurrentState] = useState<PresentationState>('EXPLAINING');
   const [currentSlide, setCurrentSlide] = useState(0);

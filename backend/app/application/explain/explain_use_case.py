@@ -63,8 +63,8 @@ class ExplainUseCase:
         current_slide_index = state_data["current_slide_index"]
 
         if current_slide_index >= len(chunks):
-            yield SlideEndEvent(slide_index=-1).model_dump()
-            return
+            current_slide_index = 0
+            state_data["current_slide_index"] = 0
 
         state_data["state"] = PresentationState.EXPLAINING.value
         await self._save_state(session_key, state_data)

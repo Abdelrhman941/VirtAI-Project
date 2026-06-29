@@ -476,5 +476,6 @@ class WSManager {
   }
 }
 
+export { WSManager };
 const wsManager = new WSManager();
 export default wsManager;
