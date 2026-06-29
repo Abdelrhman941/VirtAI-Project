@@ -55,6 +55,18 @@ export function useGaplessAudioQueue() {
     return audioContextRef.current;
   }, []);
 
+  const unlockAudioContext = useCallback(async () => {
+    try {
+      const ctx = getAudioContext();
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+        console.log('[GaplessAudio] AudioContext resumed via user gesture');
+      }
+    } catch (err) {
+      console.warn('[GaplessAudio] Failed to unlock AudioContext:', err);
+    }
+  }, [getAudioContext]);
+
   const getIsAudioPlaying = useCallback(() => {
     const ctx = audioContextRef.current;
     if (!ctx || ctx.state !== 'running') return false;
@@ -151,9 +163,22 @@ export function useGaplessAudioQueue() {
           if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
           const arrayBuffer = await response.arrayBuffer();
 
-          const float32Data = convertInt16ToFloat32(arrayBuffer);
-          const audioBuffer = ctx.createBuffer(PCM_NUM_CHANNELS, float32Data.length, PCM_SAMPLE_RATE);
-          audioBuffer.copyToChannel(float32Data, 0);
+          let float32Data: Float32Array;
+          let audioBuffer: AudioBuffer;
+          try {
+            float32Data = convertInt16ToFloat32(arrayBuffer);
+            audioBuffer = ctx.createBuffer(PCM_NUM_CHANNELS, float32Data.length, PCM_SAMPLE_RATE);
+            audioBuffer.copyToChannel(float32Data, 0);
+          } catch (err) {
+            if (err instanceof DOMException) {
+              console.error('[GaplessAudio] DOMException during audio buffer creation:', err.name, err.message);
+            } else if (err instanceof TypeError) {
+              console.error('[GaplessAudio] TypeError during audio data conversion:', err.message);
+            } else {
+              console.error('[GaplessAudio] Failed to process PCM audio from URL.', err);
+            }
+            return;
+          }
 
           if (url.startsWith('blob:')) {
             URL.revokeObjectURL(url);
@@ -250,7 +275,13 @@ export function useGaplessAudioQueue() {
             audioBuffer = ctx.createBuffer(PCM_NUM_CHANNELS, float32Data.length, PCM_SAMPLE_RATE);
             audioBuffer.copyToChannel(float32Data, 0);
           } catch (err) {
-            console.warn('[GaplessAudio] Failed to process PCM audio chunk.', err);
+            if (err instanceof DOMException) {
+              console.error('[GaplessAudio] DOMException during audio buffer creation:', err.name, err.message);
+            } else if (err instanceof TypeError) {
+              console.error('[GaplessAudio] TypeError during audio data conversion:', err.message);
+            } else {
+              console.error('[GaplessAudio] Failed to process PCM audio chunk.', err);
+            }
             return;
           }
 
@@ -369,6 +400,7 @@ export function useGaplessAudioQueue() {
     enqueueAudioUrl,
     flushQueue,
     getAudioContext,
+    unlockAudioContext,
     playbackStartTimeRef: visemeBaseStartTimeRef,
     getIsAudioPlaying,
     getNextPlaybackTime,

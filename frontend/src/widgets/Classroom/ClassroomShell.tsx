@@ -69,6 +69,7 @@ export default function ClassroomShell() {
   const {
     mouthCuesRef,
     getAudioContext,
+    unlockAudioContext,
     playbackStartTimeRef,
     handleTtsReady,
     handleVisemesReady,
@@ -318,6 +319,9 @@ export default function ClassroomShell() {
     const payload = text?.trim();
     if (!payload) return;
 
+    // Await audio context unlock so it's strictly bound to this gesture
+    unlockAudioContext().catch(console.warn);
+
     // Force scroll to bottom when user explicitly sends a message
     shouldStickToBottom.current = true;
 
@@ -336,10 +340,7 @@ export default function ClassroomShell() {
 
   const ensureVoiceSession = useCallback(async () => {
     PCMRecorder.preWarmWorklet();
-    const ctx = getAudioContext();
-    if (ctx.state === 'suspended') {
-      ctx.resume();
-    }
+    await unlockAudioContext();
 
     if (currentSessionId) return true;
     if (isCreatingSessionRef.current) return false;
