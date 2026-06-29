@@ -257,10 +257,23 @@ class OpenAITTSProvider(BaseTTSProvider):
                             f"TTS API Error details: {error_details.decode('utf-8', errors='replace') if error_details else ''}"
                         )
                     response.raise_for_status()
+                    remainder = b""
                     async for chunk in response.aiter_bytes():
                         if chunk:
-                            accumulated_chunks.append(chunk)
-                            yield TTSChunk(audio_data=chunk)
+                            data = remainder + chunk
+                            if len(data) % 2 != 0:
+                                remainder = data[-1:]
+                                data = data[:-1]
+                            else:
+                                remainder = b""
+                            
+                            if data:
+                                accumulated_chunks.append(data)
+                                yield TTSChunk(audio_data=data)
+                    
+                    if remainder:
+                        accumulated_chunks.append(remainder)
+                        yield TTSChunk(audio_data=remainder)
                 
                 # Cache the accumulated audio
                 full_audio = b"".join(accumulated_chunks)
