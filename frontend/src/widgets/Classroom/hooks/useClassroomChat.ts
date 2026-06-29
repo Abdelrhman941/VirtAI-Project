@@ -96,11 +96,13 @@ export function useClassroomChat({
     if (connectionState === ConnectionState.RECONNECTING || connectionState === ConnectionState.DISCONNECTED || connectionState === ConnectionState.FAILED) { // RECONNECTING or OFFLINE
       if (conversationState.pipelineState === 'thinking' || conversationState.pipelineState === 'speaking') {
         dispatch({ type: 'ERROR', payload: { message: 'Connection interrupted' } });
+        useChatUIStore.getState().setPipelineState('error');
         resetAvatarAudio(conversationState.activeMessageId);
       }
     } else if (connectionState === ConnectionState.CONNECTED) { // ONLINE
       if (conversationState.pipelineState === 'error') {
         dispatch({ type: 'CLEAR_ERROR' });
+        useChatUIStore.getState().setPipelineState('idle');
       }
     }
   }, [connectionState, conversationState.pipelineState, conversationState.activeMessageId, dispatch, resetAvatarAudio]);
@@ -245,7 +247,15 @@ export function useClassroomChat({
         }
 
         dispatch({ type: 'PIPELINE_STATE', payload: { state, message_id: d.message_id } });
-        useChatUIStore.getState().setPipelineState(state);
+        
+        // Guard against late events matching reducer logic
+        const isActiveMsg = !d.message_id || 
+          !conversationStateRef.current.activeMessageId || 
+          d.message_id === conversationStateRef.current.activeMessageId;
+          
+        if (isActiveMsg) {
+          useChatUIStore.getState().setPipelineState(state);
+        }
         
         if (state === 'idle' && d.message_id) {
           forceAdvanceSequence(d.message_id);
@@ -272,6 +282,7 @@ export function useClassroomChat({
         if (!d || !checkSession(d)) return;
         const message = d.message || 'An error occurred';
         dispatch({ type: 'ERROR', payload: { message } });
+        useChatUIStore.getState().setPipelineState('error');
         toast.error('Error', message, TOAST_DURATION_MS);
       }),
       onMessage('transcript', (rawData: unknown) => {

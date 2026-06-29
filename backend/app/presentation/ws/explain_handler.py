@@ -26,7 +26,7 @@ class ExplainHandler:
         try:
             while True:
                 try:
-                    raw = await self.websocket.receive_text()
+                    msg = await self.websocket.receive()
                 except asyncio.exceptions.IncompleteReadError:
                     logger.info("[WS] Explain websocket disconnected (IncompleteReadError).")
                     break
@@ -35,13 +35,20 @@ class ExplainHandler:
                         logger.info("[WS] Explain websocket disconnected (RuntimeError).")
                         break
                     raise
-                try:
-                    data = json.loads(raw)
-                    msg_type = data.get("type")
-                    if msg_type == "chat.user_message" or msg_type == "client.speech_stopped":
-                        await self._handle_interruption(data)
-                except json.JSONDecodeError:
-                    pass
+
+                msg_type = msg.get("type")
+                if msg_type == "websocket.disconnect":
+                    logger.info("Explain websocket disconnected.")
+                    break
+                elif msg_type == "websocket.receive":
+                    if "text" in msg:
+                        try:
+                            data = json.loads(msg["text"])
+                            payload_type = data.get("type")
+                            if payload_type == "chat.user_message" or payload_type == "client.speech_stopped":
+                                await self._handle_interruption(data)
+                        except json.JSONDecodeError:
+                            pass
         except WebSocketDisconnect:
             logger.info("Explain websocket disconnected.")
         finally:
@@ -51,6 +58,8 @@ class ExplainHandler:
                     await self._main_task
                 except asyncio.CancelledError:
                     pass
+                except Exception as e:
+                    logger.error(f"Error during _main_task cancellation: {e}")
 
     async def _start_presentation(self):
         try:

@@ -55,9 +55,11 @@ async def create_session(
     """Create a new chat session for the current user."""
     try:
         session = await repo.create_chat_session(str(user.id))
+        await db.commit()
         return session
     except Exception as e:
         logger.error(f"Failed to create session for user {user.id}: {e}")
+        await db.rollback()
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 

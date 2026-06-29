@@ -77,6 +77,10 @@ async def test_explain_ws_flow(app_fixture, mock_db_session):
         client = TestClient(app_fixture)
 
         with client.websocket_connect(f"/api/v1/rag/explain/{doc_id}?token=fake_token", subprotocols=["access_token", "fake_token"]) as websocket:
+            # Expect 'ready' first
+            data = websocket.receive_json()
+            assert data["type"] == "ready"
+
             # Slide 0
             data = websocket.receive_json()
             assert data["type"] == "SlideStartEvent"
@@ -154,8 +158,9 @@ async def test_explain_ws_flow(app_fixture, mock_db_session):
             # Send Continue
             websocket.send_json({"type": "chat.user_message", "data": {"text": "continue"}})
 
-            # Expect SlideEndEvent
+            # Expect SlideStartEvent with slide_index = 0 because it wraps around
             data = websocket.receive_json()
-        assert data["type"] == "SlideEndEvent"
-        print("Passed Slide 3 end event")
+            assert data["type"] == "SlideStartEvent"
+            assert data["slide_index"] == 0
+        print("Passed Slide 3 end event (wrapped to 0)")
     print("Test context exited successfully!")
