@@ -3,11 +3,24 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 
 const IMMEDIATE_STOP_TIME = 0;
 const WATCHDOG_TIMEOUT_MS = 2000;
+const PCM_SAMPLE_RATE = 24000;
+const PCM_NUM_CHANNELS = 1;
 
 export interface Viseme {
   start: number;
   end: number;
   value: string;
+}
+
+function convertInt16ToFloat32(buffer: ArrayBuffer): Float32Array {
+  const byteLength = buffer.byteLength;
+  const validLength = byteLength - (byteLength % 2);
+  const int16Array = new Int16Array(buffer, 0, validLength / 2);
+  const float32Array = new Float32Array(int16Array.length);
+  for (let i = 0; i < int16Array.length; i++) {
+    float32Array[i] = int16Array[i] / (int16Array[i] < 0 ? 32768 : 32767);
+  }
+  return float32Array;
 }
 
 export function useGaplessAudioQueue() {
@@ -138,7 +151,9 @@ export function useGaplessAudioQueue() {
           if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
           const arrayBuffer = await response.arrayBuffer();
 
-          const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+          const float32Data = convertInt16ToFloat32(arrayBuffer);
+          const audioBuffer = ctx.createBuffer(PCM_NUM_CHANNELS, float32Data.length, PCM_SAMPLE_RATE);
+          audioBuffer.copyToChannel(float32Data, 0);
 
           if (url.startsWith('blob:')) {
             URL.revokeObjectURL(url);
@@ -231,9 +246,11 @@ export function useGaplessAudioQueue() {
           
           let audioBuffer: AudioBuffer;
           try {
-            audioBuffer = await ctx.decodeAudioData(chunkArrayBuffer.slice(0));
+            const float32Data = convertInt16ToFloat32(chunkArrayBuffer);
+            audioBuffer = ctx.createBuffer(PCM_NUM_CHANNELS, float32Data.length, PCM_SAMPLE_RATE);
+            audioBuffer.copyToChannel(float32Data, 0);
           } catch (err) {
-            console.warn('[GaplessAudio] Failed to decode audio chunk. Chunk may be incomplete.', err);
+            console.warn('[GaplessAudio] Failed to process PCM audio chunk.', err);
             return;
           }
 
