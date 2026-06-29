@@ -31,6 +31,27 @@ router = APIRouter()
 settings = get_settings()
 
 
+async def _verify_session_ownership_logic(
+    session_id: str | None,
+    user: UserEntity,
+    session_repo: ChatRepository,
+) -> str | None:
+    """Core ownership check — extracted for testability.
+
+    Returns the session_id on success.
+    Raises 404 if the session doesn't exist, 403 if it belongs to another user.
+    """
+    if not session_id:
+        return None
+
+    session_obj = await session_repo.get_chat_session(str(session_id))
+    if not session_obj:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if str(session_obj["user_id"]) != str(user.id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return str(session_id)
+
+
 async def _verify_session_ownership(
     request: Request,
     session_id_query: str | None = Query(None, alias="session_id"),
@@ -39,16 +60,14 @@ async def _verify_session_ownership(
     db: AsyncSession = Depends(get_db),
 ) -> str | None:
     session_id = session_id_query or session_id_form
+    if not session_id:
+        return None
 
-    if session_id:
-        from app.presentation.http.v1.dependencies import get_storage
+    from app.presentation.http.v1.dependencies import get_storage
 
-        storage = get_storage(request)
-        session_repo = ChatRepository(db, storage_provider=storage)
-        session_obj = await session_repo.get_chat_session(str(session_id))
-        if not session_obj or str(session_obj["user_id"]) != str(user.id):
-            raise HTTPException(status_code=403, detail="Forbidden")
-    return str(session_id) if session_id else None
+    storage = get_storage(request)
+    session_repo = ChatRepository(db, storage_provider=storage)
+    return await _verify_session_ownership_logic(session_id, user, session_repo)
 
 
 def sanitize_filename(filename: str | None) -> str:
@@ -149,8 +168,10 @@ async def upload_document(
 
     state_repo = DocumentRepository(db)
 
-    # 2. Check per-user active job count
-    active_jobs = await state_repo.count_active_jobs(str(user.id))
+    # 2. Check per-session (or global) active job count
+    active_jobs = await state_repo.count_active_jobs_in_scope(
+        str(user.id), session_id=session_id
+    )
     if active_jobs >= settings.MAX_ACTIVE_JOBS_PER_USER:
         raise HTTPException(
             status_code=429,

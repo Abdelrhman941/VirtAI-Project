@@ -213,6 +213,39 @@ class DocumentRepository:
         result = await self.db.execute(stmt)
         return result.scalar() or 0
 
+    async def count_active_jobs_in_scope(
+        self, user_id: UUID | str, session_id: str | None = None
+    ) -> int:
+        """Count active ingestion jobs for a user, scoped to a session if provided.
+
+        When session_id is given, counts only SESSION-scoped documents whose
+        scope_id matches the session.  Falls back to the global user-level count
+        when session_id is None.
+        """
+        uid = require_uuid(user_id)
+        active_statuses = [
+            DocumentStatus.PENDING.value,
+            DocumentStatus.PROCESSING.value,
+            DocumentStatus.QUEUED.value,
+        ]
+
+        if session_id:
+            sid = require_uuid(session_id)
+            stmt = select(func.count(Document.id)).where(
+                Document.user_id == uid,
+                Document.retrieval_scope == "SESSION",
+                Document.scope_id == sid,
+                Document.status.in_(active_statuses),
+            )
+        else:
+            stmt = select(func.count(Document.id)).where(
+                Document.user_id == uid,
+                Document.status.in_(active_statuses),
+            )
+
+        result = await self.db.execute(stmt)
+        return result.scalar() or 0
+
     async def mark_cancelled(self, document_id: UUID | str) -> None:
         doc_uuid = require_uuid(document_id)
         stmt = update(Document).where(Document.id == doc_uuid).values(
