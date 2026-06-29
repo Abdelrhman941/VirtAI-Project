@@ -179,15 +179,20 @@ class ConversationPipeline:
                             )
                         except asyncio.TimeoutError:
                             break
+                        
                         if sentence is None:
+                            context.sentence_queue.task_done()
                             break
 
                         context.current_sentence = sentence
                         await self.tts_stage.process(context)
                         if context.aborted:
+                            context.sentence_queue.task_done()
                             break  # type: ignore[unreachable]
                         await self.animation_stage.process(context)
                         context.sentence_index += 1
+                        
+                        context.sentence_queue.task_done()
                 except Exception as e:
                     logger.error(f"process_audio crashed: {e} | trace_id={trace_id}")
                     nonlocal has_error
@@ -201,6 +206,14 @@ class ConversationPipeline:
                         )
                     )
                     context.abort()
+                finally:
+                    # Drain any remaining items (e.g. duplicate None sentinels) to prevent join() from deadlocking
+                    while not context.sentence_queue.empty():
+                        try:
+                            _ = context.sentence_queue.get_nowait()
+                            context.sentence_queue.task_done()
+                        except asyncio.QueueEmpty:
+                            break
 
             settings = get_settings()
 
@@ -220,8 +233,13 @@ class ConversationPipeline:
                         )
                         self._running_tasks.append(t3)
                     
-                    # Ensure we explicitly await the audio processing task 
-                    # before the TaskGroup context manager exits
+                    # 1. Wait for LLM generation to complete
+                    await t1
+                    
+                    # 2. Explicit Queue Waiting: Wait for the sentence queue to be fully processed
+                    await context.sentence_queue.join()
+                    
+                    # 3. Wait for the audio worker to exit cleanly
                     await t2
             except Exception:
                 context.abort()
