@@ -224,4 +224,4 @@ class WebSocketHandler:
             except ValueError as e:
                 logger.error(f"[WS] Invalid state/session: {e}")
             except Exception as e:
-                logger.error(f"[WS] Error processing message: {e}")
+                logger.exception(f"[WS] Error processing message: {e}")

@@ -90,6 +90,8 @@ class RetrievalUseCase:
                 user_id=user_uuid,
                 document_id=doc_uuid,
                 metadata_filter=metadata_filter,
+                min_dense_score=sizing.score_threshold,
+                min_hybrid_score=0.0,
             )
 
             if not results:

@@ -309,6 +309,8 @@ class TTSStage(BaseStage):
                         message_id=context.message_id,
                     )
                 )
+            context.abort()
+            raise e
 class AnimationStage(BaseStage):
     def __init__(self, animation_service: Any, viseme_generator: Any) -> None:
         self._animation_service = animation_service

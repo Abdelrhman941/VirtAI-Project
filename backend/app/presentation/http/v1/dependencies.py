@@ -250,11 +250,11 @@ async def _current_user(
     jti = token_payload.jti
 
     try:
-        is_bl = await asyncio.wait_for(is_blacklisted(jti), timeout=0.2) if jti else False
+        is_bl = await asyncio.wait_for(is_blacklisted(jti), timeout=2.0) if jti else False
         if is_bl:
             raise RevokedTokenError()
 
-        cached = await asyncio.wait_for(get_cached_auth_session(str(user_id)), timeout=0.2)
+        cached = await asyncio.wait_for(get_cached_auth_session(str(user_id)), timeout=2.0)
     except asyncio.TimeoutError:
         logger.error("Redis token validation timeout. Failing closed.")
         raise HTTPException(status_code=401, detail="Authentication service unavailable")

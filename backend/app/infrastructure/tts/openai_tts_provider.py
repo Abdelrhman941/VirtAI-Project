@@ -60,7 +60,7 @@ class OpenAITTSProvider(BaseTTSProvider):
         self.api_url = "http://tts:8000/v1/audio/speech"
         # Reuse HTTP client for connection pooling (avoids TCP+TLS overhead per request)
         self._client = httpx.AsyncClient(
-            timeout=60.0,
+            timeout=300.0,
             limits=httpx.Limits(max_connections=4, max_keepalive_connections=2),
         )
         logger.info(f"OpenAITTSProvider initialized | voice={self.voice} | model={self.model}")
@@ -149,7 +149,7 @@ class OpenAITTSProvider(BaseTTSProvider):
                 audio_bytes=cached_audio,
                 visemes=[],
                 word_boundaries=[],
-                audio_duration_ms=calculate_audio_duration(cached_audio, format="mp3"),
+                audio_duration_ms=calculate_audio_duration(cached_audio, format="pcm"),
             )
         else:
             try:
@@ -166,7 +166,7 @@ class OpenAITTSProvider(BaseTTSProvider):
         session_dir.mkdir(parents=True, exist_ok=True)
 
         audio_file_id = self.audio_file_id(message_id, api_voice)
-        audio_file_path = session_dir / f"{audio_file_id}.mp3"
+        audio_file_path = session_dir / f"{audio_file_id}.pcm"
         try:
             audio_file_path.write_bytes(result.audio_bytes)
             logger.success(f"Audio saved | path={audio_file_path}")
@@ -195,7 +195,7 @@ class OpenAITTSProvider(BaseTTSProvider):
                     "model": self.model,
                     "input": text,
                     "voice": api_voice,
-                    "response_format": "mp3",
+                    "response_format": "pcm",
                     "speed": self.speed,
                 },
             )
@@ -210,7 +210,7 @@ class OpenAITTSProvider(BaseTTSProvider):
         if not audio_bytes:
             raise TTSException("TTS returned empty audio")
 
-        audio_duration_ms = calculate_audio_duration(audio_bytes, format="mp3")
+        audio_duration_ms = calculate_audio_duration(audio_bytes, format="pcm")
 
         return TTSResult(
             audio_bytes=audio_bytes,
@@ -247,7 +247,7 @@ class OpenAITTSProvider(BaseTTSProvider):
                         "model": self.model,
                         "input": text,
                         "voice": api_voice,
-                        "response_format": "mp3",
+                        "response_format": "pcm",
                         "speed": self.speed,
                     },
                 ) as response:

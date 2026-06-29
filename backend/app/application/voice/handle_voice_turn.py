@@ -126,6 +126,7 @@ class ConversationPipeline:
             user_id=user_id,
         )
         self._current_context = context
+        has_error = False
 
         try:
             if not text.strip():
@@ -189,6 +190,8 @@ class ConversationPipeline:
                         context.sentence_index += 1
                 except Exception as e:
                     logger.error(f"process_audio crashed: {e} | trace_id={trace_id}")
+                    nonlocal has_error
+                    has_error = True
                     await send_callback(
                         make_error(
                             code="PIPELINE_AUDIO_ERROR",
@@ -216,6 +219,10 @@ class ConversationPipeline:
                             )
                         )
                         self._running_tasks.append(t3)
+                    
+                    # Ensure we explicitly await the audio processing task 
+                    # before the TaskGroup context manager exits
+                    await t2
             except Exception:
                 context.abort()
                 raise
@@ -228,6 +235,7 @@ class ConversationPipeline:
             return
         except Exception as e:
             logger.error(f"Pipeline error: {e} | trace_id={trace_id}")
+            has_error = True
             await send_callback(
                 make_error(
                     code="PIPELINE_ERROR",
@@ -270,7 +278,8 @@ class ConversationPipeline:
                     )
 
             with suppress(Exception):
-                await send_callback(make_pipeline_state(session_id, "idle", message_id))
+                final_state = "error" if has_error else "idle"
+                await send_callback(make_pipeline_state(session_id, final_state, message_id))
             self._current_message_id = None
             self._current_context = None
             self._running_tasks.clear()
