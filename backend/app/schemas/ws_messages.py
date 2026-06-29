@@ -285,7 +285,7 @@ class AudioData(BaseModel):
     """
 
     url: str = Field(..., description="URL path to audio file")
-    mime: str = Field("audio/mpeg", description="MIME type")
+    mime: str = Field("application/octet-stream", description="MIME type")
     duration_ms: int = Field(..., ge=0, description="Audio duration in milliseconds")
 
 
@@ -501,7 +501,7 @@ def make_pipeline_state(
 
 def make_tts_ready(session_id: str, message_id: str, audio_url: str, duration_ms: int) -> TTSReady:
     """Create a TTSReady message."""
-    audio = AudioData(url=audio_url, mime="audio/mpeg", duration_ms=duration_ms)
+    audio = AudioData(url=audio_url, mime="application/octet-stream", duration_ms=duration_ms)
     return TTSReady(session_id=session_id, message_id=message_id, audio=audio)
 
 

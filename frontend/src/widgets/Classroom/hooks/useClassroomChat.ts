@@ -27,11 +27,13 @@ interface UseClassroomChatProps {
   activeVoiceId: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   session: any; // Using the type from useSessionManager
-  onTtsReady: (messageId: string | undefined, url: string) => void;
+  onTtsReady: (messageId: string | undefined, url: string, duration_ms?: number) => void;
   onVisemesReady: (messageId: string, cues: Viseme[]) => void;
   forceAdvanceSequence: (baseId: string) => void;
   resetAvatarAudio: (messageId?: string | null) => void;
   getAudioContext: () => AudioContext;
+  /** C1: Called when animation.timeline.v2 is received from the backend. */
+  onAnimationTimeline?: (messageId: string, timeline: unknown[], meta: Record<string, unknown>) => void;
 }
 
 export function useClassroomChat({
@@ -42,7 +44,8 @@ export function useClassroomChat({
   onVisemesReady,
   forceAdvanceSequence,
   resetAvatarAudio,
-  getAudioContext
+  getAudioContext,
+  onAnimationTimeline,
 }: UseClassroomChatProps) {
   const [conversationState, dispatch] = useConversationReducer();
   const currentSessionId = session.currentSessionId;
@@ -267,7 +270,7 @@ export function useClassroomChat({
         const url = d.audio?.url;
         if (!url) return;
         
-        onTtsReady(d.message_id, url);
+        onTtsReady(d.message_id, url, d.audio?.duration_ms);
       }),
       onMessage('visemes.ready', (rawData: unknown) => {
         const d = validatePayload(rawData);
@@ -294,6 +297,21 @@ export function useClassroomChat({
           useChatUIStore.getState().setInterimTranscript(d.text || '');
         }
       }),
+      // C1: Register handler for animation.timeline.v2 so the message is received
+      // instead of being silently dropped. Forwards data to onAnimationTimeline callback.
+      onMessage('animation.timeline.v2', (rawData: unknown) => {
+        const d = validatePayload(rawData);
+        if (!d || !checkSession(d)) return;
+        const messageId = d.message_id;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const timeline: unknown[] = (d as any).timeline ?? [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const meta: Record<string, unknown> = (d as any).meta ?? {};
+        console.debug('[WS] animation.timeline.v2 received | message_id:', messageId, '| segments:', timeline.length);
+        if (messageId && onAnimationTimeline) {
+          onAnimationTimeline(messageId, timeline, meta);
+        }
+      }),
     ];
     return () => unsubs.forEach((fn) => fn?.());
   }, [
@@ -302,7 +320,8 @@ export function useClassroomChat({
     currentSessionId,
     onTtsReady,
     onVisemesReady,
-    forceAdvanceSequence
+    forceAdvanceSequence,
+    onAnimationTimeline,
   ]);
 
   const wsClient = useMemo(() => ({ send: safeSend, onMessage }), [safeSend, onMessage]);

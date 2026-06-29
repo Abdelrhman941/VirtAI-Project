@@ -28,7 +28,10 @@ async def test_post_followed_by_ws_message(auth_headers, token):
 
     with TestClient(app) as client:
         # Connect to WS with token
-        with client.websocket_connect(f"/api/v1/ws/avatar1?voice=voice1&token={token}") as websocket:
+        with client.websocket_connect(
+            f"/api/v1/ws/avatar1?voice=voice1",
+            subprotocols=["access_token", token]
+        ) as websocket:
             # Send the chat.user_message payload
             payload = {
                 "type": "chat.user_message",
@@ -64,7 +67,10 @@ async def test_reconnection_lifecycle(auth_headers, token):
 
     with TestClient(app) as client:
         # 1. Connect
-        with client.websocket_connect(f"/api/v1/ws/avatar1?voice=voice1&token={token}&session_id={session_id}") as websocket:
+        with client.websocket_connect(
+            f"/api/v1/ws/avatar1?voice=voice1&session_id={session_id}",
+            subprotocols=["access_token", token]
+        ) as websocket:
             payload = {
                 "type": "chat.user_message",
                 "data": {
@@ -78,7 +84,10 @@ async def test_reconnection_lifecycle(auth_headers, token):
             assert data.get("type") in ["user.message.echo", "pipeline.state"]
             
         # 2. Reconnect
-        with client.websocket_connect(f"/api/v1/ws/avatar1?voice=voice1&token={token}&session_id={session_id}") as websocket2:
+        with client.websocket_connect(
+            f"/api/v1/ws/avatar1?voice=voice1&session_id={session_id}",
+            subprotocols=["access_token", token]
+        ) as websocket2:
             payload2 = {
                 "type": "chat.user_message",
                 "data": {

@@ -28,6 +28,7 @@ const DEFAULT_DAMP_SPEED = 12;
 export interface UseAvatarLipSyncProps {
   targetMeshes: THREE.SkinnedMesh[];
   pipelineState: 'idle' | 'thinking' | 'speaking' | 'error';
+  mouthCuesRef?: React.MutableRefObject<{ start: number; end: number; value: string }[]>;
   getAudioContext?: () => AudioContext;
   playbackStartTimeRef?: React.MutableRefObject<number | null>;
   getIsAudioPlaying?: () => boolean;
@@ -39,6 +40,7 @@ export interface UseAvatarLipSyncProps {
 export function useAvatarLipSync({
   targetMeshes,
   pipelineState,
+  mouthCuesRef,
   getAudioContext,
   playbackStartTimeRef,
   getIsAudioPlaying,
@@ -146,6 +148,7 @@ export function useAvatarLipSync({
       let targetVisemeAA = 0;
       let targetVisemeO = 0;
       let targetJawOpen = 0;
+      let activeRealViseme = '';
 
       if (isEffectivelySpeaking) {
         const analyser = getAnalyserNode?.();
@@ -186,8 +189,24 @@ export function useAvatarLipSync({
           }
           if (lowNorm > 0.1) {
             targetVisemeO = lowNorm * 1.5; // Closed/deep vowels O, U
-            targetJawOpen = lowNorm * 0.5;
+            targetJawOpen = lowNorm * 0.1; // Reduced jawOpen influence from 0.5 to 0.1 to prevent overly wide jaw drops
           }
+        }
+        
+        // CHECK REAL VISEMES
+        if (mouthCuesRef?.current && mouthCuesRef.current.length > 0 && playbackStartTimeRef?.current != null) {
+          const audioContext = getAudioContext?.();
+          if (audioContext && audioContext.state === 'running') {
+            const elapsed = audioContext.currentTime - playbackStartTimeRef.current;
+            const activeCue = mouthCuesRef.current.find((c: any) => elapsed >= c.start && elapsed <= c.end);
+            if (activeCue) {
+              activeRealViseme = activeCue.value;
+            }
+          }
+        }
+
+        if (Math.random() < 0.05) { // log 5% of frames
+          console.log('[LipSync Debug] isSpeaking:', isEffectivelySpeaking, 'FFT Jaw:', targetJawOpen.toFixed(2), 'RealViseme:', activeRealViseme, 'cuesCount:', mouthCuesRef?.current?.length);
         }
       }
 
@@ -221,18 +240,41 @@ export function useAvatarLipSync({
         // Reset all visemes to zero first (so un-triggered visemes fade out naturally)
         for (let i = 0; i < visemeKeysList.length; i++) {
           const key = visemeKeysList[i];
-          if (key !== 'viseme_SS' && key !== 'viseme_PP' && key !== 'viseme_aa' && key !== 'viseme_E' && key !== 'viseme_O') {
-            safelySetInfluence(key, INACTIVE_VISEME_INFLUENCE, DEFAULT_DAMP_SPEED);
+          safelySetInfluence(key, INACTIVE_VISEME_INFLUENCE, DEFAULT_DAMP_SPEED);
+        }
+
+        // Apply targets based on Real Visemes or fallback to FFT
+        let hasRealViseme = false;
+        if (activeRealViseme && activeRealViseme !== 'X') {
+          const VISEME_MAP: Record<string, string[]> = {
+            A: ['viseme_PP'],
+            B: ['viseme_kk', 'viseme_SS'],
+            C: ['viseme_I'],
+            D: ['viseme_aa'], // Removed jawOpen because it causes the mouth to open too wide on most models
+            E: ['viseme_O'],
+            F: ['viseme_U'],
+            G: ['viseme_FF'],
+            H: ['viseme_TH']
+          };
+          const targetKeys = VISEME_MAP[activeRealViseme];
+          if (targetKeys) {
+            targetKeys.forEach(k => {
+              const speedMultiplier = (k === 'viseme_PP' || k === 'viseme_FF') ? 2.5 : 2.0; // Faster attack for consonants
+              safelySetInfluence(k, 1.0, DEFAULT_DAMP_SPEED * speedMultiplier);
+            });
+            hasRealViseme = true;
           }
         }
 
-        // Apply FFT targets
-        safelySetInfluence('viseme_SS', Math.min(targetVisemeSS, 1.0), DEFAULT_DAMP_SPEED * 1.5);
-        safelySetInfluence('viseme_PP', Math.min(targetVisemeSS * 0.5, 1.0), DEFAULT_DAMP_SPEED * 1.5);
-        safelySetInfluence('viseme_aa', Math.min(targetVisemeAA, 1.0), DEFAULT_DAMP_SPEED * 1.5);
-        safelySetInfluence('viseme_E', Math.min(targetVisemeAA * 0.8, 1.0), DEFAULT_DAMP_SPEED * 1.5);
-        safelySetInfluence('viseme_O', Math.min(targetVisemeO, 1.0), DEFAULT_DAMP_SPEED * 1.5);
-        safelySetInfluence('jawOpen', Math.min(targetJawOpen, 1.0), DEFAULT_DAMP_SPEED * 1.5);
+        if (!hasRealViseme && isEffectivelySpeaking) {
+          // Apply FFT targets only if we don't have real visemes
+          safelySetInfluence('viseme_SS', Math.min(targetVisemeSS, 1.0), DEFAULT_DAMP_SPEED * 1.5);
+          safelySetInfluence('viseme_PP', Math.min(targetVisemeSS * 0.5, 1.0), DEFAULT_DAMP_SPEED * 1.5);
+          safelySetInfluence('viseme_aa', Math.min(targetVisemeAA, 1.0), DEFAULT_DAMP_SPEED * 1.5);
+          safelySetInfluence('viseme_E', Math.min(targetVisemeAA * 0.8, 1.0), DEFAULT_DAMP_SPEED * 1.5);
+          safelySetInfluence('viseme_O', Math.min(targetVisemeO, 1.0), DEFAULT_DAMP_SPEED * 1.5);
+          safelySetInfluence('jawOpen', Math.min(targetJawOpen, 1.0), DEFAULT_DAMP_SPEED * 1.5);
+        }
       });
     } else if (targetMeshes.length === ORIGIN_ZERO && groupRef.current) {
       if (isEffectivelySpeaking) {

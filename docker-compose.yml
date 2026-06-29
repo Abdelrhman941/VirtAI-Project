@@ -146,6 +146,7 @@ services:
       HF_HOME: /app/voices/huggingface
     volumes:
       - tts_config:/app/config
+      - tts_data:/app/voices
     networks:
       - virtai-network
     healthcheck:
@@ -167,6 +168,7 @@ volumes:
   backend-cache:
   backend-models:
   tts_config:
+  tts_data:
 
 networks:
   virtai-network:

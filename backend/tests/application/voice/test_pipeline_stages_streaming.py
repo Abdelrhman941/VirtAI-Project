@@ -1,10 +1,9 @@
 import asyncio
 import io
 import pytest
-import numpy as np
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.application.voice.pipeline_stages import TTSStage, AnimationStage, generate_visemes
+from app.application.voice.pipeline_stages import TTSStage, AnimationStage
 from app.application.voice.pipeline_context import TurnContext
 from app.domain.voice.entities import TTSChunk, TTSResult
 from app.schemas.ws_messages import MouthCue
@@ -92,45 +91,3 @@ async def test_tts_stage_cancellation():
 
     assert context.aborted is True
     assert context.send_binary_callback.call_count == 1
-
-
-def test_generate_visemes_valid_audio():
-    """Test generate_visemes with valid audio bytes."""
-    # Create a 1-second dummy audio segment using pydub
-    from pydub import AudioSegment
-    
-    # Create 1s of sine wave at 440Hz
-    sample_rate = 16000
-    t = np.linspace(0, 1, sample_rate, False)
-    # Loud sine wave
-    sine_wave = np.sin(2 * np.pi * 440 * t) * 30000 
-    
-    # Convert to 16-bit PCM
-    audio_data = sine_wave.astype(np.int16).tobytes()
-    segment = AudioSegment(
-        data=audio_data,
-        sample_width=2,
-        frame_rate=sample_rate,
-        channels=1
-    )
-    
-    # Export to mp3 in memory
-    buf = io.BytesIO()
-    segment.export(buf, format="mp3")
-    mp3_bytes = buf.getvalue()
-    
-    # Run generator
-    cues = generate_visemes(mp3_bytes)
-    
-    # The amplitude should trigger viseme_aa
-    assert isinstance(cues, list)
-    assert len(cues) > 0
-    assert isinstance(cues[0], MouthCue)
-    assert cues[0].value == "viseme_aa"
-
-
-def test_generate_visemes_empty_or_invalid():
-    """Test generate_visemes returns empty lists for empty/invalid bytes."""
-    assert generate_visemes(b"") == []
-    assert generate_visemes(None) == []
-    assert generate_visemes(b"invalid_mp3_data") == []

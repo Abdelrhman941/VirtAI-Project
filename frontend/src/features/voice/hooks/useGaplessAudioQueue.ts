@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect } from 'react';
-import { useAuthStore } from '@/features/auth/store/authStore';
+import apiClient from '@/core/api/apiClient';
 
 const IMMEDIATE_STOP_TIME = 0;
 const WATCHDOG_TIMEOUT_MS = 2000;
@@ -36,8 +36,10 @@ export function useGaplessAudioQueue() {
   const activeSourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
   const isMountedRef = useRef(true);
   
-  // Streaming state
-  const receivedChunksRef = useRef<boolean>(false);
+  // Streaming state: tracks whether at least one chunk decoded successfully.
+  // Only set to true after a successful convertInt16ToFloat32 + createBuffer call.
+  // Keeps the URL fallback path available when chunks arrive but decoding fails.
+  const chunkDecodedSuccessfullyRef = useRef<boolean>(false);
   const accumulatedBufferRef = useRef<Uint8Array>(new Uint8Array(0));
   const previousDecodedDurationRef = useRef<number>(0);
 
@@ -133,7 +135,7 @@ export function useGaplessAudioQueue() {
     }
 
     visemeBaseStartTimeRef.current = null;
-    receivedChunksRef.current = false;
+    chunkDecodedSuccessfullyRef.current = false;
     accumulatedBufferRef.current = new Uint8Array(0);
     previousDecodedDurationRef.current = 0;
   }, []);
@@ -146,23 +148,28 @@ export function useGaplessAudioQueue() {
         .then(async () => {
           if (currentToken !== flushTokenRef.current) return;
 
-          if (receivedChunksRef.current) {
-            return; // We already streamed audio via chunks, skip the URL fallback fetch.
+          if (chunkDecodedSuccessfullyRef.current) {
+            // Chunks arrived AND decoded successfully — skip the URL fallback.
+            return;
           }
+          // Chunks may have arrived but decoding failed (e.g., A1 regression) — fall through to URL path.
+          console.info('[GaplessAudio] Chunk decode did not succeed; falling back to URL fetch for:', url);
 
           const ctx = getAudioContext();
-          const token = useAuthStore.getState().accessToken;
-          const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-          const response = await fetch(url, {
-            headers,
-            signal: abortControllerRef.current.signal,
-          });
-
-          if (!isMountedRef.current) return;
-
-          if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-          const arrayBuffer = await response.arrayBuffer();
+          // A3 fix: use apiClient so the request/response interceptors handle token refresh automatically.
+          let arrayBuffer: ArrayBuffer;
+          try {
+            const response = await apiClient.get<ArrayBuffer>(url, {
+              responseType: 'arraybuffer',
+              signal: abortControllerRef.current.signal,
+            });
+            arrayBuffer = response.data;
+          } catch (fetchErr: any) {
+            if (fetchErr.name === 'AbortError' || fetchErr.code === 'ERR_CANCELED') return;
+            console.error('[GaplessAudio] URL fallback fetch failed:', fetchErr);
+            return;
+          }
 
           let float32Data: Float32Array;
           let audioBuffer: AudioBuffer;
@@ -172,14 +179,16 @@ export function useGaplessAudioQueue() {
             audioBuffer.copyToChannel(float32Data, 0);
           } catch (err) {
             if (err instanceof DOMException) {
-              console.error('[GaplessAudio] DOMException during audio buffer creation:', err.name, err.message);
+              console.error('[GaplessAudio] DOMException during audio buffer creation (URL path):', err.name, err.message);
             } else if (err instanceof TypeError) {
-              console.error('[GaplessAudio] TypeError during audio data conversion:', err.message);
+              console.error('[GaplessAudio] TypeError during audio data conversion (URL path):', err.message);
             } else {
               console.error('[GaplessAudio] Failed to process PCM audio from URL.', err);
             }
             return;
           }
+
+          if (!isMountedRef.current) return;
 
           if (url.startsWith('blob:')) {
             URL.revokeObjectURL(url);
@@ -257,8 +266,8 @@ export function useGaplessAudioQueue() {
 
   const enqueueAudioChunk = useCallback(
     (chunk: Blob | ArrayBuffer) => {
-      receivedChunksRef.current = true;
       const currentToken = flushTokenRef.current;
+
 
       processingQueueRef.current = processingQueueRef.current
         .then(async () => {
@@ -275,6 +284,8 @@ export function useGaplessAudioQueue() {
             const float32Data = convertInt16ToFloat32(chunkArrayBuffer);
             audioBuffer = ctx.createBuffer(PCM_NUM_CHANNELS, float32Data.length, PCM_SAMPLE_RATE);
             audioBuffer.copyToChannel(float32Data, 0);
+            // Mark decode as successful so the URL fallback path is suppressed.
+            chunkDecodedSuccessfullyRef.current = true;
           } catch (err) {
             if (err instanceof DOMException) {
               console.error('[GaplessAudio] DOMException during audio buffer creation:', err.name, err.message);
@@ -283,6 +294,7 @@ export function useGaplessAudioQueue() {
             } else {
               console.error('[GaplessAudio] Failed to process PCM audio chunk.', err);
             }
+            // Do NOT set chunkDecodedSuccessfullyRef — let the URL fallback run.
             return;
           }
 
@@ -325,7 +337,7 @@ export function useGaplessAudioQueue() {
             scheduledNodesRef.current = scheduledNodesRef.current.filter((n) => n !== source);
           };
 
-          const startTime = Math.max(ctx.currentTime + 0.1, nextPlaybackTimeRef.current);
+          const startTime = Math.max(ctx.currentTime, nextPlaybackTimeRef.current);
           source.start(startTime);
           
           nextPlaybackTimeRef.current = startTime + newDuration;

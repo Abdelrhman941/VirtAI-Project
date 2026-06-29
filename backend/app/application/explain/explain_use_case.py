@@ -51,48 +51,35 @@ class ExplainUseCase:
         )
         return list(chunks_query.scalars().all())
 
-    async def start_or_resume(self, user_id: str, document_id: str) -> AsyncGenerator[dict, None]:
-        session_key = f"explain_{user_id}_{document_id}"
-        state_data = await self._get_state(session_key)
+    async def _explain_single_slide(
+        self,
+        slide_index: int,
+        chunks: list[DocumentChunk],
+    ) -> AsyncGenerator[dict, None]:
+        """
+        Stream the explanation for a single slide and yield the events for it.
 
-        chunks = await self._load_chunks(document_id)
-        if not chunks:
-            yield {"type": "error", "message": "No document content."}
-            return
-
-        current_slide_index = state_data["current_slide_index"]
-
-        if current_slide_index >= len(chunks):
-            current_slide_index = 0
-            state_data["current_slide_index"] = 0
-
-        state_data["state"] = PresentationState.EXPLAINING.value
-        await self._save_state(session_key, state_data)
-
-        yield SlideStartEvent(
-            slide_index=current_slide_index, total_slides=len(chunks)
-        ).model_dump()
-
-        current_chunk = chunks[current_slide_index]
-        current_content = current_chunk.chunk_text or ""
+        Yields:
+            SlideStartEvent → SlideContentTokens (multiple) → SlideEndEvent
+        """
+        current_content = chunks[slide_index].chunk_text or ""
 
         # Build Sliding Window Context
         previous_summary = "None (This is the first slide)"
-        if current_slide_index > 0:
-            prev_text = chunks[current_slide_index - 1].chunk_text or ""
+        if slide_index > 0:
+            prev_text = chunks[slide_index - 1].chunk_text or ""
             previous_summary = prev_text[:400] + ("..." if len(prev_text) > 400 else "")
 
         next_preview = "None (This is the last slide)"
-        if current_slide_index < len(chunks) - 1:
-            next_text = chunks[current_slide_index + 1].chunk_text or ""
+        if slide_index < len(chunks) - 1:
+            next_text = chunks[slide_index + 1].chunk_text or ""
             next_preview = next_text[:400] + ("..." if len(next_text) > 400 else "")
 
-        # Detect locale and build history
         locale = detect_locale(current_content)
         prompt_set = registry.get_prompt_set(PromptKey.WALKTHROUGH, locale)
 
         sys_str = prompt_set.system.substitute(
-            current_slide_number=current_slide_index + 1,
+            current_slide_number=slide_index + 1,
             total_slides=len(chunks)
         )
         usr_str = prompt_set.footer.substitute(
@@ -104,17 +91,64 @@ class ExplainUseCase:
         history = ConversationHistory(system_prompt=sys_str, max_messages=1)
         history.add_user_message(usr_str)
 
+        yield SlideStartEvent(
+            slide_index=slide_index, total_slides=len(chunks)
+        ).model_dump()
+
         # Stream explanation from LLM
         async for chunk in self.chat_use_case.llm.stream(history):
             if chunk.token:
                 yield SlideContentTokens(tokens=chunk.token).model_dump()
 
-        yield SlideEndEvent(slide_index=current_slide_index).model_dump()
+        yield SlideEndEvent(slide_index=slide_index).model_dump()
 
-        state_data["state"] = PresentationState.AWAITING.value
+    async def start_or_resume(self, user_id: str, document_id: str) -> AsyncGenerator[dict, None]:
+        """
+        B1 fix: Auto-advance through ALL remaining slides in sequence.
+
+        Flow per slide: SlideStartEvent → tokens → SlideEndEvent
+        After ALL slides: SlideEndEvent(slide_index=-1) as end-of-presentation signal.
+
+        Design decision: The function auto-advances without waiting for user input between
+        slides.  This matches the expected "explain all slides" use case.  If the user
+        sends a "continue" message while this is running, the ExplainHandler's intent
+        classifier (B2 fix) will NOT cancel this task — handle_user_input will advance
+        the slide pointer for the NEXT call instead.
+        """
+        session_key = f"explain_{user_id}_{document_id}"
+        state_data = await self._get_state(session_key)
+
+        chunks = await self._load_chunks(document_id)
+        if not chunks:
+            yield {"type": "error", "message": "No document content."}
+            return
+
+        current_slide_index = state_data["current_slide_index"]
+
+        if current_slide_index >= len(chunks):
+            # Wrap around to the beginning when all slides have been seen
+            current_slide_index = 0
+            state_data["current_slide_index"] = 0
+
+        state_data["state"] = PresentationState.EXPLAINING.value
         await self._save_state(session_key, state_data)
 
-        yield AwaitInputEvent().model_dump()
+        # Auto-advance through all remaining slides
+        for slide_index in range(current_slide_index, len(chunks)):
+            # Update persisted state so we can resume from here on reconnect
+            state_data["current_slide_index"] = slide_index
+            state_data["state"] = PresentationState.EXPLAINING.value
+            await self._save_state(session_key, state_data)
+
+            async for event in self._explain_single_slide(slide_index, chunks):
+                yield event
+
+        # B1 fix: emit end-of-presentation sentinel so the frontend can update UI
+        yield SlideEndEvent(slide_index=-1).model_dump()
+
+        state_data["current_slide_index"] = 0  # reset for next session
+        state_data["state"] = PresentationState.AWAITING.value
+        await self._save_state(session_key, state_data)
 
     async def handle_user_input(
         self, user_id: str, document_id: str, text: str

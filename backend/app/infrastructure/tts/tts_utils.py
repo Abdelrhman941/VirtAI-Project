@@ -93,15 +93,29 @@ def split_text_for_tts(text: str, max_length: int = 500) -> list[str]:
 
 def calculate_audio_duration(audio_bytes: bytes, format: str = "mp3") -> float:
     """
-    Calculate audio duration accurately using pydub
-    Falls back to estimation if pydub fails
+    Calculate audio duration accurately.
+
+    For PCM (raw Int16 LE, 24kHz mono):
+        Uses direct arithmetic: bytes / (sample_rate * channels * bytes_per_sample) * 1000
+        This is exact and never requires pydub.
+
+    For all other formats:
+        Falls back to pydub for container-aware duration.
     """
+    if format == "pcm":
+        # Raw Int16 LE @ 24 kHz, 1 channel, 2 bytes per sample
+        PCM_SAMPLE_RATE = 24_000
+        PCM_CHANNELS = 1
+        PCM_BYTES_PER_SAMPLE = 2  # Int16
+        bytes_per_second = PCM_SAMPLE_RATE * PCM_CHANNELS * PCM_BYTES_PER_SAMPLE
+        return (len(audio_bytes) / bytes_per_second) * 1000.0  # milliseconds
+
     try:
         audio = AudioSegment.from_file(io.BytesIO(audio_bytes), format=format)
         return len(audio)  # milliseconds
     except Exception as e:
         logger.warning(f"Failed to calculate exact duration, estimating: {e}")
-        # Fallback: MP3 @ ~24kbps = 3000 bytes/sec
+        # Fallback: MP3 @ ~24kbps ≈ 3000 bytes/sec
         bytes_per_ms = 3000 / 1000.0
         return len(audio_bytes) / bytes_per_ms
 

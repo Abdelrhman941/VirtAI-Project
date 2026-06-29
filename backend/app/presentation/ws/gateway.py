@@ -102,7 +102,11 @@ class WebSocketHandler:
                 msg_type = msg_dict.get("type")
 
                 if msg_type == "ping":
-                    await self.ws.send_json({"type": "pong"})
+                    try:
+                        await self.ws.send_json({"type": "pong"})
+                    except Exception as e:
+                        logger.debug(f"[WS] Failed to send pong (connection closed?): {e}")
+                        break
                     continue
 
                 if msg_type == "chat.user_message":

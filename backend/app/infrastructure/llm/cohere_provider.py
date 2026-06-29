@@ -124,6 +124,7 @@ class CohereLLMProvider(BaseLLMProvider):
         messages = []
         system_prompt = history.system_prompt or "You are a helpful assistant."
         messages.append({"role": "system", "content": system_prompt})
+        
         for msg in history._messages:
             role = msg.role
             if role == "ai":
@@ -131,5 +132,11 @@ class CohereLLMProvider(BaseLLMProvider):
             elif role not in ("user", "assistant", "system", "tool"):
                 role = "user"
             
-            messages.append({"role": role, "content": msg.content})
+            content = msg.content if msg.content else " "
+            
+            if messages and messages[-1]["role"] == role:
+                messages[-1]["content"] += "\n" + content
+            else:
+                messages.append({"role": role, "content": content})
+                
         return messages

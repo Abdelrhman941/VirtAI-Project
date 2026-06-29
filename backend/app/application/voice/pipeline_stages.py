@@ -23,6 +23,7 @@ from app.schemas.ws_messages import (
     make_error,
     make_pipeline_state,
     make_tts_ready,
+    make_visemes_ready,
 )
 from app.shared.errors import LLMException, TTSException
 
@@ -263,7 +264,7 @@ class TTSStage(BaseStage):
                 from app.shared.config import get_settings
                 from pathlib import Path
                 
-                audio_duration_ms = calculate_audio_duration(audio_bytes, format="mp3")
+                audio_duration_ms = calculate_audio_duration(audio_bytes, format="pcm")
                 
                 storage_base = Path(get_settings().AUDIO_STORAGE_PATH)
                 session_dir = storage_base / context.session_id
@@ -275,7 +276,7 @@ class TTSStage(BaseStage):
                 if hasattr(self._tts, 'audio_file_id'):
                     audio_file_id = self._tts.audio_file_id(chunk_message_id, api_voice)
                 
-                audio_file_path = session_dir / f"{audio_file_id}.mp3"
+                audio_file_path = session_dir / f"{audio_file_id}.pcm"
                 try:
                     audio_file_path.write_bytes(audio_bytes)
                 except Exception as e:
@@ -358,7 +359,7 @@ class AnimationStage(BaseStage):
             else chunk_message_id
         )
         audio_url = (
-            f"/api/v1/audio/{context.session_id}/{audio_file_id}.mp3" if context.tts_result else ""
+            f"/api/v1/audio/{context.session_id}/{audio_file_id}.pcm" if context.tts_result else ""
         )
         duration = int(context.tts_result.audio_duration_ms) if context.tts_result else 0
 
@@ -372,6 +373,47 @@ class AnimationStage(BaseStage):
                         duration_ms=duration,
                     )
                 )
+
+                # C2 fix: Generate real visemes from the saved PCM audio and emit
+                # visemes.ready.  Previously mouth_cues was always [] and
+                # make_visemes_ready was never called anywhere in the pipeline.
+                if (
+                    self._viseme_generator is not None
+                    and context.tts_result
+                    and context.tts_result.audio_ref
+                ):
+                    audio_path = context.tts_result.audio_ref
+                    try:
+                        # VisemeGenerator._generate_cues uses pydub AudioSegment.from_file.
+                        # For raw PCM we pass the path directly; pydub will detect
+                        # the format from the extension.
+                        raw_cues = await self._viseme_generator.generate_from_audio(
+                            audio_path=audio_path,
+                            text=text_to_animate,
+                            session_id=context.session_id,
+                            message_id=chunk_message_id,
+                        )
+                        mouth_cues = raw_cues  # type: ignore[assignment]
+                        context.mouth_cues = mouth_cues
+                        if mouth_cues:
+                            await context.send_callback(
+                                make_visemes_ready(
+                                    session_id=context.session_id,
+                                    message_id=chunk_message_id,
+                                    mouth_cues=mouth_cues,
+                                )
+                            )
+                            logger.debug(
+                                f"Visemes emitted | message={chunk_message_id} | count={len(mouth_cues)}"
+                            )
+                        else:
+                            logger.debug(
+                                f"Viseme generator returned empty cues | message={chunk_message_id}"
+                            )
+                    except Exception as vis_err:
+                        logger.warning(
+                            f"Viseme generation failed (non-fatal) | message={chunk_message_id} | {vis_err}"
+                        )
 
             if timeline_payload["timeline"]:
                 await context.send_callback(
