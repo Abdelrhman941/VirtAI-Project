@@ -162,6 +162,7 @@ class WSManager {
     try {
       const socketUrl = buildResumeUrl(url, this.sessionState) || url;
       const socket = new WebSocket(socketUrl, ["access_token", token]);
+      socket.binaryType = 'arraybuffer';
       this.ws = socket;
       
       socket.onopen = () => {

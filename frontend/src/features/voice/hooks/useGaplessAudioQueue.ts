@@ -338,8 +338,12 @@ export function useGaplessAudioQueue() {
 
   useEffect(() => {
     const handleAudioChunk = (event: Event) => {
-      const customEvent = event as CustomEvent<Blob | ArrayBuffer>;
-      enqueueAudioChunk(customEvent.detail);
+      try {
+        const customEvent = event as CustomEvent<Blob | ArrayBuffer>;
+        enqueueAudioChunk(customEvent.detail);
+      } catch (err) {
+        console.error('[GaplessAudio] Failed to handle audio_chunk event:', err);
+      }
     };
     window.addEventListener('audio_chunk', handleAudioChunk);
     return () => window.removeEventListener('audio_chunk', handleAudioChunk);
