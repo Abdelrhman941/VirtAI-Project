@@ -86,6 +86,7 @@ class BaseTTSProvider(ABC):
     def synthesize_streaming(
         self,
         text: str,
+        voice: str | None = None,
     ) -> AsyncGenerator[TTSChunk, None]:
         """Streaming synthesis — sends audio chunks + visemes as available."""
         ...
