@@ -100,7 +100,7 @@ export function useClassroomChat({
         resetAvatarAudio(conversationState.activeMessageId);
       }
     } else if (connectionState === ConnectionState.CONNECTED) { // ONLINE
-      if (conversationState.pipelineState === 'error') {
+      if (conversationState.pipelineState === 'error' && conversationState.error === 'Connection interrupted') {
         dispatch({ type: 'CLEAR_ERROR' });
         useChatUIStore.getState().setPipelineState('idle');
       }

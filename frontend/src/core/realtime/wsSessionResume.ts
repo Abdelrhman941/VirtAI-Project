@@ -7,8 +7,8 @@ export interface SessionResumeState {
   messageQueue: WSOutgoingMessage[];
 }
 
-export function createSessionResumeState(): SessionResumeState {
-  const savedSessionId = typeof window !== 'undefined' ? localStorage.getItem('virt_session_id') : null;
+export function createSessionResumeState(useLocalStorage = true): SessionResumeState {
+  const savedSessionId = (typeof window !== 'undefined' && useLocalStorage) ? localStorage.getItem('virt_session_id') : null;
   return {
     sessionId: savedSessionId,
     lastSeq: 0,
@@ -83,11 +83,11 @@ export function pushToMessageQueue(
   state.messageQueue.push(message);
 }
 
-export function resetSessionState(state: SessionResumeState): void {
+export function resetSessionState(state: SessionResumeState, useLocalStorage = true): void {
   state.sessionId = null;
   state.lastSeq = 0;
   state.lastAckedSeq = 0;
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && useLocalStorage) {
     localStorage.removeItem('virt_session_id');
   }
 }

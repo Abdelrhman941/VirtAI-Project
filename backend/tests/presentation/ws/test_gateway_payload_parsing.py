@@ -10,6 +10,9 @@ class FakeSessionManager:
     async def create_session(self, user_id, avatar_id, voice_id):
         raise NotImplementedError
 
+    async def connect_existing_session(self, session_id, user_id=None, avatar_id=None, voice_id=None):
+        raise NotImplementedError
+
 class FakeConnectionManager:
     async def safe_send_error(self, *args, **kwargs):
         pass

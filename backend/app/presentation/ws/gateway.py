@@ -112,7 +112,12 @@ class WebSocketHandler:
                     # 1) If message has a session_id but we don't, bind to it (frontend created it via REST)
                     if payload.session_id and not self.session_id:
                         self.session_id = payload.session_id
-                        self.session = await self.session_manager.get_session(self.session_id)
+                        self.session = await self.session_manager.connect_existing_session(
+                            session_id=self.session_id,
+                            user_id=self.user_id,
+                            avatar_id=self.avatar_id,
+                            voice_id=self.voice_id
+                        )
                         if self.connection_manager and self.session:
                             await self.connection_manager.register(
                                 self.session_id,

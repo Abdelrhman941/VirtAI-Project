@@ -53,6 +53,10 @@ class FakeSessionManager:
             return self._last_session
         return None
 
+    async def connect_existing_session(self, session_id, user_id=None, avatar_id=None, voice_id=None):
+        self._last_session = FakeSession(session_id)
+        return self._last_session
+
 
 class FakeConnectionManager:
     def __init__(self):
@@ -81,9 +85,11 @@ async def test_websocket_handler_lifecycle():
     
     async def mock_receive():
         if not messages:
+            await asyncio.sleep(0.01)
             raise asyncio.exceptions.IncompleteReadError(b'', None)
         msg = messages.pop(0)
         if isinstance(msg, Exception):
+            await asyncio.sleep(0.01)
             raise msg
         return {"type": "websocket.receive", "text": msg}
 
@@ -111,6 +117,10 @@ async def test_websocket_handler_lifecycle():
 
     # Run the loop (it will hit WebSocketDisconnect and exit gracefully)
     await handler.run()
+    
+    # Wait for generation task if it exists
+    if hasattr(handler, "_generation_task") and handler._generation_task:
+        await asyncio.wait([handler._generation_task], timeout=1.0)
 
     # Verify Ping/Pong
     assert len(sent_messages) == 1

@@ -29,7 +29,7 @@ export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChang
 
   const managerRef = useRef<WSManager | null>(null);
   if (!managerRef.current) {
-    managerRef.current = new WSManager();
+    managerRef.current = new WSManager(false); // Do not persist session to localStorage!
   }
   const manager = managerRef.current;
 

@@ -32,9 +32,12 @@ class WSManager {
   private pingIntervalTimer: ReturnType<typeof setInterval> | null = null;
   private pongTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor() {
+  private useLocalStorage: boolean;
+
+  constructor(useLocalStorage = true) {
+    this.useLocalStorage = useLocalStorage;
     this.eventRouter = createEventRouter();
-    this.sessionState = createSessionResumeState();
+    this.sessionState = createSessionResumeState(this.useLocalStorage);
     this.reconnectPolicy = createReconnectPolicy();
     // Startup validation for VITE_WS_URL
     const configuredUrl = import.meta.env.VITE_WS_URL || import.meta.env.VITE_WS_BASE_URL;
@@ -120,7 +123,7 @@ class WSManager {
       this.isConnecting = false;
       this.isIntentionalClose = false; // confirm this exists
       // Reset session state ONLY (not auth state)
-      resetSessionState(this.sessionState);
+      resetSessionState(this.sessionState, this.useLocalStorage);
     }
     
     this.url = url;
@@ -200,7 +203,7 @@ class WSManager {
             const readyData = message.data ?? {};
             if (typeof readyData.session_id === 'string' && readyData.session_id.length > 0) {
               this.sessionState.sessionId = readyData.session_id;
-              if (typeof window !== 'undefined') {
+              if (typeof window !== 'undefined' && this.useLocalStorage) {
                 localStorage.setItem('virt_session_id', readyData.session_id);
               }
             }
@@ -266,8 +269,7 @@ class WSManager {
         }
         
         if (event.code === WS_CLOSE_SESSION_INVALID) {
-          resetSessionState(this.sessionState);
-          if (typeof window !== 'undefined') localStorage.removeItem('virt_session_id');
+          resetSessionState(this.sessionState, this.useLocalStorage);
         }
         
         if (event.code === WS_CLOSE_NORMAL || event.code === 1001 || event.code === 1012) {
@@ -328,8 +330,7 @@ class WSManager {
     
     this.updateStatus(ConnectionState.DISCONNECTED);
     if (intentional) {
-      resetSessionState(this.sessionState);
-      if (typeof window !== 'undefined') localStorage.removeItem('virt_session_id');
+      resetSessionState(this.sessionState, this.useLocalStorage);
     }
     this.authRefreshAttempts = 0;
   }
