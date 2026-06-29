@@ -101,7 +101,7 @@ class WSManager {
     };
 
     if (this.url !== url) {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN && isUrlUpgrade()) {
+      if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) && isUrlUpgrade()) {
         if (import.meta.env.DEV) console.log('[WS] Upgrading session_id without reconnecting');
         this.url = url;
         return;

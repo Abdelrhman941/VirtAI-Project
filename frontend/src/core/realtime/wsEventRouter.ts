@@ -35,7 +35,8 @@ export function createEventRouter(): EventRouter {
 
     route(event, callbacks) {
       try {
-        if (typeof Blob !== 'undefined' && event.data instanceof Blob) {
+        if ((typeof Blob !== 'undefined' && event.data instanceof Blob) || event.data instanceof ArrayBuffer) {
+          window.dispatchEvent(new CustomEvent('audio_chunk', { detail: event.data }));
           return;
         }
 

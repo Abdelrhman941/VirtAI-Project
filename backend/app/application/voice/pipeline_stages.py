@@ -23,7 +23,6 @@ from app.schemas.ws_messages import (
     make_error,
     make_pipeline_state,
     make_tts_ready,
-    make_visemes_ready,
 )
 from app.shared.errors import LLMException, TTSException
 
@@ -310,76 +309,6 @@ class TTSStage(BaseStage):
                         message_id=context.message_id,
                     )
                 )
-def generate_visemes(audio_bytes: bytes) -> list[Any]:
-    import io
-    import numpy as np
-    from pydub import AudioSegment
-    from app.schemas.ws_messages import MouthCue
-    
-    if not audio_bytes:
-        return []
-        
-    try:
-        audio = AudioSegment.from_file(io.BytesIO(audio_bytes), format="mp3")
-        audio = audio.set_channels(1)
-        samples = np.array(audio.get_array_of_samples(), dtype=np.float64)
-        frame_rate = audio.frame_rate
-        
-        if len(samples) < 10:
-            return []
-            
-        window_size = int(frame_rate * 0.05)
-        hop_size = int(frame_rate * 0.02)
-        
-        if window_size > len(samples):
-            window_size = max(10, len(samples) // 4)
-            hop_size = max(1, window_size // 4)
-            
-        if hop_size < 1: hop_size = 1
-        
-        envelope = []
-        i = 0
-        while i + window_size <= len(samples):
-            window = samples[i : i + window_size]
-            rms = np.sqrt(np.mean(window**2))
-            envelope.append(rms)
-            i += hop_size
-            
-        if len(envelope) == 0:
-            if len(samples) > 0:
-                rms = np.sqrt(np.mean(samples**2))
-                envelope = [rms]
-                hop_size = len(samples)
-            else:
-                return []
-                
-        max_rms = np.max(envelope)
-        if max_rms > 0:
-            envelope = [e / max_rms for e in envelope]
-            
-        mouth_cues = []
-        threshold = 0.15
-        is_open = False
-        start_time = 0.0
-        
-        for idx, amplitude in enumerate(envelope):
-            time = idx * (hop_size / frame_rate)
-            if amplitude > threshold and not is_open:
-                start_time = time
-                is_open = True
-            elif amplitude <= threshold and is_open:
-                mouth_cues.append(MouthCue(start=start_time, end=time, value="viseme_aa"))
-                is_open = False
-                
-        if is_open:
-            duration = len(audio) / 1000.0
-            mouth_cues.append(MouthCue(start=start_time, end=duration, value="viseme_aa"))
-            
-        return mouth_cues
-    except Exception as e:
-        logger.error(f"Failed to generate visemes from bytes: {e}")
-        return []
-
 class AnimationStage(BaseStage):
     def __init__(self, animation_service: Any, viseme_generator: Any) -> None:
         self._animation_service = animation_service
@@ -403,12 +332,6 @@ class AnimationStage(BaseStage):
         )
 
         mouth_cues = []
-        if safe_tts_result.audio_bytes:
-            try:
-                mouth_cues = await asyncio.to_thread(generate_visemes, safe_tts_result.audio_bytes)
-            except Exception as e:
-                logger.error(f"Viseme generation error: {e} | trace_id={context.trace_id}")
-
         context.mouth_cues = mouth_cues
 
         audio_features = analyze_tts_for_animation(
@@ -447,13 +370,6 @@ class AnimationStage(BaseStage):
                         duration_ms=duration,
                     )
                 )
-            await context.send_callback(
-                make_visemes_ready(
-                    session_id=context.session_id,
-                    message_id=chunk_message_id,
-                    mouth_cues=mouth_cues,
-                )
-            )
 
             if timeline_payload["timeline"]:
                 await context.send_callback(

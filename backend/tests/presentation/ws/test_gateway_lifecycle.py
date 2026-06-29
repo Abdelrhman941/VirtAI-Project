@@ -13,6 +13,10 @@ from app.presentation.ws.gateway import WebSocketHandler
 class FakePipeline:
     def __init__(self):
         self.process_message_calls = []
+        self.abort_called = False
+
+    def abort(self):
+        self.abort_called = True
 
     async def process_message(
         self,
@@ -45,9 +49,13 @@ class FakeSessionManager:
 class FakeConnectionManager:
     def __init__(self):
         self.registered = False
+        self.unregistered_called = False
 
     async def register(self, session_id, websocket, user_id, family_id):
         self.registered = True
+
+    async def unregister(self, session_id, websocket):
+        self.unregistered_called = True
 
 
 @pytest.mark.asyncio
@@ -111,4 +119,8 @@ async def test_websocket_handler_lifecycle():
     payload = handler.session.pipeline.process_message_calls[0]
     assert payload["text"] == "hello"
     assert str(payload["message_id"]) == "123e4567-e89b-12d3-a456-426614174000"
+
+    # Verify Teardown Guarantee on Disconnect
+    assert connection_manager.unregistered_called is True
+    assert handler.session.pipeline.abort_called is True
 

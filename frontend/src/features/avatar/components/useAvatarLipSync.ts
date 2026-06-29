@@ -9,51 +9,6 @@ const HEAD_BOB_PERIOD = TWO_PI / HEAD_BOB_FREQUENCY;
 const FALLBACK_DAMPING = 5;
 const ORIGIN_ZERO = 0;
 const INACTIVE_VISEME_INFLUENCE = 0;
-const POINTER_RESET_INDEX = 0;
-const ARRAY_END_OFFSET = 1;
-const FALLBACK_VISEME = 'viseme_sil';
-
-const VISEME_WEIGHT_MAP: Record<string, number> = {
-  'viseme_PP': 1.0,
-  'viseme_FF': 0.7,
-  'viseme_TH': 0.7,
-  'viseme_DD': 0.7,
-  'viseme_kk': 0.8,
-  'viseme_CH': 0.8,
-  'viseme_SS': 0.7,
-  'viseme_nn': 0.8,
-  'viseme_RR': 0.8,
-  'viseme_aa': 1.0,
-  'viseme_E': 0.8,
-  'viseme_I': 0.8,
-  'viseme_O': 1.0,
-  'viseme_U': 0.95,
-  'viseme_oh': 1.0,
-  'viseme_ou': 0.95,
-  'viseme_ih': 0.8,
-  'viseme_sil': 0.0,
-};
-
-const JAW_WEIGHT_MAP: Record<string, number> = {
-  'viseme_PP': 0.0,
-  'viseme_FF': 0.1,
-  'viseme_TH': 0.1,
-  'viseme_DD': 0.15,
-  'viseme_kk': 0.2,
-  'viseme_CH': 0.2,
-  'viseme_SS': 0.1,
-  'viseme_nn': 0.15,
-  'viseme_RR': 0.2,
-  'viseme_aa': 0.6,
-  'viseme_E': 0.3,
-  'viseme_I': 0.2,
-  'viseme_O': 0.5,
-  'viseme_U': 0.3,
-  'viseme_oh': 0.5,
-  'viseme_ou': 0.4,
-  'viseme_ih': 0.2,
-  'viseme_sil': 0.0,
-};
 
 const BLINK_DURATION = 0.15;
 const INITIAL_BLINK_TIME = 0;
@@ -69,31 +24,10 @@ const FROWN_THINKING = 0.3;
 const SMILE_SPEAKING = 0.2;
 const SPEED_IMMEDIATE = 0;
 const DEFAULT_DAMP_SPEED = 12;
-const JAW_OPEN_WIDE = 0.25;
-const JAW_CLOSED = 0;
-
-const VISEME_MAP: Record<string, string> = {
-  A: 'viseme_PP', // Closed mouth (P, B, M)
-  B: 'viseme_kk', // Slightly open (K, S, T)
-  C: 'viseme_I',  // Open (E, I)
-  D: 'viseme_aa', // Wide open (A)
-  E: 'viseme_O',  // O shape
-  F: 'viseme_U',  // U shape
-  G: 'viseme_FF', // F, V sounds
-  H: 'viseme_TH', // Th sounds
-  X: 'viseme_sil', // Silence/Idle
-};
-
-export interface Viseme {
-  start: number;
-  end: number;
-  value: string;
-}
 
 export interface UseAvatarLipSyncProps {
   targetMeshes: THREE.SkinnedMesh[];
   pipelineState: 'idle' | 'thinking' | 'speaking' | 'error';
-  mouthCuesRef?: React.MutableRefObject<Viseme[]>;
   getAudioContext?: () => AudioContext;
   playbackStartTimeRef?: React.MutableRefObject<number | null>;
   getIsAudioPlaying?: () => boolean;
@@ -105,11 +39,9 @@ export interface UseAvatarLipSyncProps {
 export function useAvatarLipSync({
   targetMeshes,
   pipelineState,
-  mouthCuesRef,
   getAudioContext,
   playbackStartTimeRef,
   getIsAudioPlaying,
-  getNextPlaybackTime,
   getAnalyserNode,
   groupRef,
 }: UseAvatarLipSyncProps) {
@@ -118,31 +50,17 @@ export function useAvatarLipSync({
     'viseme_kk', 'viseme_CH', 'viseme_SS', 'viseme_nn', 'viseme_RR', 
     'viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U'
   ], []);
-  const currentCueIndexRef = useRef(POINTER_RESET_INDEX);
+  
   const blinkStateRef = useRef({ nextBlinkTime: INITIAL_BLINK_TIME, duration: BLINK_DURATION, isBlinking: false });
-  const fallbackTimeRef = useRef(ORIGIN_ZERO);
-  const lastCuesRef = useRef<Viseme[] | null>(null);
-  const hardwareClockSyncRef = useRef<{ lastAudioTime: number; lastFrameTime: number; }>({
-    lastAudioTime: 0,
-    lastFrameTime: 0,
-  });
+  const headBobTimeRef = useRef(ORIGIN_ZERO);
   
   // Realtime Audio Analysis Refs
   const audioDataArrayRef = useRef<Uint8Array | null>(null);
-  const smoothedVolumeRef = useRef<number>(0);
 
   const pipelineStateRef = useRef(pipelineState);
   useEffect(() => {
     pipelineStateRef.current = pipelineState;
   }, [pipelineState]);
-
-  useEffect(() => {
-    if (pipelineState === 'speaking') {
-      fallbackTimeRef.current = ORIGIN_ZERO;
-      currentCueIndexRef.current = POINTER_RESET_INDEX;
-      lastCuesRef.current = mouthCuesRef?.current || null;
-    }
-  }, [pipelineState, mouthCuesRef]);
 
   const morphTargetIndices = useMemo(() => {
     const map = new Map<THREE.SkinnedMesh, Record<string, number | undefined>>();
@@ -179,25 +97,23 @@ export function useAvatarLipSync({
   }, [targetMeshes, visemeKeysList]);
 
   useFrame((state, delta) => {
-    // ONE-TIME CAMERA LOGGING
-    if (!(window as any).__LOGGED_CAMERA) {
-      console.log('[Runtime Evidence] Active Camera Frame:', {
-        position: state.camera.position.toArray(),
-        rotation: state.camera.rotation.toArray(),
-        fov: (state.camera as any).fov
-      });
-      (window as any).__LOGGED_CAMERA = {
-        position: state.camera.position.toArray(),
-        rotation: state.camera.rotation.toArray(),
-        fov: (state.camera as any).fov
-      };
+    const t = state.clock.elapsedTime;
+    
+    // Determine speaking state
+    const currentPipelineState = pipelineStateRef.current;
+    let isAudioPlaying = false;
+    if (getIsAudioPlaying) {
+      isAudioPlaying = getIsAudioPlaying();
+    } else if (playbackStartTimeRef?.current != null) {
+      const audioContext = getAudioContext?.();
+      if (audioContext?.state === 'running' && audioContext.currentTime >= playbackStartTimeRef.current) {
+        isAudioPlaying = true;
+      }
     }
+    const isEffectivelySpeaking = currentPipelineState === 'speaking' || isAudioPlaying;
 
     if (targetMeshes.length > ORIGIN_ZERO) {
-      // 1. Calculate Target Values
-      const t = state.clock.elapsedTime;
       const blinkState = blinkStateRef.current;
-
       if (!blinkState.isBlinking && t > blinkState.nextBlinkTime) {
         blinkState.isBlinking = true;
       }
@@ -218,29 +134,6 @@ export function useAvatarLipSync({
       let targetFrown = TARGET_ZERO;
       let targetSmile = TARGET_ZERO;
 
-      const currentPipelineState = pipelineStateRef.current;
-      let isAudioPlaying = false;
-      if (getIsAudioPlaying) {
-        isAudioPlaying = getIsAudioPlaying();
-      } else if (playbackStartTimeRef?.current != null) {
-        const audioContext = getAudioContext?.();
-        if (audioContext?.state === 'running' && audioContext.currentTime >= playbackStartTimeRef.current) {
-          isAudioPlaying = true;
-          if (currentPipelineState !== 'speaking') {
-            if (mouthCuesRef?.current && mouthCuesRef.current.length > 0) {
-              const lastCue = mouthCuesRef.current[mouthCuesRef.current.length - 1];
-              const validEnd = Number.isFinite(lastCue?.end) ? Number(lastCue.end) : 0;
-              if (audioContext.currentTime > playbackStartTimeRef.current + validEnd) {
-                isAudioPlaying = false;
-              }
-            } else {
-              isAudioPlaying = false;
-            }
-          }
-        }
-      }
-      const isEffectivelySpeaking = currentPipelineState === 'speaking' || isAudioPlaying;
-
       if (currentPipelineState === 'thinking') {
         targetBrow = BROW_THINKING;
         targetFrown = FROWN_THINKING;
@@ -248,109 +141,57 @@ export function useAvatarLipSync({
         targetSmile = SMILE_SPEAKING;
       }
 
-      let activeVisemeName: string | null = null;
-      let realtimeVolume = 0;
-      let usingRealtime = false;
+      // FFT Analysis
+      let targetVisemeSS = 0;
+      let targetVisemeAA = 0;
+      let targetVisemeO = 0;
+      let targetJawOpen = 0;
 
-      // Prioritize Realtime AnalyserNode Lip-Sync
-      if (getAnalyserNode) {
-        const analyser = getAnalyserNode();
+      if (isEffectivelySpeaking) {
+        const analyser = getAnalyserNode?.();
         if (analyser) {
-          usingRealtime = true;
-          if (!audioDataArrayRef.current || audioDataArrayRef.current.length !== analyser.frequencyBinCount) {
-            audioDataArrayRef.current = new Uint8Array(analyser.frequencyBinCount);
+          if (!audioDataArrayRef.current) {
+            audioDataArrayRef.current = new Uint8Array(analyser.frequencyBinCount); // usually 128 for fftSize 256
           }
-          analyser.getByteFrequencyData(audioDataArrayRef.current);
-          
-          let sum = 0;
-          for (let i = 0; i < audioDataArrayRef.current.length; i++) {
-            sum += audioDataArrayRef.current[i];
+          const dataArray = audioDataArrayRef.current;
+          analyser.getByteFrequencyData(dataArray);
+
+          // Calculate band averages
+          // Low: 0-3 (0 - ~680Hz)
+          // Mid: 4-15 (~680Hz - ~2700Hz)
+          // High: 16-45 (~2700Hz - ~8000Hz)
+          let lowSum = 0;
+          for (let i = 0; i < 4; i++) lowSum += dataArray[i];
+          const lowAvg = lowSum / 4;
+
+          let midSum = 0;
+          for (let i = 4; i < 16; i++) midSum += dataArray[i];
+          const midAvg = midSum / 12;
+
+          let highSum = 0;
+          for (let i = 16; i < 46; i++) highSum += dataArray[i];
+          const highAvg = highSum / 30;
+
+          // Normalize
+          const lowNorm = Math.min(lowAvg / 255.0, 1.0);
+          const midNorm = Math.min(midAvg / 255.0, 1.0);
+          const highNorm = Math.min(highAvg / 255.0, 1.0);
+
+          // Mapping logic
+          if (highNorm > 0.1) {
+            targetVisemeSS = highNorm * 1.5; // Consonants S, P
           }
-          const average = sum / audioDataArrayRef.current.length;
-          // Normalize (0-255 to 0-1) and scale up a bit for emphasis
-          const normalizedVolume = Math.min((average / 255.0) * 2.5, 1.0);
-          
-          // EMA Smoothing (Attack 0.6, Release 0.2)
-          if (normalizedVolume > smoothedVolumeRef.current) {
-            smoothedVolumeRef.current = smoothedVolumeRef.current * 0.4 + normalizedVolume * 0.6;
-          } else {
-            smoothedVolumeRef.current = smoothedVolumeRef.current * 0.8 + normalizedVolume * 0.2;
+          if (midNorm > 0.1) {
+            targetVisemeAA = midNorm * 1.5; // Wide vowels A, E
           }
-          
-          realtimeVolume = smoothedVolumeRef.current;
+          if (lowNorm > 0.1) {
+            targetVisemeO = lowNorm * 1.5; // Closed/deep vowels O, U
+            targetJawOpen = lowNorm * 0.5;
+          }
         }
       }
 
-      // Fallback to Viseme Payload
-      if (!usingRealtime && isEffectivelySpeaking && mouthCuesRef?.current) {
-        const cues = mouthCuesRef.current;
-        
-        if (cues !== lastCuesRef.current) {
-          fallbackTimeRef.current = ORIGIN_ZERO;
-          currentCueIndexRef.current = POINTER_RESET_INDEX;
-          lastCuesRef.current = cues;
-        }
-
-        let currentTime = ORIGIN_ZERO;
-        
-        const audioContext = getAudioContext?.();
-
-        if (audioContext && audioContext.state !== 'suspended' && playbackStartTimeRef?.current != null) {
-          const currentAudioTime = audioContext.currentTime;
-          
-          // Hardware Clock Synchronization Fix: smooth out AudioContext's resolution using RAF's high-frequency clock
-          if (hardwareClockSyncRef.current.lastAudioTime !== currentAudioTime) {
-            hardwareClockSyncRef.current.lastAudioTime = currentAudioTime;
-            hardwareClockSyncRef.current.lastFrameTime = t;
-          }
-          
-          const timeSinceLastAudioUpdate = t - hardwareClockSyncRef.current.lastFrameTime;
-          // Extrapolate time to prevent stuttering, capped to 100ms to prevent runaway drift
-          const smoothedAudioTime = currentAudioTime + Math.min(timeSinceLastAudioUpdate, 0.1);
-
-          currentTime = smoothedAudioTime - playbackStartTimeRef.current;
-          fallbackTimeRef.current = currentTime;
-        } else {
-          // DEFENSIVE: Viseme Pre-Fire Jitter Fix
-          // Do NOT advance fallback clock if we are waiting for audio context to start or if suspended.
-          // This keeps the mouth closed until audio actually begins.
-          currentTime = ORIGIN_ZERO;
-        }
-
-        if (currentTime < ORIGIN_ZERO) currentTime = ORIGIN_ZERO;
-
-        let index = currentCueIndexRef.current;
-
-        if (cues.length > ORIGIN_ZERO) {
-          const currentTrackedCue = cues[index] || cues[cues.length - ARRAY_END_OFFSET];
-          if (currentTime < currentTrackedCue.start) {
-            index = POINTER_RESET_INDEX;
-          }
-        } else {
-          index = POINTER_RESET_INDEX;
-        }
-
-        while (index < cues.length && currentTime > cues[index].end) {
-          index++;
-        }
-
-        currentCueIndexRef.current = index;
-
-        if (index < cues.length && currentTime >= cues[index].start) {
-          const rawValue = cues[index].value;
-          const cueValue = rawValue.toUpperCase();
-          const nextViseme = VISEME_MAP[cueValue] || (rawValue.toLowerCase().startsWith('viseme_') ? rawValue : FALLBACK_VISEME);
-          
-          if (activeVisemeName !== nextViseme) {
-            if (Math.random() < 0.01) { // Sample logs to avoid flooding
-                console.log(`[Runtime Evidence] Lip-Sync Update - Time: ${currentTime.toFixed(3)}s, Viseme: ${nextViseme}, Index: ${index}`);
-            }
-          }
-          activeVisemeName = nextViseme;
-        }
-      }
-
-      // 2. Apply calculated values safely
+      // Apply calculated values safely
       targetMeshes.forEach(mesh => {
         const indices = morphTargetIndices.get(mesh);
         const influences = mesh.morphTargetInfluences;
@@ -358,7 +199,6 @@ export function useAvatarLipSync({
 
         const safelySetInfluence = (key: string, targetValue: number, speed: number = DEFAULT_DAMP_SPEED) => {
           const idx = indices[key];
-
           if (idx !== undefined && idx < influences.length) {
             const currentValue = influences[idx] || TARGET_ZERO;
             influences[idx] = speed === SPEED_IMMEDIATE
@@ -378,59 +218,26 @@ export function useAvatarLipSync({
         safelySetInfluence('mouthSmileLeft', targetSmile);
         safelySetInfluence('mouthSmileRight', targetSmile);
 
-        // Visemes
-        if (usingRealtime) {
-          // Reset legacy visemes
-          for (let i = 0; i < visemeKeysList.length; i++) {
-            safelySetInfluence(visemeKeysList[i], INACTIVE_VISEME_INFLUENCE, DEFAULT_DAMP_SPEED);
+        // Reset all visemes to zero first (so un-triggered visemes fade out naturally)
+        for (let i = 0; i < visemeKeysList.length; i++) {
+          const key = visemeKeysList[i];
+          if (key !== 'viseme_SS' && key !== 'viseme_PP' && key !== 'viseme_aa' && key !== 'viseme_E' && key !== 'viseme_O') {
+            safelySetInfluence(key, INACTIVE_VISEME_INFLUENCE, DEFAULT_DAMP_SPEED);
           }
-          // Map realtime volume to 'viseme_O' or similar wide open mouth
-          // Since the EMA is already smoothed, we can use SPEED_IMMEDIATE or a high speed
-          safelySetInfluence('viseme_O', realtimeVolume, SPEED_IMMEDIATE);
-          safelySetInfluence('jawOpen', realtimeVolume * 0.5, SPEED_IMMEDIATE);
-        } else {
-          // Legacy Viseme Payload logic
-          for (let i = ORIGIN_ZERO; i < visemeKeysList.length; i++) {
-            const vKey = visemeKeysList[i];
-            let target = INACTIVE_VISEME_INFLUENCE;
-            if (vKey === activeVisemeName) {
-              target = VISEME_WEIGHT_MAP[vKey] !== undefined ? VISEME_WEIGHT_MAP[vKey] : 0.75;
-            }
-            safelySetInfluence(vKey, target, DEFAULT_DAMP_SPEED);
-          }
-
-          // Jaw Kinematics
-          const jawTarget = activeVisemeName ? (JAW_WEIGHT_MAP[activeVisemeName] !== undefined ? JAW_WEIGHT_MAP[activeVisemeName] : 0.0) : 0.0;
-          safelySetInfluence('jawOpen', jawTarget, DEFAULT_DAMP_SPEED);
         }
+
+        // Apply FFT targets
+        safelySetInfluence('viseme_SS', Math.min(targetVisemeSS, 1.0), DEFAULT_DAMP_SPEED * 1.5);
+        safelySetInfluence('viseme_PP', Math.min(targetVisemeSS * 0.5, 1.0), DEFAULT_DAMP_SPEED * 1.5);
+        safelySetInfluence('viseme_aa', Math.min(targetVisemeAA, 1.0), DEFAULT_DAMP_SPEED * 1.5);
+        safelySetInfluence('viseme_E', Math.min(targetVisemeAA * 0.8, 1.0), DEFAULT_DAMP_SPEED * 1.5);
+        safelySetInfluence('viseme_O', Math.min(targetVisemeO, 1.0), DEFAULT_DAMP_SPEED * 1.5);
+        safelySetInfluence('jawOpen', Math.min(targetJawOpen, 1.0), DEFAULT_DAMP_SPEED * 1.5);
       });
     } else if (targetMeshes.length === ORIGIN_ZERO && groupRef.current) {
-      const currentPipelineState = pipelineStateRef.current;
-      let isAudioPlaying = false;
-      if (getIsAudioPlaying) {
-        isAudioPlaying = getIsAudioPlaying();
-      } else if (playbackStartTimeRef?.current != null) {
-        const audioContext = getAudioContext?.();
-        if (audioContext?.state === 'running' && audioContext.currentTime >= playbackStartTimeRef.current) {
-          isAudioPlaying = true;
-          if (currentPipelineState !== 'speaking') {
-            if (mouthCuesRef?.current && mouthCuesRef.current.length > 0) {
-              const lastCue = mouthCuesRef.current[mouthCuesRef.current.length - 1];
-              const validEnd = Number.isFinite(lastCue?.end) ? Number(lastCue.end) : 0;
-              if (audioContext.currentTime > playbackStartTimeRef.current + validEnd) {
-                isAudioPlaying = false;
-              }
-            } else {
-              isAudioPlaying = false;
-            }
-          }
-        }
-      }
-      const isEffectivelySpeaking = currentPipelineState === 'speaking' || isAudioPlaying;
-
       if (isEffectivelySpeaking) {
-        fallbackTimeRef.current = (fallbackTimeRef.current + delta) % HEAD_BOB_PERIOD;
-        groupRef.current.position.y = Math.sin(fallbackTimeRef.current * HEAD_BOB_FREQUENCY) * HEAD_BOB_AMPLITUDE;
+        headBobTimeRef.current = (headBobTimeRef.current + delta) % HEAD_BOB_PERIOD;
+        groupRef.current.position.y = Math.sin(headBobTimeRef.current * HEAD_BOB_FREQUENCY) * HEAD_BOB_AMPLITUDE;
       } else {
         groupRef.current.position.y = THREE.MathUtils.damp(
           groupRef.current.position.y,

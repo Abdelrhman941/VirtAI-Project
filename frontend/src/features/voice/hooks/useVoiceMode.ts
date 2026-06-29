@@ -196,6 +196,14 @@ export function useVoiceMode(
           userFriendlyMessage = 'Too many requests. Please wait a moment and try again.';
           canRetry = true;
           break;
+        case 'TTS_ERROR':
+          userFriendlyMessage = 'Failed to generate voice response. Please try again.';
+          canRetry = true;
+          break;
+        case 'LLM_ERROR':
+          userFriendlyMessage = 'Failed to generate a response. Please try again.';
+          canRetry = true;
+          break;
         case 'CHUNK_SIZE_EXCEEDED':
           userFriendlyMessage = 'Audio chunk too large. Please speak in shorter segments.';
           canRetry = true;

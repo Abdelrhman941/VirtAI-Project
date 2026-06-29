@@ -21,6 +21,11 @@ export function useGaplessAudioQueue() {
   const abortControllerRef = useRef<AbortController>(new AbortController());
   const activeSourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
   const isMountedRef = useRef(true);
+  
+  // Streaming state
+  const receivedChunksRef = useRef<boolean>(false);
+  const accumulatedBufferRef = useRef<Uint8Array>(new Uint8Array(0));
+  const previousDecodedDurationRef = useRef<number>(0);
 
   const getAudioContext = useCallback(() => {
     if (!audioContextRef.current) {
@@ -102,6 +107,9 @@ export function useGaplessAudioQueue() {
     }
 
     visemeBaseStartTimeRef.current = null;
+    receivedChunksRef.current = false;
+    accumulatedBufferRef.current = new Uint8Array(0);
+    previousDecodedDurationRef.current = 0;
   }, []);
 
   const enqueueAudioUrl = useCallback(
@@ -111,6 +119,10 @@ export function useGaplessAudioQueue() {
       processingQueueRef.current = processingQueueRef.current
         .then(async () => {
           if (currentToken !== flushTokenRef.current) return;
+
+          if (receivedChunksRef.current) {
+            return; // We already streamed audio via chunks, skip the URL fallback fetch.
+          }
 
           const ctx = getAudioContext();
           const token = useAuthStore.getState().accessToken;
@@ -201,6 +213,89 @@ export function useGaplessAudioQueue() {
     },
     [getAudioContext]
   );
+
+  const enqueueAudioChunk = useCallback(
+    (chunk: Blob | ArrayBuffer) => {
+      receivedChunksRef.current = true;
+      const currentToken = flushTokenRef.current;
+
+      processingQueueRef.current = processingQueueRef.current
+        .then(async () => {
+          if (currentToken !== flushTokenRef.current) return;
+          if (!isMountedRef.current) return;
+          
+          const ctx = getAudioContext();
+          
+          // Decode ONLY this specific isolated chunk
+          const chunkArrayBuffer = chunk instanceof Blob ? await chunk.arrayBuffer() : chunk;
+          
+          let audioBuffer: AudioBuffer;
+          try {
+            audioBuffer = await ctx.decodeAudioData(chunkArrayBuffer.slice(0));
+          } catch (err) {
+            console.warn('[GaplessAudio] Failed to decode audio chunk. Chunk may be incomplete.', err);
+            return;
+          }
+
+          if (currentToken !== flushTokenRef.current) return;
+
+          if (ctx.currentTime >= nextPlaybackTimeRef.current) {
+            visemeBaseStartTimeRef.current = null;
+          }
+
+          const scheduleTime = Math.max(ctx.currentTime, nextPlaybackTimeRef.current);
+          if (visemeBaseStartTimeRef.current === null) {
+            visemeBaseStartTimeRef.current = scheduleTime;
+          }
+
+          const newDuration = audioBuffer.duration;
+          if (newDuration <= 0) return;
+
+          const source = ctx.createBufferSource();
+          activeSourceNodeRef.current = source;
+          source.buffer = audioBuffer;
+          
+          if (analyserNodeRef.current) {
+            source.connect(analyserNodeRef.current);
+          } else {
+            source.connect(ctx.destination);
+          }
+          scheduledNodesRef.current.push(source);
+
+          source.onended = () => {
+            if (!source) return;
+            try {
+              if (typeof source.disconnect === 'function') source.disconnect();
+              source.buffer = null;
+            } catch (e) {
+              console.warn('[GaplessAudio] Failed to cleanup activeSourceNode onended:', e);
+            }
+            if (activeSourceNodeRef.current === source) {
+              activeSourceNodeRef.current = null;
+            }
+            scheduledNodesRef.current = scheduledNodesRef.current.filter((n) => n !== source);
+          };
+
+          source.start(scheduleTime);
+          
+          nextPlaybackTimeRef.current = scheduleTime + newDuration;
+        })
+        .catch((err) => {
+          if (err.name === 'AbortError') return;
+          console.error('[GaplessAudio] Processing Queue failed for chunk:', err);
+        });
+    },
+    [getAudioContext]
+  );
+
+  useEffect(() => {
+    const handleAudioChunk = (event: Event) => {
+      const customEvent = event as CustomEvent<Blob | ArrayBuffer>;
+      enqueueAudioChunk(customEvent.detail);
+    };
+    window.addEventListener('audio_chunk', handleAudioChunk);
+    return () => window.removeEventListener('audio_chunk', handleAudioChunk);
+  }, [enqueueAudioChunk]);
 
   useEffect(() => {
     isMountedRef.current = true;

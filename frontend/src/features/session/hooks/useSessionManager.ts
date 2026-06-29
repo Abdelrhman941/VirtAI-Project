@@ -63,7 +63,17 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
     queryKey: ['sessionMessages', currentSessionId],
     queryFn: async ({ signal }) => {
       if (!currentSessionId) return [];
-      return await sessionService.fetchSessionMessages(currentSessionId, { signal });
+      const fetched = await sessionService.fetchSessionMessages(currentSessionId, { signal });
+      const current = queryClient.getQueryData<IMessage[]>(['sessionMessages', currentSessionId]) || [];
+      const optimistic = current.filter(m => m.status === 'pending');
+      
+      const merged = [...fetched];
+      optimistic.forEach(opt => {
+        if (!merged.some(m => m.id === opt.id)) {
+          merged.push(opt);
+        }
+      });
+      return merged;
     },
     enabled: !!currentSessionId && status === 'success',
   });

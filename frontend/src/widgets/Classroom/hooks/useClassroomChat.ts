@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
+import { useCallback, useEffect, useRef, useMemo, useLayoutEffect, useState } from 'react';
 import useWSClient, { ConnectionState } from '@/core/realtime/useWSClient';
 import { useChatUIStore } from '@/features/chat/store/useChatUIStore';
 import useConversationReducer from '@/features/chat/hooks/useConversationReducer';
@@ -48,8 +48,24 @@ export function useClassroomChat({
   const currentSessionId = session.currentSessionId;
   const status = session.status;
   
+  // Decouple WS lifecycle from lazy session creation
+  const [wsSessionId, setWsSessionId] = useState(currentSessionId);
+  const previousSessionIdRef = useRef(currentSessionId);
+
+  useEffect(() => {
+    if (currentSessionId !== previousSessionIdRef.current) {
+      if (previousSessionIdRef.current === null && currentSessionId) {
+        // Lazy creation: do not update wsSessionId to prevent WS disconnect
+      } else {
+        // Explicit navigation: update wsSessionId
+        setWsSessionId(currentSessionId);
+      }
+      previousSessionIdRef.current = currentSessionId;
+    }
+  }, [currentSessionId]);
+
   const WS_URL = status === 'success' 
-    ? buildWsUrl(wsAvatarId, activeVoiceId, currentSessionId || undefined) 
+    ? buildWsUrl(wsAvatarId, activeVoiceId, wsSessionId || undefined) 
     : null;
 
   const { connectionState, isConnected, send, onMessage, reconnect, reconnectError, disconnect } =
@@ -140,7 +156,7 @@ export function useClassroomChat({
           { id: message_id, role: 'user', content: text, status: 'pending' },
           activeId
         );
-        send({ type: 'chat.user_message', data: { message_id, text } });
+        send({ type: 'chat.user_message', data: { session_id: activeId, message_id, text } });
       }
     },
     [dispatch, send, currentSessionId, resetAvatarAudio, getAudioContext]
@@ -155,7 +171,7 @@ export function useClassroomChat({
 
   useEffect(() => {
     const checkSession = (d: WSPayload) => {
-      if (d && d.session_id && d.session_id !== currentSessionIdRef.current) return false;
+      if (d && d.session_id && currentSessionIdRef.current && d.session_id !== currentSessionIdRef.current) return false;
       return true;
     };
 

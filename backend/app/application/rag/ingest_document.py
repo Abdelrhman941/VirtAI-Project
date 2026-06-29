@@ -8,7 +8,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.rag.entities import DocumentChunk
-from app.domain.rag.normalization import compute_content_hash, normalize_text
+from app.domain.rag.normalization import normalize_text
 from app.domain.rag.ports import (
     ChunkingStrategy,
     DocumentParser,
@@ -175,11 +175,7 @@ class IngestDocumentUseCase:
             if len(normalized.strip()) == 0:
                 raise EmptyDocumentError("Document parsed to empty text")
 
-            content_hash = compute_content_hash(normalized)
 
-            async with self.db_session_factory() as db:
-                await db.execute(update(Document).where(Document.id == doc_uuid).values(content_hash=content_hash))
-                await db.commit()
 
             logger.info(
                 {

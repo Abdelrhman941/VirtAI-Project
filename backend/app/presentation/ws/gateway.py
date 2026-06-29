@@ -38,6 +38,19 @@ class WebSocketHandler:
             logger.info(f"[WS] Client disconnected: session {self.session_id}")
         except Exception as e:
             logger.error(f"[WS] Unexpected error: {e}")
+        finally:
+            if self.connection_manager and self.session_id:
+                try:
+                    await self.connection_manager.unregister(self.session_id, self.ws)
+                except Exception as e:
+                    logger.error(f"[WS] Error during unregister: {e}")
+            
+            if self.session and hasattr(self.session, "pipeline"):
+                try:
+                    self.session.pipeline.abort()
+                    logger.info(f"[WS] Aborted generation for session {self.session_id} on teardown")
+                except Exception as e:
+                    logger.error(f"[WS] Error during pipeline abort: {e}")
 
     async def _accept_and_register(self) -> None:
         # Connection is already accepted by the router before handler.run()
