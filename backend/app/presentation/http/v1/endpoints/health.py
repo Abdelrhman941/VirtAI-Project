@@ -17,6 +17,15 @@ router = APIRouter(prefix="/health", tags=["health"])
 settings = get_settings()
 
 
+def _check_app_ready(request: Request) -> bool:
+    """Return True only if the lifespan has finished all startup steps.
+
+    Extracted as a plain function so unit tests can call it without spinning
+    up the full ASGI app.
+    """
+    return bool(getattr(request.app.state, "ready", False))
+
+
 @router.get("")
 async def health_check(request: Request) -> dict:
     """Basic health check — verifies PostgreSQL and Redis connectivity."""
@@ -27,6 +36,14 @@ async def health_check(request: Request) -> dict:
         "environment": settings.ENVIRONMENT.value,
         "services": {},
     }
+
+    # Application startup readiness
+    if not _check_app_ready(request):
+        status["status"] = "starting"
+        status["services"]["app_ready"] = "starting"
+        return status
+
+    status["services"]["app_ready"] = "ok"
 
     # PostgreSQL + pgvector ping
     try:

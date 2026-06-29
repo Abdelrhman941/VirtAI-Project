@@ -127,6 +127,23 @@ class WebSocketHandler:
                             avatar_id=self.avatar_id,
                             voice_id=self.voice_id
                         )
+                        # Guard: verify the session wasn't deleted between creation and now
+                        # (race with DELETE /api/v1/chat/all or DELETE /api/v1/chat/{id})
+                        alive = await self.session_manager.get_session(new_session.session_id)
+                        if alive is None:
+                            logger.warning(
+                                f"[WS] Lazy session {new_session.session_id} was deleted "
+                                "mid-flight — aborting message processing"
+                            )
+                            sender = OutboundSender(self.ws, self.connection_manager)
+                            await sender.safe_send_error(
+                                code="SESSION_DELETED",
+                                message="Session was deleted before the message could be processed",
+                                session_id=new_session.session_id,
+                                session_pending=False,
+                                connected=True,
+                            )
+                            continue
                         self.session = new_session
                         self.session_id = new_session.session_id
                         if self.connection_manager:

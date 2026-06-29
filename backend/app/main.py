@@ -360,6 +360,9 @@ async def lifespan(app: FastAPI):
         f"timeout={settings.SESSION_TIMEOUT_SEC}s | "
         f"interval={settings.SESSION_CLEANUP_INTERVAL}s"
     )
+
+    # Mark the server as fully ready — health check returns 'ok' only after this point.
+    app.state.ready = True
     logger.info(f"Server ready on {settings.HOST}:{settings.PORT}")
 
     yield
