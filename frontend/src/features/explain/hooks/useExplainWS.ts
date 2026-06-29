@@ -31,7 +31,7 @@ export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChang
     ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/v1/rag/explain/${documentId}?token=${token}`
     : null;
 
-  const managerRef = useRef<WSManager>();
+  const managerRef = useRef<WSManager | null>(null);
   if (!managerRef.current) {
     managerRef.current = new WSManager();
   }
@@ -43,33 +43,71 @@ export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChang
 
   useEffect(() => {
     const unsubs = [
+      onMessage('ready', (data: any) => {
+        try {
+          setCurrentState('EXPLAINING');
+          onStateChangeRef.current('EXPLAINING');
+        } catch (e) {
+          console.error('Error in Explain WS ready handler:', e);
+        }
+      }),
       onMessage('SlideStartEvent', (data: any) => {
-        setCurrentSlide(data.slide_index);
-        onSlideChangeRef.current(data.slide_index, data.total_slides || 0);
-        setCurrentState('EXPLAINING');
-        onStateChangeRef.current('EXPLAINING');
+        try {
+          const payload = typeof data === 'string' ? JSON.parse(data) : data;
+          setCurrentSlide(payload.slide_index);
+          onSlideChangeRef.current(payload.slide_index, payload.total_slides || 0);
+          setCurrentState('EXPLAINING');
+          onStateChangeRef.current('EXPLAINING');
+        } catch (e) {
+          console.error('Error in Explain WS SlideStartEvent:', e);
+        }
       }),
       onMessage('SlideContentTokens', (data: any) => {
-        onTokensRef.current(data.tokens);
+        try {
+          const payload = typeof data === 'string' ? JSON.parse(data) : data;
+          if (payload && payload.tokens) {
+            onTokensRef.current(payload.tokens);
+          }
+        } catch (e) {
+          console.error('Error in Explain WS SlideContentTokens:', e);
+        }
       }),
       onMessage('AwaitInputEvent', () => {
-        setCurrentState('AWAITING');
-        onStateChangeRef.current('AWAITING');
+        try {
+          setCurrentState('AWAITING');
+          onStateChangeRef.current('AWAITING');
+        } catch (e) {
+          console.error('Error in Explain WS AwaitInputEvent:', e);
+        }
       }),
       onMessage('SlideEndEvent', (data: any) => {
-        if (data.slide_index === -1) {
-          onEndRef.current();
+        try {
+          const payload = typeof data === 'string' ? JSON.parse(data) : data;
+          if (payload && payload.slide_index === -1) {
+            onEndRef.current();
+          }
+        } catch (e) {
+          console.error('Error in Explain WS SlideEndEvent:', e);
         }
       }),
       onMessage('error', (data: any) => {
-        console.error('Explain WS Error:', data.message);
-        onTokensRef.current(`\n\n**Error:** ${data.message || 'An unexpected error occurred during analysis.'}\n\n`);
-        setCurrentState('AWAITING');
-        onStateChangeRef.current('AWAITING');
+        try {
+          const payload = typeof data === 'string' ? JSON.parse(data) : data;
+          console.error('Explain WS Error:', payload.message);
+          onTokensRef.current(`\n\n**Error:** ${payload.message || 'An unexpected error occurred during analysis.'}\n\n`);
+          setCurrentState('AWAITING');
+          onStateChangeRef.current('AWAITING');
+        } catch (e) {
+          console.error('Error in Explain WS error handler:', e);
+        }
       }),
       onMessage('done', () => {
-        setCurrentState('AWAITING');
-        onStateChangeRef.current('AWAITING');
+        try {
+          setCurrentState('AWAITING');
+          onStateChangeRef.current('AWAITING');
+        } catch (e) {
+          console.error('Error in Explain WS done handler:', e);
+        }
       })
     ];
 
