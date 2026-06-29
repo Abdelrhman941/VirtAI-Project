@@ -48,6 +48,8 @@ class WebSocketHandler:
             if self.session and hasattr(self.session, "pipeline"):
                 try:
                     self.session.pipeline.abort()
+                    if hasattr(self, "_generation_task") and self._generation_task and not self._generation_task.done():
+                        self._generation_task.cancel()
                     logger.info(f"[WS] Aborted generation for session {self.session_id} on teardown")
                 except Exception as e:
                     logger.error(f"[WS] Error during pipeline abort: {e}")
@@ -127,23 +129,9 @@ class WebSocketHandler:
                             avatar_id=self.avatar_id,
                             voice_id=self.voice_id
                         )
-                        # Guard: verify the session wasn't deleted between creation and now
-                        # (race with DELETE /api/v1/chat/all or DELETE /api/v1/chat/{id})
-                        alive = await self.session_manager.get_session(new_session.session_id)
-                        if alive is None:
-                            logger.warning(
-                                f"[WS] Lazy session {new_session.session_id} was deleted "
-                                "mid-flight — aborting message processing"
-                            )
-                            sender = OutboundSender(self.ws, self.connection_manager)
-                            await sender.safe_send_error(
-                                code="SESSION_DELETED",
-                                message="Session was deleted before the message could be processed",
-                                session_id=new_session.session_id,
-                                session_pending=False,
-                                connected=True,
-                            )
-                            continue
+                        # Ensure the newly created session is fully committed/available
+                        # We bypass the get_session "alive" check here because the transaction 
+                        # might not be fully visible to a separate get_session read immediately.
                         self.session = new_session
                         self.session_id = new_session.session_id
                         if self.connection_manager:
@@ -154,6 +142,24 @@ class WebSocketHandler:
                                 getattr(self, "_family_id", None)
                             )
                         logger.info(f"[WS] Lazy session created | session_id={self.session_id}")
+                    else:
+                        # 3) Guard: verify the existing session wasn't deleted mid-flight
+                        # (race with DELETE /api/v1/chat/all or DELETE /api/v1/chat/{id})
+                        alive = await self.session_manager.get_session(self.session_id)
+                        if alive is None:
+                            logger.warning(
+                                f"[WS] Session {self.session_id} was deleted "
+                                "mid-flight — aborting message processing"
+                            )
+                            sender = OutboundSender(self.ws, self.connection_manager)
+                            await sender.safe_send_error(
+                                code="SESSION_DELETED",
+                                message="Session was deleted before the message could be processed",
+                                session_id=self.session_id,
+                                session_pending=False,
+                                connected=True,
+                            )
+                            continue
 
                     # Forward to pipeline
                     if self.session and hasattr(self.session, "pipeline"):
@@ -166,14 +172,33 @@ class WebSocketHandler:
                         async def send_binary_callback(data: bytes) -> None:
                             await sender.send_binary(data)
 
-                        await self.session.pipeline.process_message(
-                            message_id=payload.message_id,
-                            text=payload.text,
-                            session_id=self.session_id,
-                            send_callback=send_callback,
-                            send_binary_callback=send_binary_callback,
-                            user_id=self.user_id,
+                        if hasattr(self, "_generation_task") and self._generation_task and not self._generation_task.done():
+                            logger.info(f"[WS] Cancelling previous generation task for session {self.session_id}")
+                            self.session.pipeline.abort()
+                            self._generation_task.cancel()
+                            # We don't await the cancelled task here to avoid blocking the receive loop,
+                            # but pipeline.abort() ensures it stops quickly.
+
+                        self._generation_task = asyncio.create_task(
+                            self.session.pipeline.process_message(
+                                message_id=payload.message_id,
+                                text=payload.text,
+                                session_id=self.session_id,
+                                send_callback=send_callback,
+                                send_binary_callback=send_binary_callback,
+                                user_id=self.user_id,
+                            )
                         )
+                        
+                        def _log_task_exception(task: asyncio.Task) -> None:
+                            try:
+                                exc = task.exception()
+                                if exc and not isinstance(exc, asyncio.CancelledError):
+                                    logger.error(f"[WS] Unhandled exception in generation task: {exc}")
+                            except asyncio.CancelledError:
+                                pass
+                                
+                        self._generation_task.add_done_callback(_log_task_exception)
 
                 elif msg_type == "chat.abort":
                     if self.session and hasattr(self.session, "pipeline"):
