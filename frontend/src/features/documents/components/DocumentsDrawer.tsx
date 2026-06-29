@@ -5,12 +5,13 @@ interface DocumentsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   sessionId?: string | null;
+  onEnsureSession?: () => Promise<string | null>;
   width?: number;
   onWidthChange?: (width: number) => void;
   resizable?: boolean;
 }
 
-export function DocumentsDrawer({ isOpen, onClose, sessionId, width, onWidthChange, resizable }: DocumentsDrawerProps) {
+export function DocumentsDrawer({ isOpen, onClose, sessionId, onEnsureSession, width, onWidthChange, resizable }: DocumentsDrawerProps) {
   return (
     <SlideDrawer
       title="Curricular Library"
@@ -23,7 +24,7 @@ export function DocumentsDrawer({ isOpen, onClose, sessionId, width, onWidthChan
       onWidthChange={onWidthChange}
       resizable={resizable}
     >
-      <DocumentsPanel sessionId={sessionId} onClose={onClose} />
+      <DocumentsPanel sessionId={sessionId} onEnsureSession={onEnsureSession} onClose={onClose} />
     </SlideDrawer>
   );
 }

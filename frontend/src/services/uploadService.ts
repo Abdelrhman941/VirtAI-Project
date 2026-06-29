@@ -305,7 +305,7 @@ export class UploadService {
       this.setState({
         documents: this.state.documents.map(doc =>
           doc.temp_id === nextItem.tempId
-            ? { ...doc, id: response.id, temp_id: undefined, current_stage: response.current_stage || response.status || 'QUEUED', status: response.status || 'QUEUED' }
+            ? { ...doc, id: response.id, temp_id: undefined, current_stage: (response.current_stage || response.status || 'QUEUED') as any, status: response.status || 'QUEUED' }
             : doc
         )
       });
@@ -316,6 +316,11 @@ export class UploadService {
       
       if (isAxiosError(err) && (err.response?.status === 400 || err.response?.status === 403)) {
         this.setState({ error: 'Session document limit (10) reached or upload forbidden.' });
+      } else if (isAxiosError(err) && err.response?.status === 404) {
+        this.setState({ error: 'Session not found or expired. Please start a new chat.' });
+        if (this.currentSessionId) {
+          window.dispatchEvent(new CustomEvent('session-invalidated', { detail: { sessionId: this.currentSessionId } }));
+        }
       } else if (err instanceof Error && (err.name === 'AbortError' || err.name === 'CanceledError')) {
         this.setState({ error: `Upload cancelled for ${nextItem.file.name}` });
       } else {

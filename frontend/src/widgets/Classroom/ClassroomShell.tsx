@@ -452,6 +452,7 @@ export default function ClassroomShell() {
           isOpen={isDocumentsOpen}
           onClose={toggleDocuments}
           sessionId={currentSessionId}
+          onEnsureSession={session.createPersistedSession}
           width={sidebarWidth}
           onWidthChange={setSidebarWidth}
           resizable={true}
