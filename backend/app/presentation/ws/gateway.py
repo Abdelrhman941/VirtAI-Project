@@ -87,11 +87,11 @@ class WebSocketHandler:
                                     import uuid
                                     msg_id = str(uuid.uuid4())
 
-                                    async def send_cb(m: Any) -> None:
-                                        await sender.send_protocol_message(m, self.session_id, False, True)
-
-                                    async def send_bin_cb(d: bytes) -> None:
-                                        await sender.send_binary(d)
+                                    async def send_cb(m: Any, _sender=sender) -> None:
+                                        await _sender.send_protocol_message(m, self.session_id, False, True)
+                                    
+                                    async def send_bin_cb(d: bytes, _sender=sender) -> None:
+                                        await _sender.send_binary(d)
 
                                     if hasattr(self, "_generation_task") and self._generation_task and not self._generation_task.done():
                                         logger.info(f"[WS] Cancelling previous generation task for session {self.session_id}")
@@ -235,11 +235,11 @@ class WebSocketHandler:
 
                         sender = OutboundSender(self.ws, self.connection_manager)
 
-                        async def send_callback(msg: Any) -> None:
-                            await sender.send_protocol_message(msg, self.session_id, False, True)
+                        async def send_callback(msg: Any, _sender=sender) -> None:
+                            await _sender.send_protocol_message(msg, self.session_id, False, True)
 
-                        async def send_binary_callback(data: bytes) -> None:
-                            await sender.send_binary(data)
+                        async def send_binary_callback(data: bytes, _sender=sender) -> None:
+                            await _sender.send_binary(data)
 
                         if hasattr(self, "_generation_task") and self._generation_task and not self._generation_task.done():
                             logger.info(f"[WS] Cancelling previous generation task for session {self.session_id}")
