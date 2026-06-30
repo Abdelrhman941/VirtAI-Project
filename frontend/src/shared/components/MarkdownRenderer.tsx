@@ -118,8 +118,9 @@ const PROSE_CLASSES = [
   'prose-code:before:content-none',
   'prose-code:after:content-none',
   // Misc
-  'prose-hr:border-white/10',
-  'prose-hr:my-10',
+  'prose-hr:border-t-2',
+  'prose-hr:border-white/30',
+  'prose-hr:my-6',
 ].join(' ');
 
 export interface MarkdownRendererProps {

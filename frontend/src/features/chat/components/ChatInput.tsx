@@ -173,7 +173,7 @@ export default function ChatInput({
           {isGenerating ? (
             <button
               type="button"
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-red-500/90 text-white self-end mb-0.5 hover:bg-red-500 transition-colors animate-pulse"
+              className="w-10 h-10 rounded-full flex items-center justify-center bg-red-500/90 text-white self-end mb-0.5 hover:bg-red-500 transition-colors animate-pulse cursor-pointer"
               onClick={onStop}
               title="Halt Generation"
               aria-label="Halt generation"
@@ -183,7 +183,7 @@ export default function ChatInput({
           ) : (
             <button
               type="button"
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-gold text-white self-end mb-0.5 hover:bg-gold-deep transition-colors disabled:opacity-50 disabled:bg-white/10 disabled:text-white/30"
+              className="w-10 h-10 rounded-full flex items-center justify-center bg-gold text-white self-end mb-0.5 hover:bg-gold-deep transition-colors disabled:opacity-50 disabled:bg-white/10 disabled:text-white/30 cursor-pointer disabled:cursor-not-allowed"
               onClick={handleSendSafe}
               title="Submit inquiry"
               aria-label="Submit inquiry"

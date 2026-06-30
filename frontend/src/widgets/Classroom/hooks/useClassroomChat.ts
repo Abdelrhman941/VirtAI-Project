@@ -324,6 +324,41 @@ export function useClassroomChat({
     onAnimationTimeline,
   ]);
 
+  const abortGeneration = useCallback(() => {
+    safeSend({
+      type: 'chat.abort',
+      data: {
+        session_id: currentSessionIdRef.current || undefined,
+        message_id: conversationStateRef.current.activeMessageId || undefined
+      }
+    });
+
+    const uiStore = useChatUIStore.getState();
+    const currentText = uiStore.currentMessage || uiStore._buffer;
+    const safeText = currentText ? currentText.replace(/\[.*?\]/g, '') : undefined;
+    
+    uiStore.commitFinal();
+    uiStore.setPipelineState('idle');
+    
+    dispatch({ 
+      type: 'CHAT_FINAL', 
+      payload: { 
+        message_id: conversationStateRef.current.activeMessageId,
+        text: safeText 
+      } 
+    });
+    dispatch({ type: 'PIPELINE_STATE', payload: { state: 'idle' } });
+    
+    if (safeText && conversationStateRef.current.activeMessageId && currentSessionIdRef.current) {
+      sessionRef.current.addAssistantMessage(
+        `${conversationStateRef.current.activeMessageId}-assistant`,
+        safeText,
+        currentSessionIdRef.current,
+        new Date().toISOString()
+      );
+    }
+  }, [safeSend, dispatch]);
+
   const wsClient = useMemo(() => ({ send: safeSend, onMessage }), [safeSend, onMessage]);
 
   return {
@@ -336,6 +371,7 @@ export function useClassroomChat({
     safeSend,
     commitAndSend,
     onMessage,
-    wsClient
+    wsClient,
+    abortGeneration
   };
 }

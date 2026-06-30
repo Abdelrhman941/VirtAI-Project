@@ -151,7 +151,8 @@ export default function ClassroomShell() {
     safeSend,
     commitAndSend,
     onMessage,
-    wsClient
+    wsClient,
+    abortGeneration
   } = useClassroomChat({
     wsAvatarId: activeAvatarId,
     activeVoiceId,
@@ -297,15 +298,9 @@ export default function ClassroomShell() {
   ]);
 
   const handleStop = useCallback(() => {
-    safeSend({
-      type: 'chat.abort',
-      data: {
-        session_id: currentSessionId || undefined,
-        message_id: conversationState.activeMessageId || undefined
-      }
-    });
+    abortGeneration();
     resetAvatarAudio(conversationState.activeMessageId);
-  }, [safeSend, resetAvatarAudio, currentSessionId, conversationState.activeMessageId]);
+  }, [abortGeneration, resetAvatarAudio, conversationState.activeMessageId]);
 
   useEffect(() => {
     const handleVoiceBargeIn = () => {
