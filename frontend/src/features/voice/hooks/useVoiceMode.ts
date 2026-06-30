@@ -149,6 +149,7 @@ export function useVoiceMode(
               type: 'client.speech_stopped',
               data: {}
             });
+            return;
           }
         }
       } catch (err) {

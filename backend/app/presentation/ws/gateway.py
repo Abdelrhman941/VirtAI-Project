@@ -40,6 +40,12 @@ class WebSocketHandler:
         except Exception as e:
             logger.error(f"[WS] Unexpected error: {e}")
         finally:
+            if getattr(self, "_voice_mode_handler", None):
+                try:
+                    await self._voice_mode_handler.shutdown()
+                except Exception as e:
+                    logger.error(f"[WS] Error during voice mode shutdown: {e}")
+
             if self.connection_manager and self.session_id:
                 try:
                     await self.connection_manager.unregister(self.session_id, self.ws)
