@@ -1,4 +1,8 @@
-"""Audio file serving endpoint."""
+"""Audio file serving endpoint.
+
+Serves raw PCM audio (Int16 LE, 24 kHz, mono) produced by the TTS pipeline.
+The frontend decodes it via the Web Audio API using convertInt16ToFloat32.
+"""
 
 from pathlib import Path
 from typing import Annotated
@@ -20,10 +24,13 @@ AUDIO_STORAGE_PATH = Path(get_settings().AUDIO_STORAGE_PATH)
 
 
 @router.get(
-    "/audio/{session_id}/{message_id}.mp3",
+    "/audio/{session_id}/{message_id}.pcm",
     response_class=FileResponse,
     responses={
-        200: {"description": "Audio file", "content": {"audio/mpeg": {}}},
+        200: {
+            "description": "Raw PCM audio (Int16 LE, 24 kHz, mono)",
+            "content": {"application/octet-stream": {}},
+        },
         404: {"description": "Audio file not found"},
         400: {"description": "Invalid session_id or message_id"},
     },
@@ -51,7 +58,7 @@ async def get_audio_file(
             logger.warning(f"Session not found or unauthorized for session {session_id}")
             raise HTTPException(status_code=404, detail="Audio file not found")
 
-    file_path = AUDIO_STORAGE_PATH / session_id / f"{message_id}.mp3"
+    file_path = AUDIO_STORAGE_PATH / session_id / f"{message_id}.pcm"
 
     if not file_path.exists():
         logger.info(f"Audio file not found: {file_path}")
@@ -74,5 +81,9 @@ async def get_audio_file(
         logger.error(f"Error resolving path {file_path}: {e}")
         raise HTTPException(status_code=400, detail="Invalid file path") from e
 
-    logger.info(f"Serving audio file: {file_path}")
-    return FileResponse(path=str(file_path), media_type="audio/mpeg", filename=f"{message_id}.mp3")
+    logger.info(f"Serving PCM audio file: {file_path}")
+    return FileResponse(
+        path=str(file_path),
+        media_type="application/octet-stream",
+        filename=f"{message_id}.pcm",
+    )

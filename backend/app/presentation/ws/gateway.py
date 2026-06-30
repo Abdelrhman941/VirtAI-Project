@@ -1,302 +1,301 @@
-from __future__ import annotations
-
 import asyncio
-import time
-import uuid
-from dataclasses import dataclass
+from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
 from loguru import logger
 from pydantic import ValidationError
 
-from app.application.chat.session_manager import Session
-from app.presentation.ws.connection_manager import WSConnectionManager
+from app.application.chat.session_manager import ConversationSession, SessionManager
 from app.presentation.ws.outbound_sender import OutboundSender
-from app.presentation.ws.pipeline_bridge import PipelineBridge, _pipeline_task_done_callback
-from app.presentation.ws.protocol_router import ProtocolRouter
-from app.presentation.ws.session_bootstrap import SessionBootstrap
-from app.presentation.ws.voice_mode_handler import VoiceModeHandler
-from app.schemas.ws_messages import ServerReady
-from app.shared.config import get_settings
-
-
-@dataclass(frozen=True)
-class PendingSession:
-    session_id: str
-    avatar_id: str
-
-    def touch(self) -> None:
-        pass
 
 
 class WebSocketHandler:
     """
-    Handles a single WebSocket connection.
-    Composed of ProtocolRouter, SessionBootstrap, PipelineBridge, OutboundSender.
+    Acts purely as an I/O pipe mapping FastAPI WebSocket events 
+    to Domain Events and delegating to the SessionManager.
     """
-
-    _family_id: str | None = None
 
     def __init__(
         self,
         websocket: WebSocket,
-        session: Session | None,
-        session_manager,
-        user_id: str,
-        avatar_id: str,
-        voice_id: str,
-        connection_manager: WSConnectionManager,
-        resumed: bool = False,
-        replay_after_seq: int = 0,
-        requested_session_id: str | None = None,
+        user_id: str = "anonymous",
+        **kwargs: Any,
     ):
         self.ws = websocket
-        self._session_manager = session_manager
-        self._user_id = user_id
-        self._family_id = None
-        self._avatar_id = avatar_id
-        self._voice_id = self._normalize_voice(voice_id)
-        self._session_pending = session is None
-        self._requested_session_id = requested_session_id
-        self.session = session or PendingSession(
-            session_id=requested_session_id or "",
-            avatar_id=avatar_id,
-        )
-        self.pipeline = session.pipeline if session is not None else None
-        self.connection_manager = connection_manager
-        self.resumed = resumed
-        self.replay_after_seq = replay_after_seq
+        self.session_manager: SessionManager = kwargs.get("session_manager")
+        self.user_id = user_id
+        self.session: ConversationSession | None = kwargs.get("session")
+        self.session_id: str | None = self.session.session_id if getattr(self.session, "session_id", None) else None
 
-        # Connection state
-        self._connected = True
-        self._last_pong_time = time.time()
-
-        # Background tasks
-        self._heartbeat_task: asyncio.Task | None = None
-        self._voice_mode_handler: VoiceModeHandler | None = None
-        self._turn_lock = asyncio.Lock()
-
-        # Components
-        self.outbound_sender = OutboundSender(self.ws, self.connection_manager)
-        self.session_bootstrap = SessionBootstrap(self._session_manager, self.connection_manager)
-        self.pipeline_bridge = PipelineBridge(self)
-        self.protocol_router = ProtocolRouter(self)
-
-        from app.presentation.ws.connection_lifecycle import ConnectionLifecycle
-        from app.presentation.ws.frame_dispatcher import FrameDispatcher
-
-        self.connection_lifecycle = ConnectionLifecycle(self)
-        self.frame_dispatcher = FrameDispatcher(self)
-
-        from app.shared.metrics import ws_connections_active
-
-        ws_connections_active.inc()
-
-        logger.info(
-            f"WebSocketHandler created | "
-            f"session={self.session.session_id or 'pending'} | "
-            f"avatar={self.session.avatar_id} | "
-            f"resumed={resumed} | replay_after_seq={replay_after_seq}"
-        )
-
-    def _normalize_voice(self, voice_id: str) -> str:
-        if not voice_id:
-            return "aria"
-        return voice_id
-
-    async def _ensure_session(self) -> None:
-        if not self._session_pending:
-            return
-        self.session, self._session_pending = await self.session_bootstrap.ensure_session(
-            self.ws,
-            self._user_id,
-            self._avatar_id,
-            self._voice_id,
-            self._requested_session_id,
-            self._family_id,
-            self._session_pending,
-        )
-        self.pipeline = self.session.pipeline
+        self.connection_manager = kwargs.get("connection_manager")
+        self.avatar_id = kwargs.get("avatar_id")
+        self.voice_id = kwargs.get("voice_id")
 
     async def run(self) -> None:
-        settings = get_settings()
-        replay_batch: list[str] = []
-        if self.resumed and self.session.session_id:
-            await self.connection_manager.register(
-                self.session.session_id, self.ws, user_id=self._user_id, family_id=self._family_id
-            )
-            replay_batch = await self.connection_manager.get_replay_batch(
-                self.session.session_id, after_seq=self.replay_after_seq
-            )
-
         try:
-            if not self._session_pending:
-                await self.outbound_sender.send_protocol_message(
-                    ServerReady(
-                        session_id=self.session.session_id or None,
-                        avatar_id=self.session.avatar_id,
-                        message="Connected and ready",
-                        resumed=self.resumed,
-                        last_seq=(
-                            self.connection_manager.latest_sequence(self.session.session_id)
-                            if self.session.session_id
-                            else 0
-                        ),
-                        timestamp=time.time(),
-                    ),
-                    self.session.session_id,
-                    self._session_pending,
-                    self._connected,
-                )
-
-            if self.resumed:
-                for payload in replay_batch:
-                    if not self._connected:
-                        break
-                    try:
-                        await self.ws.send_text(payload)
-                    except Exception as e:
-                        logger.warning(f"[WS] Failed to replay message: {e}")
-                        break
+            await self._accept_and_register()
+            await self._message_loop()
+        except WebSocketDisconnect:
+            logger.info(f"[WS] Client disconnected: session {self.session_id}")
         except Exception as e:
-            logger.error(f"[WS] Failed to send ready message: {e}")
-            self._connected = False
-            try:
-                await self.ws.close(code=1011, reason="Internal server error")
-            except Exception as e:
-                logger.warning(f"[WS] Failed to close cleanly after error: {e}")
-            return
-
-        self._heartbeat_task = asyncio.create_task(self.connection_lifecycle.heartbeat_loop())
-
-        try:
-            while self._connected:
-                try:
-                    message = await asyncio.wait_for(self.ws.receive(), timeout=1.0)
-
-                    if message.get("type") == "websocket.disconnect":
-                        self._connected = False
-                        break
-
-                    max_size = settings.WS_MAX_MESSAGE_SIZE
-                    if "text" in message:
-                        msg_size = len(message["text"].encode("utf-8"))
-                        if msg_size > max_size:
-                            await self.frame_dispatcher.close_for_message_too_large(
-                                msg_size, max_size, "text"
-                            )
-                            break
-                    elif "bytes" in message:
-                        msg_size = len(message["bytes"])
-                        if msg_size > max_size:
-                            await self.frame_dispatcher.close_for_message_too_large(
-                                msg_size, max_size, "binary"
-                            )
-                            break
-
-                    if "text" in message:
-                        await self.protocol_router.route_message(message["text"])
-                    elif "bytes" in message:
-                        await self.frame_dispatcher.handle_binary_frame(message["bytes"])
-
-                except asyncio.TimeoutError:
-                    continue
-                except WebSocketDisconnect:
-                    from app.shared.metrics import ws_connection_drops
-
-                    ws_connection_drops.labels(reason="client_disconnect").inc()
-                    self._connected = False
-                    break
-                except RuntimeError as e:
-                    from app.shared.metrics import ws_connection_drops
-
-                    if "disconnect" in str(e).lower() or "receive" in str(e).lower():
-                        ws_connection_drops.labels(reason="runtime_error_disconnect").inc()
-                    else:
-                        logger.error(f"[WS] Unexpected RuntimeError: {e}")
-                        ws_connection_drops.labels(reason="runtime_error").inc()
-                    self._connected = False
-                    break
-                except ValidationError as e:
-                    logger.error(f"[WS] Validation error: {e}")
-                    await self.outbound_sender.safe_send_error(
-                        code="INVALID_MESSAGE",
-                        message=f"Message validation failed: {e!s}",
-                        session_id=self.session.session_id,
-                        session_pending=self._session_pending,
-                        connected=self._connected,
-                    )
-                except Exception as e:
-                    logger.error(f"[WS] Error receiving message: {e}")
-                    from app.shared.metrics import ws_connection_drops
-
-                    ws_connection_drops.labels(reason="unexpected_error").inc()
-                    await self.outbound_sender.safe_send_error(
-                        code="INTERNAL_ERROR",
-                        message="Error processing message",
-                        session_id=self.session.session_id,
-                        session_pending=self._session_pending,
-                        connected=self._connected,
-                    )
-                    self._connected = False
-                    break
+            logger.error(f"[WS] Unexpected error: {e}")
         finally:
-            await self.connection_lifecycle.cleanup()
+            if getattr(self, "_voice_mode_handler", None):
+                try:
+                    await self._voice_mode_handler.shutdown()
+                except Exception as e:
+                    logger.error(f"[WS] Error during voice mode shutdown: {e}")
 
-    async def _get_voice_mode_handler(self) -> VoiceModeHandler:
-        await self._ensure_session()
-        if self._voice_mode_handler is None:
-            pipeline = self.pipeline
-            if not pipeline:
-                raise RuntimeError("Pipeline not initialized")
-            asr_service = pipeline._asr
-            if asr_service is None:
-                raise ValueError("ASR service not injected into pipeline")
+            if self.connection_manager and self.session_id:
+                try:
+                    await self.connection_manager.unregister(self.session_id, self.ws)
+                except Exception as e:
+                    logger.error(f"[WS] Error during unregister: {e}")
 
-            self._voice_mode_handler = VoiceModeHandler(
-                websocket=self.ws,
-                session_id=self.session.session_id,
-                asr_service=asr_service,
-                turn_callback=self._run_text_turn,
-                outbound_sender=self.outbound_sender,
-                audio_pipeline=getattr(self.session, "audio_pipeline", None),
-            )
-        return self._voice_mode_handler
+            if self.session and hasattr(self.session, "pipeline"):
+                try:
+                    self.session.pipeline.abort()
+                    if hasattr(self, "_generation_task") and self._generation_task and not self._generation_task.done():
+                        self._generation_task.cancel()
+                    logger.info(f"[WS] Aborted generation for session {self.session_id} on teardown")
+                except Exception as e:
+                    logger.error(f"[WS] Error during pipeline abort: {e}")
 
-    async def _run_text_turn(self, text: str) -> None:
-        if not text or not text.strip():
-            return
+    async def _accept_and_register(self) -> None:
+        # Connection is already accepted by the router before handler.run()
+        pass
 
-        async with self._turn_lock:
-            await self._ensure_session()
-            await self.pipeline_bridge.cancel_pipeline()
-            pipeline = self.pipeline
-            if not pipeline:
-                raise RuntimeError("Pipeline not initialized")
+    async def _message_loop(self) -> None:
+        while True:
+            try:
+                msg = await self.ws.receive()
+                if msg["type"] == "websocket.disconnect":
+                    logger.info(f"[WS] Client disconnected: session {self.session_id}")
+                    break
+                elif msg["type"] == "websocket.receive":
+                    if "text" in msg:
+                        data = msg["text"]
+                    elif "bytes" in msg:
+                        data = msg["bytes"]
+                        if not data:
+                            continue
 
-        message_id = str(uuid.uuid4())
-        self._current_message_id = message_id
-        session_id = self.session.session_id
-        trace_id = str(uuid.uuid4())
+                        # The frontend appends a 1-byte flag to indicate `is_final`
+                        is_final = data[-1] == 1
+                        pcm_bytes = data[:-1]
 
-        async def send_callback(message):
-            await self.outbound_sender.send_protocol_message(
-                message, session_id, self._session_pending, self._connected
-            )
+                        if self.session and hasattr(self.session, "pipeline") and self.session.pipeline._asr:
+                            if not getattr(self, "_voice_mode_handler", None):
+                                from app.presentation.ws.voice_mode_handler import VoiceModeHandler
+                                sender = OutboundSender(self.ws, self.connection_manager)
 
-        async def send_binary_callback(data: bytes):
-            if self._connected:
-                await self.outbound_sender.send_binary(data)
+                                async def _turn_callback(transcript: str) -> None:
+                                    import uuid
+                                    msg_id = str(uuid.uuid4())
 
-        self.pipeline_bridge.pipeline_task = asyncio.create_task(
-            pipeline.process_message(
-                message_id=message_id,
-                text=text,
-                session_id=session_id,
-                send_callback=send_callback,
-                send_binary_callback=send_binary_callback,
-                trace_id=trace_id,
-            ),
-            name=f"pipeline_voice_{session_id}",
-        )
-        self.pipeline_bridge.pipeline_task.add_done_callback(_pipeline_task_done_callback)
+                                    async def send_cb(m: Any, _sender=sender) -> None:
+                                        await _sender.send_protocol_message(m, self.session_id, False, True)
+                                    
+                                    async def send_bin_cb(d: bytes, _sender=sender) -> None:
+                                        await _sender.send_binary(d)
+
+                                    if hasattr(self, "_generation_task") and self._generation_task and not self._generation_task.done():
+                                        logger.info(f"[WS] Cancelling previous generation task for session {self.session_id}")
+                                        self.session.pipeline.abort()
+                                        self._generation_task.cancel()
+
+                                    self._generation_task = asyncio.create_task(
+                                        self.session.pipeline.process_message(
+                                            message_id=msg_id,
+                                            text=transcript,
+                                            session_id=self.session_id,
+                                            send_callback=send_cb,
+                                            send_binary_callback=send_bin_cb,
+                                            user_id=self.user_id,
+                                        )
+                                    )
+
+                                    def _log_task_exception(task: asyncio.Task) -> None:
+                                        try:
+                                            exc = task.exception()
+                                            if exc and not isinstance(exc, asyncio.CancelledError):
+                                                logger.error(f"[WS] Unhandled exception in generation task: {exc}")
+                                        except asyncio.CancelledError:
+                                            pass
+
+                                    self._generation_task.add_done_callback(_log_task_exception)
+
+                                self._voice_mode_handler = VoiceModeHandler(
+                                    websocket=self.ws,
+                                    session_id=self.session_id,
+                                    asr_service=self.session.pipeline._asr,
+                                    conversation_pipeline=self.session.pipeline,
+                                    turn_callback=_turn_callback,
+                                    outbound_sender=sender,
+                                    audio_pipeline=self.session.audio_pipeline
+                                )
+
+                            await self._voice_mode_handler.handle_audio_chunk(pcm_bytes, is_final=is_final)
+                        continue
+                    else:
+                        continue
+                else:
+                    continue
+            except asyncio.exceptions.IncompleteReadError:
+                logger.info(f"[WS] Client disconnected (IncompleteReadError): session {self.session_id}")
+                break
+            except RuntimeError as e:
+                logger.info(f"[WS] Client disconnected (RuntimeError): session {self.session_id} - {e}")
+                break
+            except Exception as e:
+                logger.error(f"[WS] Error receiving data: {e}")
+                break
+            try:
+                import json
+                try:
+                    msg_dict = json.loads(data)
+                except json.JSONDecodeError as e:
+                    logger.error(f"[WS] JSON parse error: {e}")
+                    sender = OutboundSender(self.ws, self.connection_manager)
+                    await sender.safe_send_error(
+                        code="INVALID_MESSAGE",
+                        message="Invalid JSON payload",
+                        session_id=self.session_id,
+                        session_pending=False,
+                        connected=True
+                    )
+                    continue
+                msg_type = msg_dict.get("type")
+
+                if msg_type == "ping":
+                    try:
+                        await self.ws.send_json({"type": "pong"})
+                    except Exception as e:
+                        logger.debug(f"[WS] Failed to send pong (connection closed?): {e}")
+                        break
+                    continue
+
+                if msg_type == "chat.user_message":
+                    from app.schemas.ws_messages import ChatUserMessage
+                    payload = ChatUserMessage(**msg_dict.get("data", {}))
+
+                    # 1) If message has a session_id but we don't, bind to it (frontend created it via REST)
+                    if payload.session_id and not self.session_id:
+                        self.session_id = payload.session_id
+                        self.session = await self.session_manager.connect_existing_session(
+                            session_id=self.session_id,
+                            user_id=self.user_id,
+                            avatar_id=self.avatar_id,
+                            voice_id=self.voice_id
+                        )
+                        if self.connection_manager and self.session:
+                            await self.connection_manager.register(
+                                self.session_id,
+                                self.ws,
+                                self.user_id,
+                                getattr(self, "_family_id", None)
+                            )
+                        logger.info(f"[WS] Bound WS to REST session | session_id={self.session_id}")
+
+                    # 2) Lazy session creation (fallback if frontend didn't create one)
+                    if not self.session_id:
+                        new_session = await self.session_manager.create_session(
+                            user_id=self.user_id,
+                            avatar_id=self.avatar_id,
+                            voice_id=self.voice_id
+                        )
+                        # Ensure the newly created session is fully committed/available
+                        # We bypass the get_session "alive" check here because the transaction
+                        # might not be fully visible to a separate get_session read immediately.
+                        self.session = new_session
+                        self.session_id = new_session.session_id
+                        if self.connection_manager:
+                            await self.connection_manager.register(
+                                self.session_id,
+                                self.ws,
+                                self.user_id,
+                                getattr(self, "_family_id", None)
+                            )
+                        logger.info(f"[WS] Lazy session created | session_id={self.session_id}")
+                    else:
+                        # 3) Guard: verify the existing session wasn't deleted mid-flight
+                        # (race with DELETE /api/v1/chat/all or DELETE /api/v1/chat/{id})
+                        alive = await self.session_manager.get_session(self.session_id)
+                        if alive is None:
+                            logger.warning(
+                                f"[WS] Session {self.session_id} was deleted "
+                                "mid-flight — aborting message processing"
+                            )
+                            sender = OutboundSender(self.ws, self.connection_manager)
+                            await sender.safe_send_error(
+                                code="SESSION_DELETED",
+                                message="Session was deleted before the message could be processed",
+                                session_id=self.session_id,
+                                session_pending=False,
+                                connected=True,
+                            )
+                            continue
+
+                    # Forward to pipeline
+                    if self.session and hasattr(self.session, "pipeline"):
+
+                        sender = OutboundSender(self.ws, self.connection_manager)
+
+                        async def send_callback(msg: Any, _sender=sender) -> None:
+                            await _sender.send_protocol_message(msg, self.session_id, False, True)
+
+                        async def send_binary_callback(data: bytes, _sender=sender) -> None:
+                            await _sender.send_binary(data)
+
+                        if hasattr(self, "_generation_task") and self._generation_task and not self._generation_task.done():
+                            logger.info(f"[WS] Cancelling previous generation task for session {self.session_id}")
+                            self.session.pipeline.abort()
+                            self._generation_task.cancel()
+                            # We don't await the cancelled task here to avoid blocking the receive loop,
+                            # but pipeline.abort() ensures it stops quickly.
+
+                        self._generation_task = asyncio.create_task(
+                            self.session.pipeline.process_message(
+                                message_id=payload.message_id,
+                                text=payload.text,
+                                session_id=self.session_id,
+                                send_callback=send_callback,
+                                send_binary_callback=send_binary_callback,
+                                user_id=self.user_id,
+                            )
+                        )
+
+                        def _log_task_exception(task: asyncio.Task) -> None:
+                            try:
+                                exc = task.exception()
+                                if exc and not isinstance(exc, asyncio.CancelledError):
+                                    logger.error(f"[WS] Unhandled exception in generation task: {exc}")
+                            except asyncio.CancelledError:
+                                pass
+
+                        self._generation_task.add_done_callback(_log_task_exception)
+
+                elif msg_type == "chat.abort":
+                    if self.session and hasattr(self.session, "pipeline"):
+                        self.session.pipeline.abort()
+                        logger.info(f"[WS] Aborted generation for session {self.session_id}")
+
+                elif msg_type == "client.speech_stopped":
+                    if getattr(self, "_voice_mode_handler", None):
+                        await self._voice_mode_handler.process_accumulated_audio()
+
+            except ValidationError as e:
+                logger.error(f"[WS] Validation error: {e}")
+                sender = OutboundSender(self.ws, self.connection_manager)
+                await sender.safe_send_error(
+                    code="INVALID_MESSAGE",
+                    message="Message validation failed",
+                    session_id=self.session_id,
+                    session_pending=False,
+                    connected=True,
+                    details={"errors": e.errors()}
+                )
+            except ValueError as e:
+                logger.error(f"[WS] Invalid state/session: {e}")
+            except Exception as e:
+                logger.exception(f"[WS] Error processing message: {e}")

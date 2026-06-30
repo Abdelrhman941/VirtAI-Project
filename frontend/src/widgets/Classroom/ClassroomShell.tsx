@@ -7,57 +7,24 @@ import { PresentationState, useExplainWS } from '@/features/explain/hooks/useExp
 import { SettingsDrawer, useSessionManager } from '@/features/session';
 import { PCMRecorder } from '@/features/voice/audio/pcmRecorder';
 import { toast } from '@/shared/utils/toast';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { AssistantPanel } from './AssistantPanel';
-import { AvatarCanvasWrapper } from './AvatarCanvasWrapper';
+
+const AvatarCanvasWrapper = lazy(() => import('./AvatarCanvasWrapper').then(m => ({ default: m.AvatarCanvasWrapper })));
 import { AvatarTopBar } from './AvatarTopBar';
 import { SCROLL_STICK_THRESHOLD_PX } from './constants';
 import { useClassroomAudio } from './hooks/useClassroomAudio';
 import { useClassroomChat } from './hooks/useClassroomChat';
 import { useClassroomState } from './hooks/useClassroomState';
+import { useChatUIStore } from '@/features/chat/store/useChatUIStore';
 
 import { FiMonitor, FiShare2, FiEdit3, FiMessageSquare, FiFileText } from 'react-icons/fi';
 import { ErrorState } from '@/shared/components/UIStates';
 
-export interface AudioVisemePacket {
-  id: string;
-  url: string;
-  mouthCues: Viseme[];
-}
-
-export const VisemeSchema = z.object({
-  start: z.number().catch(0),
-  end: z.number().catch(0),
-  value: z.string().catch(''),
-}).passthrough();
-
-export type Viseme = z.infer<typeof VisemeSchema>;
-
-export interface PendingFirstMessage {
-  message_id: string;
-  text: string;
-}
-
-export const WSPayloadSchema = z.object({
-  session_id: z.string().optional(),
-  message_id: z.string().optional(),
-  text: z.string().optional(),
-  created_at: z.union([z.string(), z.number()]).nullable().optional(),
-  delta: z.string().optional(),
-  is_final: z.boolean().optional(),
-  audio: z.object({
-    url: z.string().optional(),
-    duration_ms: z.number().optional()
-  }).passthrough().optional(),
-  mouthCues: z.array(VisemeSchema).optional(),
-  message: z.string().optional(),
-  state: z.enum(['idle', 'thinking', 'speaking', 'error']).optional(),
-}).passthrough();
-
-export type WSPayload = z.infer<typeof WSPayloadSchema>;
+import { AudioVisemePacket, VisemeSchema, Viseme, PendingFirstMessage, WSPayloadSchema, WSPayload } from './types';
 
 export default function ClassroomShell() {
   const { sessionId: urlSessionId } = useParams();
@@ -102,13 +69,15 @@ export default function ClassroomShell() {
   const {
     mouthCuesRef,
     getAudioContext,
+    unlockAudioContext,
     playbackStartTimeRef,
     handleTtsReady,
     handleVisemesReady,
     forceAdvanceSequence,
     resetAvatarAudio,
     getIsAudioPlaying,
-    getNextPlaybackTime
+    getNextPlaybackTime,
+    getAnalyserNode
   } = useClassroomAudio();
 
   const [isExplainActive, setIsExplainActive] = useState(false);
@@ -146,6 +115,32 @@ export default function ClassroomShell() {
     setExplainContent('');
   }, []);
 
+  const handleExplainQuestion = useCallback((text: string) => {
+    explainSendQuestion(text);
+    setExplainContent(prev => prev + `\n\n**You:** ${text}\n\n`);
+    resetAvatarAudio();
+  }, [explainSendQuestion, resetAvatarAudio]);
+
+  const handleExplainContinue = useCallback(() => {
+    explainSendContinue();
+    resetAvatarAudio();
+  }, [explainSendContinue, resetAvatarAudio]);
+
+  const handleExplainPauseOrStop = useCallback(() => {
+    explainSendPauseOrStop();
+    resetAvatarAudio();
+  }, [explainSendPauseOrStop, resetAvatarAudio]);
+
+  const handleExplainClose = useCallback(() => {
+    setIsExplainActive(false);
+    explainDisconnect();
+    resetAvatarAudio();
+  }, [explainDisconnect, resetAvatarAudio]);
+
+  const handleDiagramClose = useCallback(() => setIsDiagramOpen(false), []);
+  const handleSummaryClose = useCallback(() => setIsSummaryOpen(false), []);
+  const handleQuizClose = useCallback(() => setIsQuizOpen(false), []);
+
   const {
     conversationState,
     connectionState,
@@ -155,11 +150,9 @@ export default function ClassroomShell() {
     disconnect,
     safeSend,
     commitAndSend,
-    inputValue,
-    setInputValue,
-    interimTranscript,
     onMessage,
-    wsClient
+    wsClient,
+    abortGeneration
   } = useClassroomChat({
     wsAvatarId: activeAvatarId,
     activeVoiceId,
@@ -289,7 +282,8 @@ export default function ClassroomShell() {
 
     if (shouldStickToBottom.current) {
       // Determine if we are actively streaming high-frequency chunks
-      const isStreaming = !!conversationState.currentMessage || !!interimTranscript;
+      // Check Zustand store directly since we removed it from React state
+      const isStreaming = !!useChatUIStore.getState().currentMessage || !!useChatUIStore.getState().interimTranscript;
 
       // Use 'auto' during streaming to prevent browser smooth-scroll cancellation (jitter/stuck).
       // Use 'smooth' for new message initialization or when thinking state starts for premium UX.
@@ -299,22 +293,14 @@ export default function ClassroomShell() {
     }
   }, [
     currentSession?.messages,
-    conversationState.currentMessage,
-    interimTranscript,
     conversationState.pipelineState,
     getActiveRefs
   ]);
 
   const handleStop = useCallback(() => {
-    safeSend({
-      type: 'chat.abort',
-      data: {
-        session_id: currentSessionId || undefined,
-        message_id: conversationState.activeMessageId || undefined
-      }
-    });
+    abortGeneration();
     resetAvatarAudio(conversationState.activeMessageId);
-  }, [safeSend, resetAvatarAudio, currentSessionId, conversationState.activeMessageId]);
+  }, [abortGeneration, resetAvatarAudio, conversationState.activeMessageId]);
 
   useEffect(() => {
     const handleVoiceBargeIn = () => {
@@ -324,15 +310,17 @@ export default function ClassroomShell() {
     return () => window.removeEventListener('voice-barge-in', handleVoiceBargeIn);
   }, [handleStop]);
 
-  const handleSendMessage = useCallback(() => {
-    const text = inputValue.trim();
-    if (!text) return;
+  const handleSendMessage = useCallback((text?: string) => {
+    const payload = text?.trim();
+    if (!payload) return;
+
+    // Await audio context unlock so it's strictly bound to this gesture
+    unlockAudioContext().catch(console.warn);
 
     // Force scroll to bottom when user explicitly sends a message
     shouldStickToBottom.current = true;
 
-    commitAndSend(text);
-    setInputValue('');
+    commitAndSend(payload);
 
     const { textareaRef } = getActiveRefs();
     if (textareaRef.current) {
@@ -341,24 +329,13 @@ export default function ClassroomShell() {
     if (!isConnected && currentSessionId !== null) {
       toast.warning('Offline', 'Message queued. Will send when connected.', 3000);
     }
-  }, [inputValue, isConnected, currentSessionId, commitAndSend, setInputValue, getActiveRefs]);
+  }, [isConnected, currentSessionId, commitAndSend, getActiveRefs]);
 
-  const onKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSendMessage();
-      }
-    },
-    [handleSendMessage]
-  );
+
 
   const ensureVoiceSession = useCallback(async () => {
     PCMRecorder.preWarmWorklet();
-    const ctx = getAudioContext();
-    if (ctx.state === 'suspended') {
-      ctx.resume();
-    }
+    await unlockAudioContext();
 
     if (currentSessionId) return true;
     if (isCreatingSessionRef.current) return false;
@@ -406,6 +383,8 @@ export default function ClassroomShell() {
     currentSessionId,
   };
 
+  const pipelineState = useChatUIStore((s) => s.pipelineState);
+
   return (
     <>
       <Helmet>
@@ -434,6 +413,7 @@ export default function ClassroomShell() {
           isOpen={isDocumentsOpen}
           onClose={toggleDocuments}
           sessionId={currentSessionId}
+          onEnsureSession={session.createPersistedSession}
           width={sidebarWidth}
           onWidthChange={setSidebarWidth}
           resizable={true}
@@ -466,16 +446,19 @@ export default function ClassroomShell() {
 
             {/* Avatar Panel (Left) */}
             <aside className="flex-[3] min-w-0 min-h-0 relative overflow-hidden flex items-center justify-center bg-dark-secondary/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl">
-              <AvatarCanvasWrapper
-                avatarId={activeAvatarId}
-                pipelineState={conversationState.pipelineState}
-                movementEnabled={movementEnabled}
-                mouthCuesRef={mouthCuesRef}
-                getAudioContext={getAudioContext}
-                playbackStartTimeRef={playbackStartTimeRef}
-                getIsAudioPlaying={getIsAudioPlaying}
-                getNextPlaybackTime={getNextPlaybackTime}
-              />
+              <Suspense fallback={<div className="w-full h-full animate-pulse bg-white/5 rounded-2xl" />}>
+                <AvatarCanvasWrapper
+                  avatarId={activeAvatarId}
+                  pipelineState={conversationState.pipelineState}
+                  movementEnabled={movementEnabled}
+                  mouthCuesRef={mouthCuesRef}
+                  getAudioContext={getAudioContext}
+                  playbackStartTimeRef={playbackStartTimeRef}
+                  getIsAudioPlaying={getIsAudioPlaying}
+                  getNextPlaybackTime={getNextPlaybackTime}
+                  getAnalyserNode={getAnalyserNode}
+                />
+              </Suspense>
             </aside>
 
             {/* Chat Panel (Right) */}
@@ -489,43 +472,25 @@ export default function ClassroomShell() {
                 explainSlide={explainSlide}
                 explainTotalSlides={explainTotalSlides}
                 explainContent={explainContent}
-                onExplainQuestion={(text) => {
-                  explainSendQuestion(text);
-                  setExplainContent(prev => prev + `\n\n**You:** ${text}\n\n`);
-                  resetAvatarAudio();
-                }}
-                onExplainContinue={() => {
-                  explainSendContinue();
-                  resetAvatarAudio();
-                }}
-                onExplainPauseOrStop={() => {
-                  explainSendPauseOrStop();
-                  resetAvatarAudio();
-                }}
-                onExplainClose={() => {
-                  setIsExplainActive(false);
-                  explainDisconnect();
-                  resetAvatarAudio();
-                }}
-                onDiagramClose={() => setIsDiagramOpen(false)}
-                onSummaryClose={() => setIsSummaryOpen(false)}
+                onExplainQuestion={handleExplainQuestion}
+                onExplainContinue={handleExplainContinue}
+                onExplainPauseOrStop={handleExplainPauseOrStop}
+                onExplainClose={handleExplainClose}
+                onDiagramClose={handleDiagramClose}
+                onSummaryClose={handleSummaryClose}
                 onSummarizeDocument={handleSummarizeDocument}
                 isQuizOpen={isQuizOpen}
-                onQuizClose={() => setIsQuizOpen(false)}
+                onQuizClose={handleQuizClose}
                 currentSessionId={currentSessionId}
                 messages={currentSession?.messages}
-                currentMessage={conversationState.currentMessage}
-                interimTranscript={interimTranscript}
                 chatError={conversationState.error}
                 avatarName={avatarName}
                 chatScrollRef={desktopChatScrollRef}
                 messagesEndRef={desktopMessagesEndRef}
                 onChatScroll={handleChatScroll}
-                pipelineState={conversationState.pipelineState as any}
-                inputValue={inputValue}
-                onInputChange={setInputValue}
+                pipelineState={pipelineState}
                 onSendMessage={handleSendMessage}
-                onKeyDown={onKeyDown}
+
                 textareaRef={desktopTextareaRef}
                 onToggleDocuments={toggleDocuments}
                 onBeforeVoiceStart={ensureVoiceSession}
@@ -541,23 +506,26 @@ export default function ClassroomShell() {
 
             {/* Avatar Container: exactly 40% of available height */}
             <aside className="h-[40%] min-h-0 relative overflow-hidden flex items-center justify-center bg-dark-secondary/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl mx-4">
-              <AvatarCanvasWrapper
-                avatarId={activeAvatarId}
-                pipelineState={conversationState.pipelineState}
-                movementEnabled={movementEnabled}
-                mouthCuesRef={mouthCuesRef}
-                getAudioContext={getAudioContext}
-                playbackStartTimeRef={playbackStartTimeRef}
-                getIsAudioPlaying={getIsAudioPlaying}
-                getNextPlaybackTime={getNextPlaybackTime}
-              />
+              <Suspense fallback={<div className="w-full h-full animate-pulse bg-white/5 rounded-2xl" />}>
+                <AvatarCanvasWrapper
+                  avatarId={activeAvatarId}
+                  pipelineState={conversationState.pipelineState}
+                  movementEnabled={movementEnabled}
+                  mouthCuesRef={mouthCuesRef}
+                  getAudioContext={getAudioContext}
+                  playbackStartTimeRef={playbackStartTimeRef}
+                  getIsAudioPlaying={getIsAudioPlaying}
+                  getNextPlaybackTime={getNextPlaybackTime}
+                  getAnalyserNode={getAnalyserNode}
+                />
+              </Suspense>
             </aside>
 
             {/* Chat Container: remaining 60% height */}
             <section className="h-[60%] min-h-0 flex flex-col relative bg-dark-secondary/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl mx-4">
               <AssistantPanel
                 isSummaryOpen={isSummaryOpen}
-                onSummaryClose={() => setIsSummaryOpen(false)}
+                onSummaryClose={handleSummaryClose}
                 isExplainActive={isExplainActive}
                 isDiagramOpen={isDiagramOpen}
                 explainDocumentId={documents.length > 0 ? documents[0].id : undefined}
@@ -565,42 +533,24 @@ export default function ClassroomShell() {
                 explainSlide={explainSlide}
                 explainTotalSlides={explainTotalSlides}
                 explainContent={explainContent}
-                onExplainQuestion={(text) => {
-                  explainSendQuestion(text);
-                  setExplainContent(prev => prev + `\n\n**You:** ${text}\n\n`);
-                  resetAvatarAudio();
-                }}
-                onExplainContinue={() => {
-                  explainSendContinue();
-                  resetAvatarAudio();
-                }}
-                onExplainPauseOrStop={() => {
-                  explainSendPauseOrStop();
-                  resetAvatarAudio();
-                }}
-                onExplainClose={() => {
-                  setIsExplainActive(false);
-                  explainDisconnect();
-                  resetAvatarAudio();
-                }}
-                onDiagramClose={() => setIsDiagramOpen(false)}
+                onExplainQuestion={handleExplainQuestion}
+                onExplainContinue={handleExplainContinue}
+                onExplainPauseOrStop={handleExplainPauseOrStop}
+                onExplainClose={handleExplainClose}
+                onDiagramClose={handleDiagramClose}
                 onSummarizeDocument={handleSummarizeDocument}
                 isQuizOpen={isQuizOpen}
-                onQuizClose={() => setIsQuizOpen(false)}
+                onQuizClose={handleQuizClose}
                 currentSessionId={currentSessionId}
                 messages={currentSession?.messages}
-                currentMessage={conversationState.currentMessage}
-                interimTranscript={interimTranscript}
                 chatError={conversationState.error}
                 avatarName={avatarName}
                 chatScrollRef={mobileChatScrollRef}
                 messagesEndRef={mobileMessagesEndRef}
                 onChatScroll={handleChatScroll}
-                pipelineState={conversationState.pipelineState as any}
-                inputValue={inputValue}
-                onInputChange={setInputValue}
+                pipelineState={pipelineState}
                 onSendMessage={handleSendMessage}
-                onKeyDown={onKeyDown}
+
                 textareaRef={mobileTextareaRef}
                 onToggleDocuments={toggleDocuments}
                 onBeforeVoiceStart={ensureVoiceSession}

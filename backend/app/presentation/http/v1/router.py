@@ -27,6 +27,7 @@ from app.presentation.http.v1.endpoints.auth import router as auth_router
 from app.presentation.http.v1.endpoints.chat import router as chat_router
 from app.presentation.http.v1.endpoints.documents import router as documents_router
 from app.presentation.http.v1.endpoints.health import router as health_router
+from app.presentation.http.v1.endpoints.playground import router as playground_router
 from app.presentation.http.v1.endpoints.rag import router as rag_router
 from app.presentation.ws.connection_manager import WSConnectionManager
 from app.presentation.ws.explain_handler import ExplainHandler
@@ -52,6 +53,7 @@ router.include_router(chat_router, prefix="/chat", tags=["chat"])
 router.include_router(auth_router, prefix="/auth", tags=["auth"])
 router.include_router(documents_router, prefix="/documents", tags=["documents"])
 router.include_router(rag_router, prefix="/rag", tags=["rag"])
+router.include_router(playground_router, prefix="/playground", tags=["playground"])
 
 
 @router.websocket("/ws/{avatar_id}")
@@ -112,45 +114,32 @@ async def websocket_endpoint(
             return
         session_id = str(parsed_session_id)
 
-    # WebSocket Auth (S1-01) - Moved to first message
-    # Accept connection immediately without subprotocols
-    try:
-        await websocket.accept()
-        logger.info(f"[WS] Connection accepted | avatar={avatar_id} | client={websocket.client}")
-    except Exception as e:
-        logger.error(f"[WS] Failed to accept connection: {e}")
-        return
-
-    # Wait for first message to be auth
-    try:
-        import asyncio
-        import json
-        auth_msg_raw = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
-        auth_msg = json.loads(auth_msg_raw)
-        if auth_msg.get("type") != "auth" or not auth_msg.get("token"):
-            logger.warning("[WS] Missing or invalid auth message format")
+    # Extract token from subprotocols
+    token = None
+    if "sec-websocket-protocol" in websocket.headers:
+        protocols = websocket.headers["sec-websocket-protocol"].split(",")
+        protocols = [p.strip() for p in protocols]
+        if "access_token" in protocols:
             try:
-                await websocket.close(code=4001, reason="Missing or invalid auth message")
-            except Exception:
+                idx = protocols.index("access_token")
+                if idx + 1 < len(protocols):
+                    token = protocols[idx + 1]
+            except ValueError:
                 pass
-            return
-        token = auth_msg["token"]
-    except asyncio.TimeoutError:
-        logger.warning("[WS] Auth timeout")
-        try:
-            await websocket.close(code=4001, reason="Auth timeout")
-        except Exception:
-            pass
-        return
-    except WebSocketDisconnect:
-        logger.info("[WS] Client disconnected before auth")
-        return
-    except Exception as e:
-        logger.warning(f"[WS] Invalid auth message payload: {e}")
-        try:
-            await websocket.close(code=4001, reason="Invalid auth payload")
-        except Exception:
-            pass
+    
+    if not token and "subprotocols" in websocket.scope:
+        subprotocols = websocket.scope.get("subprotocols", [])
+        if "access_token" in subprotocols:
+            try:
+                idx = subprotocols.index("access_token")
+                if idx + 1 < len(subprotocols):
+                    token = subprotocols[idx + 1]
+            except ValueError:
+                pass
+
+    if not token:
+        logger.warning("[WS] Connection rejected: Missing token in subprotocols")
+        await websocket.close(code=4001, reason="Missing auth token")
         return
 
     try:
@@ -158,6 +147,20 @@ async def websocket_endpoint(
     except (ExpiredTokenError, InvalidAuthStateError, InvalidTokenError, InvalidUserIdError) as e:
         logger.warning(f"[WS] Invalid token: {e}")
         await websocket.close(code=4401, reason="Invalid token")
+        return
+    except Exception as e:
+        logger.warning(f"[WS] Invalid token: {e}")
+        await websocket.close(code=4401, reason="Invalid token")
+        return
+
+    # WebSocket Auth (S1-01) - Decoded and validated BEFORE accept
+    try:
+        # We must return the same subprotocol list that the client sent, or at least "access_token"
+        accepted_subprotocol = "access_token"
+        await websocket.accept(subprotocol=accepted_subprotocol)
+        logger.info(f"[WS] Connection accepted | avatar={avatar_id} | client={websocket.client}")
+    except Exception as e:
+        logger.error(f"[WS] Failed to accept connection: {e}")
         return
 
     try:
@@ -256,19 +259,24 @@ async def websocket_endpoint(
         logger.info("[WS] Ready sent | session=%s", session_id)
         await handler.run()
     except WebSocketDisconnect:
-        logger.info(f"[WS] Client disconnected | session={handler.session.session_id or 'pending'}")
+        logger.info(f"[WS] Client disconnected | session={handler.session_id or 'pending'}")
     except Exception as e:
         logger.error(
-            f"[WS] Handler error | session={handler.session.session_id or 'pending'} | error={e}",
+            f"[WS] Handler error | session={handler.session_id or 'pending'} | error={e}",
             exc_info=True,
         )
     finally:
-        if handler and getattr(handler, "session", None) and handler.session.session_id:
-            await connection_manager.unregister(handler.session.session_id, websocket)
-            await session_manager.disconnect_session(handler.session.session_id)
-            logger.info(
-                f"[WS] Session disconnected (kept for resume) | id={handler.session.session_id}"
-            )
+        if handler and handler.session_id:
+            was_active = await connection_manager.unregister(handler.session_id, websocket)
+            if was_active:
+                await session_manager.disconnect_session(handler.session_id)
+                logger.info(
+                    f"[WS] Session disconnected (kept for resume) | id={handler.session_id}"
+                )
+            else:
+                logger.info(
+                    f"[WS] Old socket unregistered, session {handler.session_id} remains active via new socket"
+                )
 
 @router.websocket("/rag/explain/{document_id}")
 async def explain_websocket(
@@ -294,7 +302,8 @@ async def explain_websocket(
         await websocket.close(code=4003, reason="Invalid token")
         return
 
-    await websocket.accept()
+    await websocket.accept(subprotocol="access_token")
+    await websocket.send_json({"type": "ready", "session_id": document_id})
     logger.info(f"[WS] Explain connection accepted | document={document_id} | user={token_payload.user_id}")
     
     handler = ExplainHandler(

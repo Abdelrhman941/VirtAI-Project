@@ -1,3 +1,4 @@
+import re
 import time
 from collections.abc import AsyncGenerator, Callable
 from typing import Any
@@ -44,13 +45,22 @@ class CohereLLMProvider(BaseLLMProvider):
                         chunk = LLMChunk(token=text)
                         
                         # Basic sentence detection logic
-                        if text and any(punct in text for punct in [". ", "? ", "! ", ".\\n", "?\\n", "!\\n"]):
-                            chunk.sentence = buffer.strip()
+                        match = re.search(r'([.!?]+)(?:\s+)', buffer)
+                        if match:
+                            split_idx = match.end()
+                            chunk.sentence = buffer[:split_idx].strip()
                             if on_sentence:
                                 on_sentence(chunk.sentence)
-                            buffer = ""
+                            buffer = buffer[split_idx:]
                             
                         yield chunk
+                        
+            if buffer.strip():
+                chunk = LLMChunk(token="")
+                chunk.sentence = buffer.strip()
+                if on_sentence:
+                    on_sentence(chunk.sentence)
+                yield chunk
         except Exception as e:
             logger.error(f"Cohere stream failed: {e} | trace_id={trace_id}")
             raise
@@ -114,6 +124,7 @@ class CohereLLMProvider(BaseLLMProvider):
         messages = []
         system_prompt = history.system_prompt or "You are a helpful assistant."
         messages.append({"role": "system", "content": system_prompt})
+        
         for msg in history._messages:
             role = msg.role
             if role == "ai":
@@ -121,5 +132,11 @@ class CohereLLMProvider(BaseLLMProvider):
             elif role not in ("user", "assistant", "system", "tool"):
                 role = "user"
             
-            messages.append({"role": role, "content": msg.content})
+            content = msg.content if msg.content else " "
+            
+            if messages and messages[-1]["role"] == role:
+                messages[-1]["content"] += "\n" + content
+            else:
+                messages.append({"role": role, "content": content})
+                
         return messages

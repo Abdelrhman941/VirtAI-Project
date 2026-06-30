@@ -58,6 +58,7 @@ async def test_cleanup_awaits_voice_mode_shutdown(monkeypatch: pytest.MonkeyPatc
     handler._voice_mode_handler = FakeVoiceModeHandler()
     handler.session = None
     handler.ws = FakeWebSocket()
+    handler.protocol_router = SimpleNamespace(cleanup=lambda: None)
 
     from app.presentation.ws.connection_lifecycle import ConnectionLifecycle
 

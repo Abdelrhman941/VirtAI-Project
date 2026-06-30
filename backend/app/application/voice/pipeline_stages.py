@@ -239,14 +239,65 @@ class TTSStage(BaseStage):
             raise TTSException("TTS service not configured")
 
         try:
-            tts_result = await self._tts.generate(
-                text=text_to_speak,
-                session_id=context.session_id,
-                message_id=f"{context.message_id}_{context.sentence_index}",
-                trace_id=context.trace_id,
-                voice=context.tts_voice,
-            )
-            context.tts_result = tts_result
+            if hasattr(self._tts, 'synthesize_streaming'):
+                audio_bytes_list = []
+                try:
+                    async for chunk in self._tts.synthesize_streaming(
+                        text=text_to_speak,
+                        voice=context.tts_voice
+                    ):
+                        if context.aborted:
+                            break
+                        if chunk.audio_data:
+                            audio_bytes_list.append(chunk.audio_data)
+                            if context.send_binary_callback:
+                                await context.send_binary_callback(chunk.audio_data)
+                except asyncio.CancelledError:
+                    context.abort()
+                    raise
+                
+                audio_bytes = b"".join(audio_bytes_list)
+                if not audio_bytes:
+                    raise TTSException("TTS returned empty audio")
+                    
+                from app.infrastructure.tts.tts_utils import calculate_audio_duration
+                from app.shared.config import get_settings
+                from pathlib import Path
+                
+                audio_duration_ms = calculate_audio_duration(audio_bytes, format="pcm")
+                
+                storage_base = Path(get_settings().AUDIO_STORAGE_PATH)
+                session_dir = storage_base / context.session_id
+                session_dir.mkdir(parents=True, exist_ok=True)
+                
+                api_voice = getattr(self._tts, 'resolve_voice', lambda v: getattr(self._tts, 'voice', 'aria'))(context.tts_voice or getattr(self._tts, 'voice', 'aria'))
+                chunk_message_id = f"{context.message_id}_{context.sentence_index}"
+                audio_file_id = f"{chunk_message_id}_{api_voice}"
+                if hasattr(self._tts, 'audio_file_id'):
+                    audio_file_id = self._tts.audio_file_id(chunk_message_id, api_voice)
+                
+                audio_file_path = session_dir / f"{audio_file_id}.pcm"
+                try:
+                    audio_file_path.write_bytes(audio_bytes)
+                except Exception as e:
+                    logger.error(f"Failed to save streamed audio: {e}")
+                
+                context.tts_result = TTSResult(
+                    audio_bytes=audio_bytes,
+                    visemes=[],
+                    word_boundaries=[],
+                    audio_duration_ms=audio_duration_ms,
+                    audio_ref=str(audio_file_path)
+                )
+            else:
+                tts_result = await self._tts.generate(
+                    text=text_to_speak,
+                    session_id=context.session_id,
+                    message_id=f"{context.message_id}_{context.sentence_index}",
+                    trace_id=context.trace_id,
+                    voice=context.tts_voice,
+                )
+                context.tts_result = tts_result
 
         except TTSException as e:
             logger.error(f"TTS error: {e} | trace_id={context.trace_id}")
@@ -259,9 +310,8 @@ class TTSStage(BaseStage):
                         message_id=context.message_id,
                     )
                 )
-            context.tts_result = None
-
-
+            context.abort()
+            raise e
 class AnimationStage(BaseStage):
     def __init__(self, animation_service: Any, viseme_generator: Any) -> None:
         self._animation_service = animation_service
@@ -277,32 +327,15 @@ class AnimationStage(BaseStage):
 
         chunk_message_id = f"{context.message_id}_{context.sentence_index}"
 
-        mouth_cues = []
-        try:
-            if (
-                context.tts_result
-                and getattr(context.tts_result, "audio_ref", None)
-                and self._viseme_generator
-            ):
-                mouth_cues = await self._viseme_generator.generate_from_audio(
-                    audio_path=context.tts_result.audio_ref,
-                    text=text_to_animate,
-                    session_id=context.session_id,
-                    message_id=chunk_message_id,
-                )
-        except Exception as e:
-            logger.warning(
-                f"Viseme generation failed, falling back to empty cues: {e} | trace_id={context.trace_id}"
-            )
-
-        context.mouth_cues = mouth_cues
-
         safe_tts_result = context.tts_result or TTSResult(
             audio_bytes=b"",
             visemes=[],
             word_boundaries=[],
             audio_duration_ms=len(text_to_animate or "") * 60.0,
         )
+
+        mouth_cues = []
+        context.mouth_cues = mouth_cues
 
         audio_features = analyze_tts_for_animation(
             tts_result=safe_tts_result,
@@ -326,7 +359,7 @@ class AnimationStage(BaseStage):
             else chunk_message_id
         )
         audio_url = (
-            f"/api/v1/audio/{context.session_id}/{audio_file_id}.mp3" if context.tts_result else ""
+            f"/api/v1/audio/{context.session_id}/{audio_file_id}.pcm" if context.tts_result else ""
         )
         duration = int(context.tts_result.audio_duration_ms) if context.tts_result else 0
 
@@ -340,13 +373,47 @@ class AnimationStage(BaseStage):
                         duration_ms=duration,
                     )
                 )
-            await context.send_callback(
-                make_visemes_ready(
-                    session_id=context.session_id,
-                    message_id=chunk_message_id,
-                    mouth_cues=mouth_cues,
-                )
-            )
+
+                # C2 fix: Generate real visemes from the saved PCM audio and emit
+                # visemes.ready.  Previously mouth_cues was always [] and
+                # make_visemes_ready was never called anywhere in the pipeline.
+                if (
+                    self._viseme_generator is not None
+                    and context.tts_result
+                    and context.tts_result.audio_ref
+                ):
+                    audio_path = context.tts_result.audio_ref
+                    try:
+                        # VisemeGenerator._generate_cues uses pydub AudioSegment.from_file.
+                        # For raw PCM we pass the path directly; pydub will detect
+                        # the format from the extension.
+                        raw_cues = await self._viseme_generator.generate_from_audio(
+                            audio_path=audio_path,
+                            text=text_to_animate,
+                            session_id=context.session_id,
+                            message_id=chunk_message_id,
+                        )
+                        mouth_cues = raw_cues  # type: ignore[assignment]
+                        context.mouth_cues = mouth_cues
+                        if mouth_cues:
+                            await context.send_callback(
+                                make_visemes_ready(
+                                    session_id=context.session_id,
+                                    message_id=chunk_message_id,
+                                    mouth_cues=mouth_cues,
+                                )
+                            )
+                            logger.debug(
+                                f"Visemes emitted | message={chunk_message_id} | count={len(mouth_cues)}"
+                            )
+                        else:
+                            logger.debug(
+                                f"Viseme generator returned empty cues | message={chunk_message_id}"
+                            )
+                    except Exception as vis_err:
+                        logger.warning(
+                            f"Viseme generation failed (non-fatal) | message={chunk_message_id} | {vis_err}"
+                        )
 
             if timeline_payload["timeline"]:
                 await context.send_callback(

@@ -13,10 +13,10 @@ services:
       - virtai-network
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-virtai}']
-      interval: 2s
-      timeout: 3s
+      interval: 10s
+      timeout: 5s
       retries: 5
-      start_period: 1s
+      start_period: 5s
 
   redis:
     image: redis:7-alpine
@@ -33,10 +33,10 @@ services:
       - virtai-network
     healthcheck:
       test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
-      interval: 2s
-      timeout: 2s
+      interval: 10s
+      timeout: 5s
       retries: 5
-      start_period: 1s
+      start_period: 5s
 
   backend-init:
     build:
@@ -87,10 +87,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:8000/api/v1/health']
-      interval: 2s
-      timeout: 5s
+      interval: 30s
+      timeout: 10s
       retries: 5
-      start_period: 5s
+      start_period: 30s
 
   worker:
     image: virtai-backend:latest
@@ -121,10 +121,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import redis; redis.Redis(host='redis', password='${REDIS_PASSWORD}').ping()"]
-      interval: 2s
-      timeout: 5s
+      interval: 30s
+      timeout: 10s
       retries: 5
-      start_period: 2s
+      start_period: 10s
 
   frontend:
     build:
@@ -146,14 +146,15 @@ services:
       HF_HOME: /app/voices/huggingface
     volumes:
       - tts_config:/app/config
+      - tts_data:/app/voices
     networks:
       - virtai-network
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
-      interval: 2s
-      timeout: 5s
-      retries: 15
-      start_period: 5s
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     deploy:
       resources:
         reservations:
@@ -167,6 +168,7 @@ volumes:
   backend-cache:
   backend-models:
   tts_config:
+  tts_data:
 
 networks:
   virtai-network:

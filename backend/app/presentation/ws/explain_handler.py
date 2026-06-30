@@ -25,38 +25,64 @@ class ExplainHandler:
 
         try:
             while True:
-                raw = await self.websocket.receive_text()
                 try:
-                    data = json.loads(raw)
-                    msg_type = data.get("type")
-                    if msg_type == "chat.user_message" or msg_type == "client.speech_stopped":
+                    text = await self.websocket.receive_text()
+                except WebSocketDisconnect:
+                    logger.info("Explain websocket disconnected.")
+                    break
+
+                try:
+                    data = json.loads(text)
+                    payload_type = data.get("type")
+                    if payload_type == "chat.user_message" or payload_type == "client.speech_stopped":
                         await self._handle_interruption(data)
+                    elif payload_type == "ping":
+                        try:
+                            await self.websocket.send_json({"type": "pong"})
+                        except (RuntimeError, asyncio.exceptions.IncompleteReadError) as e:
+                            logger.debug(f"[WS] Failed to send pong (connection closed?): {e}")
                 except json.JSONDecodeError:
                     pass
-        except WebSocketDisconnect:
-            logger.info("Explain websocket disconnected.")
         finally:
             if self._main_task and not self._main_task.done():
                 self._main_task.cancel()
+                try:
+                    await self._main_task
+                except asyncio.CancelledError:
+                    pass
+                except Exception as e:
+                    logger.error(f"Error during _main_task cancellation: {e}")
+
 
     async def _start_presentation(self):
         try:
             async for event in self.explain_use_case.start_or_resume(
                 self.user_id, self.document_id
             ):
-                await self.websocket.send_json(event)
+                try:
+                    await self.websocket.send_json(event)
+                except (RuntimeError, asyncio.exceptions.IncompleteReadError) as e:
+                    logger.warning(f"[WS] Dead socket write attempt: {e}")
+                    return
         except asyncio.CancelledError:
-            pass
+            try:
+                await self.explain_use_case.db.rollback()
+            except Exception:
+                pass
         except Exception as e:
             logger.error(f"Error in _start_presentation: {e}")
-            import traceback
-            traceback.print_exc()
             try:
-                await self.websocket.send_json({"type": "error", "message": str(e)})
+                await self.explain_use_case.db.rollback()
             except Exception:
                 pass
 
     async def _handle_interruption(self, data: dict):
+        user_text = data.get("text", "")
+        # Fallback to nested data just in case
+        if not user_text and isinstance(data.get("data"), dict):
+            user_text = data.get("data", {}).get("text", "")
+
+        # Cancel the current presentation task if it's still running
         if self._main_task and not self._main_task.done():
             self._main_task.cancel()
             try:
@@ -64,25 +90,25 @@ class ExplainHandler:
             except asyncio.CancelledError:
                 pass
 
-        user_text = data.get("text", "")
-        # Fallback to nested data just in case
-        if not user_text and isinstance(data.get("data"), dict):
-            user_text = data.get("data", {}).get("text", "")
-
         async def _process_input():
             try:
                 async for event in self.explain_use_case.handle_user_input(
                     self.user_id, self.document_id, user_text
                 ):
-                    await self.websocket.send_json(event)
+                    try:
+                        await self.websocket.send_json(event)
+                    except (RuntimeError, asyncio.exceptions.IncompleteReadError) as e:
+                        logger.warning(f"[WS] Dead socket write attempt: {e}")
+                        return
             except asyncio.CancelledError:
-                pass
+                try:
+                    await self.explain_use_case.db.rollback()
+                except Exception:
+                    pass
             except Exception as e:
                 logger.error(f"Error in handle_user_input: {e}")
-                import traceback
-                traceback.print_exc()
                 try:
-                    await self.websocket.send_json({"type": "error", "message": str(e)})
+                    await self.explain_use_case.db.rollback()
                 except Exception:
                     pass
 

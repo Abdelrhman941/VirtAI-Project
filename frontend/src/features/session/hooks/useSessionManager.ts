@@ -63,7 +63,17 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
     queryKey: ['sessionMessages', currentSessionId],
     queryFn: async ({ signal }) => {
       if (!currentSessionId) return [];
-      return await sessionService.fetchSessionMessages(currentSessionId, { signal });
+      const fetched = await sessionService.fetchSessionMessages(currentSessionId, { signal });
+      const current = queryClient.getQueryData<IMessage[]>(['sessionMessages', currentSessionId]) || [];
+      const optimistic = current.filter(m => m.status === 'pending');
+      
+      const merged = [...fetched];
+      optimistic.forEach(opt => {
+        if (!merged.some(m => m.id === opt.id)) {
+          merged.push(opt);
+        }
+      });
+      return merged;
     },
     enabled: !!currentSessionId && status === 'success',
   });
@@ -74,6 +84,22 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
       queryClient.invalidateQueries({ queryKey: ['sessionMessages', currentSessionId] });
     }
   }, [currentSessionId, queryClient]);
+
+  // Handle session-invalidated event from background services (e.g. upload 404)
+  useEffect(() => {
+    const handleInvalidation = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const invalidId = customEvent.detail?.sessionId;
+      if (invalidId && invalidId === currentSessionId) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setCurrentSessionId(null);
+        if (navigate) navigate('/classroom', { replace: true });
+        queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      }
+    };
+    window.addEventListener('session-invalidated', handleInvalidation);
+    return () => window.removeEventListener('session-invalidated', handleInvalidation);
+  }, [currentSessionId, navigate, queryClient]);
 
   const currentSession = useMemo(() => {
     if (!currentSessionId) return { id: null, title: 'New chat', messages: [], messages_loaded: true };
@@ -267,7 +293,7 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
         reconciled = true;
         return old.map((m) => (
           m.id === message.id
-            ? { ...m, ...nextMessage, status: nextMessage.status ?? m.status }
+            ? { ...m, ...nextMessage, status: canonicalTimestamp ? 'sent' : m.status }
             : m
         ));
       }

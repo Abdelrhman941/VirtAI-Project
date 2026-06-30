@@ -33,7 +33,7 @@ async def test_explain_handler_interruption(monkeypatch):
     # We mock the entire ExplainUseCase execute functions
     async def mock_start_or_resume(self, user_id, document_id):
         yield {"type": "SlideStartEvent", "slide_index": 0}
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.01)
         yield {"type": "AwaitInputEvent"}
 
     async def mock_handle_user_input(self, user_id, document_id, text):
@@ -49,7 +49,7 @@ async def test_explain_handler_interruption(monkeypatch):
 
     run_task = asyncio.create_task(handler.run())
 
-    await asyncio.sleep(0.1)  # Let the handler process the message
+    await asyncio.sleep(0.2)  # Let the handler process the message
     run_task.cancel()
 
     # Verify sent events

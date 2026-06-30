@@ -2,8 +2,8 @@ import { useRef, useCallback } from 'react';
 import { useGaplessAudioQueue, Viseme } from '@/features/voice/hooks/useGaplessAudioQueue';
 
 export function useClassroomAudio() {
-  // Structure: { baseId: { chunkIndex: { url, cues } } }
-  const chunksRef = useRef<Record<string, Record<string, { url?: string; cues?: Viseme[] }>>>({});
+  // Structure: { baseId: { chunkIndex: { url, cues, durationMs } } }
+  const chunksRef = useRef<Record<string, Record<string, { url?: string; cues?: Viseme[]; durationMs?: number }>>>({});
   const expectedChunkRef = useRef<Record<string, number>>({});
   const missingChunkTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
   
@@ -14,7 +14,7 @@ export function useClassroomAudio() {
   // Store aborted message IDs to instantly drop late-arriving packets from the network.
   const abortedMessageIdsRef = useRef<Set<string>>(new Set());
 
-  const { enqueueAudioUrl, flushQueue, getAudioContext, playbackStartTimeRef, getIsAudioPlaying, getNextPlaybackTime } = useGaplessAudioQueue();
+  const { enqueueAudioUrl, flushQueue, getAudioContext, unlockAudioContext, playbackStartTimeRef, getIsAudioPlaying, getNextPlaybackTime, getAnalyserNode, setPlaybackRate } = useGaplessAudioQueue();
 
   const tryPlayChunk = useCallback(function tryPlayChunkInner(baseId: string) {
     if (abortedMessageIdsRef.current.has(baseId)) {
@@ -27,10 +27,10 @@ export function useClassroomAudio() {
 
     // Handle filler separately (no sequence waiting)
     const fillerChunk = sessionChunks['filler'];
-    if (fillerChunk && fillerChunk.url && fillerChunk.cues) {
+    if (fillerChunk && fillerChunk.url) {
       const ctx = getAudioContext();
       if (ctx.state === 'suspended') ctx.resume();
-      enqueueAudioUrl(fillerChunk.url, fillerChunk.cues, mouthCuesRef);
+      enqueueAudioUrl(fillerChunk.url, fillerChunk.cues || [], mouthCuesRef);
       delete sessionChunks['filler'];
     }
 
@@ -39,10 +39,33 @@ export function useClassroomAudio() {
     let playedAny = false;
     while (true) {
       const nextChunk = sessionChunks[expected.toString()];
-      if (nextChunk && nextChunk.url && nextChunk.cues) {
+      if (nextChunk && nextChunk.url) {
         const ctx = getAudioContext();
         if (ctx.state === 'suspended') ctx.resume();
-        enqueueAudioUrl(nextChunk.url, nextChunk.cues, mouthCuesRef);
+        
+        // Calculate the accurate start offset for this chunk's visemes
+        let accumulatedOffset = 0;
+        for (let i = 0; i < expected; i++) {
+          const prevChunk = sessionChunks[i.toString()];
+          if (prevChunk && prevChunk.durationMs) {
+            accumulatedOffset += prevChunk.durationMs / 1000;
+          }
+        }
+
+        // Shift and append visemes IMMEDIATELY so streaming playback can use them
+        if (nextChunk.cues && nextChunk.cues.length > 0) {
+          const isMilliseconds = nextChunk.cues[nextChunk.cues.length - 1].end > 100;
+          const timeScale = isMilliseconds ? 1000 : 1;
+          const shiftedVisemes = nextChunk.cues.map((v) => ({
+            ...v,
+            start: (v.start / timeScale) + accumulatedOffset,
+            end: (v.end / timeScale) + accumulatedOffset,
+          }));
+          mouthCuesRef.current = [...mouthCuesRef.current, ...shiftedVisemes];
+        }
+
+        // Pass empty visemes array to enqueueAudioUrl so it doesn't double-process them
+        enqueueAudioUrl(nextChunk.url, [], mouthCuesRef);
         
         if (chunksRef.current[baseId]?.[expected.toString()]) {
           delete chunksRef.current[baseId][expected.toString()];
@@ -77,7 +100,7 @@ export function useClassroomAudio() {
     }
   }, [getAudioContext, enqueueAudioUrl]);
 
-  const handleTtsReady = useCallback((messageId: string | undefined, url: string) => {
+  const handleTtsReady = useCallback((messageId: string | undefined, url: string, duration_ms?: number) => {
     if (!messageId) return;
     const isChunked = messageId.includes('_');
     const baseId = isChunked ? messageId.split('_')[0] : messageId;
@@ -89,6 +112,7 @@ export function useClassroomAudio() {
     if (!chunksRef.current[baseId][chunkIdx]) chunksRef.current[baseId][chunkIdx] = {};
     
     chunksRef.current[baseId][chunkIdx].url = url;
+    if (duration_ms) chunksRef.current[baseId][chunkIdx].durationMs = duration_ms;
 
     // Fix filler deadlock: provide empty visemes automatically if it's a filler
     if (chunkIdx === 'filler' && !chunksRef.current[baseId][chunkIdx].cues) {
@@ -131,11 +155,11 @@ export function useClassroomAudio() {
       
       keys.forEach(idx => {
         const chunk = sessionChunks[idx.toString()];
-        if (chunk && chunk.url && chunk.cues) {
+        if (chunk && chunk.url) {
           const ctx = getAudioContext();
           if (ctx.state === 'suspended') ctx.resume();
           console.warn(`[AudioSequence] Eager reconciliation flush. Pushing out-of-order chunk ${idx}`);
-          enqueueAudioUrl(chunk.url, chunk.cues, mouthCuesRef);
+          enqueueAudioUrl(chunk.url, chunk.cues || [], mouthCuesRef);
           
           if (chunksRef.current[baseId]?.[idx.toString()]) {
             delete chunksRef.current[baseId][idx.toString()];
@@ -173,6 +197,7 @@ export function useClassroomAudio() {
   return {
     mouthCuesRef,
     getAudioContext,
+    unlockAudioContext,
     playbackStartTimeRef,
     handleTtsReady,
     handleVisemesReady,
@@ -181,6 +206,8 @@ export function useClassroomAudio() {
     flushQueue,
     playedAudioIdsRef,
     getIsAudioPlaying,
-    getNextPlaybackTime
+    getNextPlaybackTime,
+    getAnalyserNode,
+    setPlaybackRate,
   };
 }

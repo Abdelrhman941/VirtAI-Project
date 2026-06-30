@@ -22,14 +22,34 @@ from app.domain.rag.stage_machine import IngestionStage
 from app.domain.user.entities import UserEntity
 from app.infrastructure.db.database import get_db
 from app.infrastructure.db.repositories.chat_repository import ChatRepository
-from app.infrastructure.db.repositories.document_crud_repository import DocumentCrudRepository
-from app.infrastructure.db.repositories.ingestion_state_repository import IngestionStateRepository
+from app.infrastructure.db.repositories.document_repository import DocumentRepository
 from app.presentation.http.v1.dependencies import StorageDep, _current_user
 from app.shared.config import get_settings
 from app.shared.ids import parse_uuid
 
 router = APIRouter()
 settings = get_settings()
+
+
+async def _verify_session_ownership_logic(
+    session_id: str | None,
+    user: UserEntity,
+    session_repo: ChatRepository,
+) -> str | None:
+    """Core ownership check — extracted for testability.
+
+    Returns the session_id on success.
+    Raises 404 if the session doesn't exist, 403 if it belongs to another user.
+    """
+    if not session_id:
+        return None
+
+    session_obj = await session_repo.get_chat_session(str(session_id))
+    if not session_obj:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if str(session_obj["user_id"]) != str(user.id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return str(session_id)
 
 
 async def _verify_session_ownership(
@@ -40,16 +60,14 @@ async def _verify_session_ownership(
     db: AsyncSession = Depends(get_db),
 ) -> str | None:
     session_id = session_id_query or session_id_form
+    if not session_id:
+        return None
 
-    if session_id:
-        from app.presentation.http.v1.dependencies import get_storage
+    from app.presentation.http.v1.dependencies import get_storage
 
-        storage = get_storage(request)
-        session_repo = ChatRepository(db, storage_provider=storage)
-        session_obj = await session_repo.get_chat_session(str(session_id))
-        if not session_obj or str(session_obj["user_id"]) != str(user.id):
-            raise HTTPException(status_code=403, detail="Forbidden")
-    return str(session_id) if session_id else None
+    storage = get_storage(request)
+    session_repo = ChatRepository(db, storage_provider=storage)
+    return await _verify_session_ownership_logic(session_id, user, session_repo)
 
 
 def sanitize_filename(filename: str | None) -> str:
@@ -107,6 +125,7 @@ async def validate_file_magic(file: UploadFile, declared_ext: str) -> None:
                 status_code=400, detail=f"File appears to be {kind.mime}, not text/markdown"
             )
         import codecs
+        import anyio
 
         decoder = codecs.getincrementaldecoder("utf-8")()
         await file.seek(0)
@@ -114,9 +133,9 @@ async def validate_file_magic(file: UploadFile, declared_ext: str) -> None:
             while True:
                 chunk = await file.read(65536)
                 if not chunk:
-                    decoder.decode(b"", True)
+                    await anyio.to_thread.run_sync(decoder.decode, b"", True)
                     break
-                decoder.decode(chunk)
+                await anyio.to_thread.run_sync(decoder.decode, chunk)
         except UnicodeDecodeError:
             raise HTTPException(status_code=400, detail="File is not valid UTF-8") from None
 
@@ -147,10 +166,12 @@ async def upload_document(
         )
     validate_declared_mime(file.content_type, ext)
 
-    state_repo = IngestionStateRepository(db)
+    state_repo = DocumentRepository(db)
 
-    # 2. Check per-user active job count
-    active_jobs = await state_repo.count_active_jobs(str(user.id))
+    # 2. Check per-session (or global) active job count
+    active_jobs = await state_repo.count_active_jobs_in_scope(
+        str(user.id), session_id=session_id
+    )
     if active_jobs >= settings.MAX_ACTIVE_JOBS_PER_USER:
         raise HTTPException(
             status_code=429,
@@ -226,7 +247,7 @@ async def list_statuses(
     """List statuses for all documents."""
     from app.infrastructure.cache.redis_client import get_redis_or_none
 
-    crud_repo = DocumentCrudRepository(db)
+    crud_repo = DocumentRepository(db)
 
     if active_only:
         docs = await crud_repo.list_active(str(user.id), session_id=session_id)
@@ -274,7 +295,7 @@ async def get_document_status(
 
     if parse_uuid(document_id) is None:
         raise HTTPException(status_code=400, detail="Invalid document_id")
-    state_repo = IngestionStateRepository(db)
+    state_repo = DocumentRepository(db)
     status = await state_repo.get_status(document_id, str(user.id))
     if not status:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -300,7 +321,7 @@ async def cancel_document(
     """Cancel document ingestion."""
     if parse_uuid(document_id) is None:
         raise HTTPException(status_code=400, detail="Invalid document_id")
-    state_repo = IngestionStateRepository(db)
+    state_repo = DocumentRepository(db)
     status = await state_repo.get_status(document_id, str(user.id))
     if not status:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -322,7 +343,7 @@ async def list_documents(
     db: AsyncSession = Depends(get_db),
 ) -> list[dict[str, Any]]:
     """List all documents for the current user."""
-    crud_repo = DocumentCrudRepository(db)
+    crud_repo = DocumentRepository(db)
     docs = await crud_repo.list_by_user(str(user.id), session_id=session_id)
     return [
         {
@@ -350,7 +371,7 @@ async def delete_document(
     """Delete a document and cascade delete its chunks."""
     if parse_uuid(document_id) is None:
         raise HTTPException(status_code=400, detail="Invalid document_id")
-    crud_repo = DocumentCrudRepository(db)
+    crud_repo = DocumentRepository(db)
     storage_key = await crud_repo.delete_with_cascade(document_id, str(user.id))
     if not storage_key:
         raise HTTPException(status_code=404, detail="Document not found")

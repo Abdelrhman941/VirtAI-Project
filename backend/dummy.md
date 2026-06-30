@@ -1,4 +1,0 @@
-# Cohere + Gemini E2E Test
-
-This is a dummy document for testing RAG.
-It contains some test facts. The secret word is PINEAPPLE_COHERE_2026.

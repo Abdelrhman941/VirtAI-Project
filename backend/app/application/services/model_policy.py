@@ -114,11 +114,15 @@ class FallbackTTSChain(BaseTTSProvider):
                     raise e
         raise RuntimeError("No TTS providers available")
 
-    async def synthesize_streaming(self, text: str) -> AsyncGenerator[TTSChunk, None]:
+    async def synthesize_streaming(self, text: str, voice: str | None = None) -> AsyncGenerator[TTSChunk, None]:
         providers = [self.primary, *self.fallbacks]
         for idx, provider in enumerate(providers):
             try:
-                async for chunk in provider.synthesize_streaming(text):
+                # Some TTS providers might not accept 'voice' in their signature, but OpenAITTSProvider does.
+                kwargs = {}
+                if voice:
+                    kwargs["voice"] = voice
+                async for chunk in provider.synthesize_streaming(text, **kwargs):
                     yield chunk
                 return
             except Exception as e:

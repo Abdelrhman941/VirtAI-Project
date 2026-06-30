@@ -146,6 +146,21 @@ async def lifespan(app: FastAPI):
         )
         app.state.intent_classifier = None
 
+    # ── Preload Heavy Modules ───────────────────────────────────────────────
+    # We preload these to prevent the first WebSocket request from blocking 
+    # the event loop for 20+ seconds during lazy initialization.
+    logger.info("Preloading heavy modules for voice pipeline...")
+    try:
+        from app.application.animation.intelligence_service import AnimationIntelligenceService
+        from app.application.voice.pipeline_stages import AnimationStage
+        from app.infrastructure.tts.viseme_generator import VisemeGenerator
+        import numpy  # noqa
+        import pydub  # noqa
+        import httpx  # noqa
+        logger.info("Preloaded voice pipeline modules successfully.")
+    except ImportError as e:
+        logger.warning(f"Failed to preload some voice modules: {e}")
+
     redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
     app.state.arq_pool = await create_pool(redis_settings)
     logger.info("ARQ pool initialized")
@@ -360,6 +375,9 @@ async def lifespan(app: FastAPI):
         f"timeout={settings.SESSION_TIMEOUT_SEC}s | "
         f"interval={settings.SESSION_CLEANUP_INTERVAL}s"
     )
+
+    # Mark the server as fully ready — health check returns 'ok' only after this point.
+    app.state.ready = True
     logger.info(f"Server ready on {settings.HOST}:{settings.PORT}")
 
     yield

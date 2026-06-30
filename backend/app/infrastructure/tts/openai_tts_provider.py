@@ -60,7 +60,7 @@ class OpenAITTSProvider(BaseTTSProvider):
         self.api_url = "http://tts:8000/v1/audio/speech"
         # Reuse HTTP client for connection pooling (avoids TCP+TLS overhead per request)
         self._client = httpx.AsyncClient(
-            timeout=60.0,
+            timeout=300.0,
             limits=httpx.Limits(max_connections=4, max_keepalive_connections=2),
         )
         logger.info(f"OpenAITTSProvider initialized | voice={self.voice} | model={self.model}")
@@ -149,7 +149,7 @@ class OpenAITTSProvider(BaseTTSProvider):
                 audio_bytes=cached_audio,
                 visemes=[],
                 word_boundaries=[],
-                audio_duration_ms=calculate_audio_duration(cached_audio, format="mp3"),
+                audio_duration_ms=calculate_audio_duration(cached_audio, format="pcm"),
             )
         else:
             try:
@@ -166,7 +166,7 @@ class OpenAITTSProvider(BaseTTSProvider):
         session_dir.mkdir(parents=True, exist_ok=True)
 
         audio_file_id = self.audio_file_id(message_id, api_voice)
-        audio_file_path = session_dir / f"{audio_file_id}.mp3"
+        audio_file_path = session_dir / f"{audio_file_id}.pcm"
         try:
             audio_file_path.write_bytes(result.audio_bytes)
             logger.success(f"Audio saved | path={audio_file_path}")
@@ -195,7 +195,7 @@ class OpenAITTSProvider(BaseTTSProvider):
                     "model": self.model,
                     "input": text,
                     "voice": api_voice,
-                    "response_format": "mp3",
+                    "response_format": "pcm",
                     "speed": self.speed,
                 },
             )
@@ -210,7 +210,7 @@ class OpenAITTSProvider(BaseTTSProvider):
         if not audio_bytes:
             raise TTSException("TTS returned empty audio")
 
-        audio_duration_ms = calculate_audio_duration(audio_bytes, format="mp3")
+        audio_duration_ms = calculate_audio_duration(audio_bytes, format="pcm")
 
         return TTSResult(
             audio_bytes=audio_bytes,
@@ -220,12 +220,24 @@ class OpenAITTSProvider(BaseTTSProvider):
         )
 
     async def synthesize_streaming(
-        self, text: str, max_retries: int = 3
+        self, text: str, max_retries: int = 3, voice: str | None = None
     ) -> AsyncGenerator[TTSChunk, None]:
+        from app.infrastructure.cache.tts_cache import get_cached_audio, cache_audio
         text = clean_text_for_tts(text)
         if not text.strip():
             raise TTSException("Empty text provided")
 
+        api_voice = self.resolve_voice(voice or self.voice)
+
+        # Check cache
+        cached_audio = await get_cached_audio(text=text, voice=api_voice)
+        if cached_audio is not None:
+            logger.info("TTS streaming cache hit")
+            yield TTSChunk(audio_data=cached_audio)
+            yield TTSChunk(is_done=True)
+            return
+
+        accumulated_chunks = []
         for attempt in range(max_retries):
             try:
                 async with self._client.stream(
@@ -234,8 +246,8 @@ class OpenAITTSProvider(BaseTTSProvider):
                     json={
                         "model": self.model,
                         "input": text,
-                        "voice": self.api_voice,
-                        "response_format": "mp3",
+                        "voice": api_voice,
+                        "response_format": "pcm",
                         "speed": self.speed,
                     },
                 ) as response:
@@ -245,12 +257,33 @@ class OpenAITTSProvider(BaseTTSProvider):
                             f"TTS API Error details: {error_details.decode('utf-8', errors='replace') if error_details else ''}"
                         )
                     response.raise_for_status()
+                    remainder = b""
                     async for chunk in response.aiter_bytes():
                         if chunk:
-                            yield TTSChunk(audio_data=chunk)
+                            data = remainder + chunk
+                            if len(data) % 2 != 0:
+                                remainder = data[-1:]
+                                data = data[:-1]
+                            else:
+                                remainder = b""
+                            
+                            if data:
+                                accumulated_chunks.append(data)
+                                yield TTSChunk(audio_data=data)
+                    
+                    if remainder:
+                        accumulated_chunks.append(remainder)
+                        yield TTSChunk(audio_data=remainder)
+                
+                # Cache the accumulated audio
+                full_audio = b"".join(accumulated_chunks)
+                if full_audio:
+                    await cache_audio(text=text, voice=api_voice, audio_bytes=full_audio)
+                    
                 yield TTSChunk(is_done=True)
                 return
             except Exception as e:
+                accumulated_chunks.clear()
                 if attempt < max_retries - 1:
                     await asyncio.sleep(2**attempt)
                 else:

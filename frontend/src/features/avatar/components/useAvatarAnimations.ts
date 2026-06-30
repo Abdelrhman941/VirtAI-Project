@@ -2,7 +2,8 @@ import { useAnimations, useFBX } from '@react-three/drei';
 import React, { useEffect, useMemo, useRef, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { Viseme } from './useAvatarLipSync';
+import { useAvatarLipSync } from './useAvatarLipSync';
+import { Viseme } from '@/features/voice/hooks/useGaplessAudioQueue';
 
 const IDLE_URL = '/models/animations/Idle/Idle.fbx';
 const TALK_MANIFEST = [
@@ -224,8 +225,8 @@ export function useAvatarAnimations(
       nextAction.setEffectiveWeight(FULL_WEIGHT);
 
       if (prevAction && prevAction !== nextAction) {
-        // warp=false prevents time-scale distortion during blending
-        prevAction.crossFadeTo(nextAction, fadeTime, false);
+        // warp=true enables time-scale syncing for realistic blend
+        prevAction.crossFadeTo(nextAction, fadeTime, true);
       } else {
         nextAction.fadeIn(fadeTime);
       }
@@ -382,7 +383,7 @@ export function useAvatarAnimations(
       return;
     }
 
-    if (pipelineState === 'thinking' || pipelineState === 'error') {
+    if (pipelineState === 'thinking' || pipelineState === 'error' || pipelineState === 'idle') {
       timelineStateRef.current = {
         phase: 'idle',
         timeInPhase: INITIAL_TIME,

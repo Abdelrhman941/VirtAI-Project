@@ -30,7 +30,7 @@ def tts_cache_key(text: str, voice: str) -> str:
     """Redis string key for cached TTS audio bytes."""
     safe_voice = re.sub(r"[^a-z0-9-]+", "-", (voice or "default").strip().lower()).strip("-")
     digest = hashlib.sha256(text.encode()).hexdigest()[:32]
-    return f"virtai:tts:cache:{safe_voice}:{digest}"
+    return f"virtai:tts:cache:{safe_voice}:{digest}_pcm"
 
 
 def llm_cache_key(prompt_hash: str) -> str:

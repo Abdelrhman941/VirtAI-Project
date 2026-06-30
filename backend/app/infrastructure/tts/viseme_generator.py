@@ -39,7 +39,7 @@ class VisemeGenerator:
         Creates open/close mouth movements synchronized with audio peaks.
 
         Args:
-            audio_path: Path to audio file (MP3)
+            audio_path: Path to audio file (.pcm raw Int16 LE 24kHz mono, or other pydub-supported format)
 
         Returns:
             List of MouthCue objects with viseme patterns
@@ -48,8 +48,21 @@ class VisemeGenerator:
             import numpy as np
             from pydub import AudioSegment
 
-            # Load audio file
-            audio = AudioSegment.from_file(audio_path)
+            # Load audio file.
+            # For raw PCM (Int16 LE, 24 kHz, mono) pydub cannot detect the format
+            # from the file header because there is no header.  Use from_raw() instead.
+            ext = os.path.splitext(audio_path)[1].lower()
+            if ext == ".pcm":
+                with open(audio_path, "rb") as f:
+                    raw_data = f.read()
+                audio = AudioSegment(
+                    data=raw_data,
+                    sample_width=2,   # Int16 = 2 bytes
+                    frame_rate=24000, # 24 kHz
+                    channels=1,       # mono
+                )
+            else:
+                audio = AudioSegment.from_file(audio_path)
 
             # Convert to mono and get raw samples
             audio = audio.set_channels(1)

@@ -51,48 +51,35 @@ class ExplainUseCase:
         )
         return list(chunks_query.scalars().all())
 
-    async def start_or_resume(self, user_id: str, document_id: str) -> AsyncGenerator[dict, None]:
-        session_key = f"explain_{user_id}_{document_id}"
-        state_data = await self._get_state(session_key)
+    async def _explain_single_slide(
+        self,
+        slide_index: int,
+        chunks: list[DocumentChunk],
+    ) -> AsyncGenerator[dict, None]:
+        """
+        Stream the explanation for a single slide and yield the events for it.
 
-        chunks = await self._load_chunks(document_id)
-        if not chunks:
-            yield {"type": "error", "message": "No document content."}
-            return
-
-        current_slide_index = state_data["current_slide_index"]
-
-        if current_slide_index >= len(chunks):
-            yield SlideEndEvent(slide_index=-1).model_dump()
-            return
-
-        state_data["state"] = PresentationState.EXPLAINING.value
-        await self._save_state(session_key, state_data)
-
-        yield SlideStartEvent(
-            slide_index=current_slide_index, total_slides=len(chunks)
-        ).model_dump()
-
-        current_chunk = chunks[current_slide_index]
-        current_content = current_chunk.chunk_text or ""
+        Yields:
+            SlideStartEvent → SlideContentTokens (multiple) → SlideEndEvent
+        """
+        current_content = chunks[slide_index].chunk_text or ""
 
         # Build Sliding Window Context
         previous_summary = "None (This is the first slide)"
-        if current_slide_index > 0:
-            prev_text = chunks[current_slide_index - 1].chunk_text or ""
+        if slide_index > 0:
+            prev_text = chunks[slide_index - 1].chunk_text or ""
             previous_summary = prev_text[:400] + ("..." if len(prev_text) > 400 else "")
 
         next_preview = "None (This is the last slide)"
-        if current_slide_index < len(chunks) - 1:
-            next_text = chunks[current_slide_index + 1].chunk_text or ""
+        if slide_index < len(chunks) - 1:
+            next_text = chunks[slide_index + 1].chunk_text or ""
             next_preview = next_text[:400] + ("..." if len(next_text) > 400 else "")
 
-        # Detect locale and build history
         locale = detect_locale(current_content)
         prompt_set = registry.get_prompt_set(PromptKey.WALKTHROUGH, locale)
 
         sys_str = prompt_set.system.substitute(
-            current_slide_number=current_slide_index + 1,
+            current_slide_number=slide_index + 1,
             total_slides=len(chunks)
         )
         usr_str = prompt_set.footer.substitute(
@@ -104,19 +91,64 @@ class ExplainUseCase:
         history = ConversationHistory(system_prompt=sys_str, max_messages=1)
         history.add_user_message(usr_str)
 
+        yield SlideStartEvent(
+            slide_index=slide_index, total_slides=len(chunks)
+        ).model_dump()
+
         # Stream explanation from LLM
         async for chunk in self.chat_use_case.llm.stream(history):
             if chunk.token:
                 yield SlideContentTokens(tokens=chunk.token).model_dump()
 
-        yield {"type": "done"}
+        yield SlideEndEvent(slide_index=slide_index).model_dump()
 
-        yield SlideEndEvent(slide_index=current_slide_index).model_dump()
+    async def start_or_resume(self, user_id: str, document_id: str) -> AsyncGenerator[dict, None]:
+        """
+        B1 fix: Auto-advance through ALL remaining slides in sequence.
+
+        Flow per slide: SlideStartEvent → tokens → SlideEndEvent
+        After ALL slides: SlideEndEvent(slide_index=-1) as end-of-presentation signal.
+
+        Design decision: The function auto-advances without waiting for user input between
+        slides.  This matches the expected "explain all slides" use case.  If the user
+        sends a "continue" message while this is running, the ExplainHandler's intent
+        classifier (B2 fix) will NOT cancel this task — handle_user_input will advance
+        the slide pointer for the NEXT call instead.
+        """
+        session_key = f"explain_{user_id}_{document_id}"
+        state_data = await self._get_state(session_key)
+
+        chunks = await self._load_chunks(document_id)
+        if not chunks:
+            yield {"type": "error", "message": "No document content."}
+            return
+
+        current_slide_index = state_data["current_slide_index"]
+
+        if current_slide_index >= len(chunks):
+            # End the presentation properly if they advance past the end
+            yield SlideEndEvent(slide_index=-1).model_dump()
+            return
+
+        state_data["state"] = PresentationState.EXPLAINING.value
+        await self._save_state(session_key, state_data)
+
+        # Explain just the current slide
+        async for event in self._explain_single_slide(current_slide_index, chunks):
+            yield event
 
         state_data["state"] = PresentationState.AWAITING.value
         await self._save_state(session_key, state_data)
 
+        if current_slide_index == len(chunks) - 1:
+            # End of presentation: ask if they have questions
+            yield SlideContentTokens(
+                tokens="\n\n*That concludes the presentation. Do you have any questions?*"
+            ).model_dump()
+        
         yield AwaitInputEvent().model_dump()
+
+
 
     async def handle_user_input(
         self, user_id: str, document_id: str, text: str
@@ -153,15 +185,14 @@ class ExplainUseCase:
 
         metadata_filter = {"slide_index": state_data["current_slide_index"]}
 
-        response_text = await self.chat_use_case.execute_rag_query(
+        async for token in self.chat_use_case.stream_rag_query(
             query=text,
             user_id=user_id,
             session_id=None,
             document_id=document_id,
             metadata_filter=metadata_filter,
-        )
-
-        yield SlideContentTokens(tokens=response_text).model_dump()
+        ):
+            yield SlideContentTokens(tokens=token).model_dump()
         yield {"type": "done"}
 
         state_data["state"] = PresentationState.AWAITING.value

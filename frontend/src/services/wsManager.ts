@@ -32,9 +32,12 @@ class WSManager {
   private pingIntervalTimer: ReturnType<typeof setInterval> | null = null;
   private pongTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor() {
+  private useLocalStorage: boolean;
+
+  constructor(useLocalStorage = true) {
+    this.useLocalStorage = useLocalStorage;
     this.eventRouter = createEventRouter();
-    this.sessionState = createSessionResumeState();
+    this.sessionState = createSessionResumeState(this.useLocalStorage);
     this.reconnectPolicy = createReconnectPolicy();
     // Startup validation for VITE_WS_URL
     const configuredUrl = import.meta.env.VITE_WS_URL || import.meta.env.VITE_WS_BASE_URL;
@@ -86,7 +89,27 @@ class WSManager {
     if (!url) return;
     
     // If connecting to a new URL (e.g. new session), disconnect old and reset state
-    if (this.url && this.url !== url) {
+    const isUrlUpgrade = () => {
+      if (!this.url || !url) return false;
+      try {
+        // Simple string manipulation to check if the only difference is the session_id param
+        const urlA = new URL(this.url.replace('ws://', 'http://').replace('wss://', 'https://'));
+        const urlB = new URL(url.replace('ws://', 'http://').replace('wss://', 'https://'));
+        urlA.searchParams.delete('session_id');
+        urlB.searchParams.delete('session_id');
+        return urlA.toString() === urlB.toString();
+      } catch {
+        return false;
+      }
+    };
+
+    if (this.url !== url) {
+      if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) && isUrlUpgrade()) {
+        if (import.meta.env.DEV) console.log('[WS] Upgrading session_id without reconnecting');
+        this.url = url;
+        return;
+      }
+
       // Close old socket but don't reset token state
       if (this.ws) {
         this.ws.onopen = null;
@@ -100,7 +123,7 @@ class WSManager {
       this.isConnecting = false;
       this.isIntentionalClose = false; // confirm this exists
       // Reset session state ONLY (not auth state)
-      resetSessionState(this.sessionState);
+      resetSessionState(this.sessionState, this.useLocalStorage);
     }
     
     this.url = url;
@@ -138,8 +161,8 @@ class WSManager {
     
     try {
       const socketUrl = buildResumeUrl(url, this.sessionState) || url;
-      // Removed token from subprotocols
-      const socket = new WebSocket(socketUrl);
+      const socket = new WebSocket(socketUrl, ["access_token", token]);
+      socket.binaryType = 'arraybuffer';
       this.ws = socket;
       
       socket.onopen = () => {
@@ -181,7 +204,7 @@ class WSManager {
             const readyData = message.data ?? {};
             if (typeof readyData.session_id === 'string' && readyData.session_id.length > 0) {
               this.sessionState.sessionId = readyData.session_id;
-              if (typeof window !== 'undefined') {
+              if (typeof window !== 'undefined' && this.useLocalStorage) {
                 localStorage.setItem('virt_session_id', readyData.session_id);
               }
             }
@@ -247,8 +270,7 @@ class WSManager {
         }
         
         if (event.code === WS_CLOSE_SESSION_INVALID) {
-          resetSessionState(this.sessionState);
-          if (typeof window !== 'undefined') localStorage.removeItem('virt_session_id');
+          resetSessionState(this.sessionState, this.useLocalStorage);
         }
         
         if (event.code === WS_CLOSE_NORMAL || event.code === 1001 || event.code === 1012) {
@@ -266,7 +288,31 @@ class WSManager {
     }
   }
 
+  private connectionRefs: number = 0;
+  private disconnectTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+  public retain() {
+    this.connectionRefs++;
+    if (this.disconnectTimeoutTimer) {
+      clearTimeout(this.disconnectTimeoutTimer);
+      this.disconnectTimeoutTimer = null;
+    }
+  }
+
+  public release() {
+    this.connectionRefs = Math.max(0, this.connectionRefs - 1);
+    if (this.connectionRefs === 0) {
+      // Delay actual disconnection to handle React 18 Strict Mode
+      this.disconnectTimeoutTimer = setTimeout(() => {
+        this.disconnect(true);
+      }, 100);
+    }
+  }
+
   public disconnect(intentional = true) {
+    if (intentional) {
+      this.connectionRefs = 0;
+    }
     this.isIntentionalClose = intentional;
     this.isConnecting = false;
     if (intentional) {
@@ -285,8 +331,7 @@ class WSManager {
     
     this.updateStatus(ConnectionState.DISCONNECTED);
     if (intentional) {
-      resetSessionState(this.sessionState);
-      if (typeof window !== 'undefined') localStorage.removeItem('virt_session_id');
+      resetSessionState(this.sessionState, this.useLocalStorage);
     }
     this.authRefreshAttempts = 0;
   }
@@ -433,5 +478,6 @@ class WSManager {
   }
 }
 
+export { WSManager };
 const wsManager = new WSManager();
 export default wsManager;

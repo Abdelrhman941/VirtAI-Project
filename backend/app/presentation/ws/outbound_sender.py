@@ -86,6 +86,7 @@ class OutboundSender:
                 "type": message_type,
                 "data": message.model_dump(exclude_none=True),
             }
+            logger.info(f"[WS OUT] {message_type} | session_id={session_id} | data={envelope['data']}")
 
             if session_pending or not session_id:
                 serialized = json.dumps(envelope)
@@ -96,6 +97,14 @@ class OutboundSender:
             await self.ws.send_text(serialized)
 
         except Exception as e:
+            error_str = str(e)
+            if "Cannot call" in error_str and "close message has been sent" in error_str:
+                logger.debug(f"Transport layer: client disconnected gracefully (cannot send {class_name})")
+                return
+            if "ConnectionClosed" in type(e).__name__:
+                logger.debug(f"Transport layer: ConnectionClosed (cannot send {class_name})")
+                return
+            
             logger.error(f"Transport layer serialization failure: {e}")
             error_payload = {
                 "type": "error",
@@ -105,6 +114,9 @@ class OutboundSender:
                 },
             }
             try:
-                await self.ws.send_text(json.dumps(error_payload))
+                # Need to check client state to avoid triggering the same exception again
+                from starlette.websockets import WebSocketState
+                if self.ws.client_state == WebSocketState.CONNECTED:
+                    await self.ws.send_text(json.dumps(error_payload))
             except Exception as inner_e:
                 logger.error(f"Failed to transmit error payload: {inner_e}")

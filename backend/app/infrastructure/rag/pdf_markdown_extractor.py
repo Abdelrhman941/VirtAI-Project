@@ -116,7 +116,7 @@ class PDFMarkdownExtractor(DocumentParser):
         import anyio
 
         pages = await anyio.to_thread.run_sync(self.extract, file_path)
-        return "\n\n".join(page.page_content for page in pages)
+        return "\n\n---\n\n".join(page.page_content for page in pages)
 
     async def parse_bytes(self, data: bytes, file_type: str) -> str:
         """Implements DocumentParser.parse_bytes"""

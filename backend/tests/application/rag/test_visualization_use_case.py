@@ -82,7 +82,7 @@ async def test_visualization_use_case_success():
     res = await use_case.get_visualization(db, str(uuid.uuid4()), str(uuid.uuid4()))
 
     assert res["unavailable"] is False
-    assert res["image_url"] == "https://example.com/img.png"
+    assert res["image_url"].startswith("/api/v1/rag/visualization/")
 
     assert provider.generate_diagram_mock.call_count == 1
     assert db.add.call_count == 1

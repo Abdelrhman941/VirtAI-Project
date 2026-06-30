@@ -1,55 +1,53 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { WSOutgoingMessage, EventRouterPayload } from './types';
-import wsManager from '@/services/wsManager';
+import defaultWsManager, { WSManager } from '@/services/wsManager';
 import { ConnectionState } from './wsConstants';
 import { useAuthStore } from '@/features/auth/store/authStore';
 
 export { ConnectionState } from './wsConstants';
 
-export default function useWSClient(url: string | null) {
-  const [connectionState, setConnectionState] = useState<ConnectionState>(wsManager.getStatus().connectionState);
-  const [reconnectError, setReconnectError] = useState<string | null>(wsManager.getStatus().reconnectError);
+export default function useWSClient(url: string | null, customManager?: WSManager) {
+  const manager = customManager || defaultWsManager;
+  const [connectionState, setConnectionState] = useState<ConnectionState>(manager.getStatus().connectionState);
+  const [reconnectError, setReconnectError] = useState<string | null>(manager.getStatus().reconnectError);
   const accessToken = useAuthStore((state) => state.accessToken);
 
   useEffect(() => {
-    const unsubscribe = wsManager.onStatusChange((state, error) => {
+    const unsubscribe = manager.onStatusChange((state, error) => {
       setConnectionState(state);
       setReconnectError(error);
     });
     return unsubscribe;
-  }, []);
+  }, [manager]);
 
   useEffect(() => {
     if (url) {
-      wsManager.connect(url);
-    } else {
-      wsManager.disconnect();
+      manager.retain();
+      manager.connect(url);
+      return () => {
+        manager.release();
+      };
     }
-  }, [url]);
+  }, [url, manager]);
 
-  useEffect(() => {
-    if (accessToken && (connectionState === ConnectionState.DISCONNECTED || connectionState === ConnectionState.FAILED)) {
-      // Re-trigger connection if we just logged in
-      wsManager.connect(url);
-    }
-  }, [accessToken, connectionState, url]);
+
 
   const send = useCallback((message: WSOutgoingMessage) => {
-    wsManager.send(message);
-  }, []);
+    manager.send(message);
+  }, [manager]);
 
   const onMessage = useCallback((type: string, handler: (data: EventRouterPayload) => void) => {
-    return wsManager.on(type, handler);
-  }, []);
+    return manager.on(type, handler);
+  }, [manager]);
 
   const disconnect = useCallback(() => {
-    wsManager.disconnect();
-  }, []);
+    manager.disconnect();
+  }, [manager]);
 
   const reconnect = useCallback(() => {
     if (!url) return;
-    wsManager.reconnectTo(url);
-  }, [url]);
+    manager.reconnectTo(url);
+  }, [url, manager]);
 
   return {
     connectionState,

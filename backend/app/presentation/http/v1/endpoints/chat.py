@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.user.entities import UserEntity
 from app.domain.rag.task_types import Locale
 from app.infrastructure.db.database import get_db
-from app.infrastructure.workers.background_chat_worker import save_conversation_background_task
+from app.infrastructure.worker.background_chat_worker import save_conversation_background_task
 from app.presentation.http.v1.dependencies import (
     ChatRepositoryDep,
     ChatUseCaseDep,
@@ -55,9 +55,11 @@ async def create_session(
     """Create a new chat session for the current user."""
     try:
         session = await repo.create_chat_session(str(user.id))
+        await db.commit()
         return session
     except Exception as e:
         logger.error(f"Failed to create session for user {user.id}: {e}")
+        await db.rollback()
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 

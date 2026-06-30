@@ -13,9 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.rag.stage_machine import IngestionStage
 from app.infrastructure.db.database import AsyncSessionLocal
-from app.infrastructure.db.repositories.document_crud_repository import DocumentCrudRepository
-from app.infrastructure.db.repositories.document_integrity_service import DocumentIntegrityService
-from app.infrastructure.db.repositories.ingestion_state_repository import IngestionStateRepository
+from app.infrastructure.db.repositories.document_repository import DocumentRepository
 from app.infrastructure.vector.pgvector_store import PGVectorStore
 from app.infrastructure.worker.retry_classifier import classify
 from app.shared.errors import IngestionCancelledException
@@ -62,8 +60,12 @@ async def run_ingestion_task(
     try:
         acquired = await redis_client.set(lock_key, job_id, nx=True, ex=LOCK_TTL)
         if not acquired:
-            logger.warning({**log_ctx, "event": "job_skipped_duplicate"})
-            return  # Another worker holds the lock — silent exit
+            existing_job_id = await redis_client.get(lock_key)
+            if existing_job_id and existing_job_id.decode() != job_id:
+                logger.warning({**log_ctx, "event": "job_skipped_duplicate"})
+                return  # Another worker holds the lock — silent exit
+            # We already hold it from a previous attempt (e.g., worker crash and retry)
+            await redis_client.expire(lock_key, LOCK_TTL)
 
         await _run_ingestion(ctx, doc_id, user_id, filename, file_type, storage_key, log_ctx)
 
@@ -77,9 +79,7 @@ async def run_ingestion_task(
                 embedder=None,
                 vision_provider=None,
                 db_session_factory=cast("Any", get_short_session),
-                crud_repo_factory=DocumentCrudRepository,
-                state_repo_factory=IngestionStateRepository,
-                integrity_repo_factory=DocumentIntegrityService,
+                document_repo_factory=DocumentRepository,
                 vector_store_factory=PGVectorStore,
             )
             await use_case.cleanup_failed_job(doc_id, None, storage_key)
@@ -87,8 +87,8 @@ async def run_ingestion_task(
             logger.error({**log_ctx, "event": "cleanup_failed", "error": str(cleanup_err)})
 
         async with get_short_session() as db:
-            state_repo = IngestionStateRepository(db)
-            await state_repo.mark_failed(doc_id, "Job timed out or was cancelled by worker", False)
+            doc_repo = DocumentRepository(db)
+            await doc_repo.mark_failed(doc_id, "Job timed out or was cancelled by worker", False)
             await db.commit()
         raise
 
@@ -96,8 +96,8 @@ async def run_ingestion_task(
         logger.info({**log_ctx, "event": "ingestion_cancelled"})
         # The usecase already cleans up. We just mark as CANCELLED.
         async with get_short_session() as db:
-            state_repo = IngestionStateRepository(db)
-            await state_repo.mark_cancelled(doc_id)
+            doc_repo = DocumentRepository(db)
+            await doc_repo.mark_cancelled(doc_id)
             await db.commit()
 
     except Exception as e:
@@ -131,9 +131,7 @@ async def run_ingestion_task(
                     embedder=None,
                     vision_provider=None,
                     db_session_factory=cast("Any", get_short_session),
-                    crud_repo_factory=DocumentCrudRepository,
-                    state_repo_factory=IngestionStateRepository,
-                    integrity_repo_factory=DocumentIntegrityService,
+                    document_repo_factory=DocumentRepository,
                     vector_store_factory=PGVectorStore,
                 )
                 await use_case.cleanup_failed_job(doc_id, None, storage_key)
@@ -141,8 +139,8 @@ async def run_ingestion_task(
                 logger.error({**log_ctx, "event": "cleanup_failed", "error": str(cleanup_err)})
 
         async with get_short_session() as db:
-            state_repo = IngestionStateRepository(db)
-            await state_repo.mark_failed(doc_id, error_msg, is_retryable)
+            doc_repo = DocumentRepository(db)
+            await doc_repo.mark_failed(doc_id, error_msg, is_retryable)
             await db.commit()
 
         if is_retryable:
@@ -176,8 +174,7 @@ async def sweep_stalled_jobs(ctx: dict) -> None:
     terminal = ["COMPLETE", "FAILED", "CANCELLED"]
 
     async with AsyncSessionLocal() as db:
-        state_repo = IngestionStateRepository(db)
-        integrity_repo = DocumentIntegrityService(db)
+        doc_repo = DocumentRepository(db)
 
         # Find all documents that are processing but haven't completed within TTL
         stmt = select(Document.id, Document.storage_key).where(
@@ -189,13 +186,12 @@ async def sweep_stalled_jobs(ctx: dict) -> None:
         for doc_id, storage_key in stalled_docs:
             logger.info(f"Sweeping stalled job for document {doc_id}")
             # Mark as failed
-            await state_repo.mark_failed(
+            await doc_repo.mark_failed(
                 str(doc_id),
                 error_msg="Job stalled and timed out (Worker crash/OOM).",
                 is_retryable=False,
             )
-            # Clean up vector DB chunks to prevent orphaned vectors
-            await integrity_repo.delete_all_chunks(str(doc_id))
+            await doc_repo.delete_all_chunks(str(doc_id))
 
         await db.commit()
 
@@ -213,9 +209,8 @@ async def _run_ingestion(
     storage = ctx["storage"]
 
     async with get_short_session() as db:
-        crud_repo = DocumentCrudRepository(db)
-        IngestionStateRepository(db)
-        doc = await crud_repo.get(doc_id)
+        doc_repo = DocumentRepository(db)
+        doc = await doc_repo.get(doc_id)
         if not doc:
             logger.warning({**log_ctx, "event": "document_not_found"})
             return
@@ -240,8 +235,8 @@ async def _run_ingestion(
         redis_client = ctx["redis"]
         await redis_client.set(f"doc_progress:{doc_id}", pct, ex=3600)
         async with get_short_session() as db:
-            state_repo = IngestionStateRepository(db)
-            await state_repo.update_progress(doc_id, stage, pct, processed, total)
+            doc_repo = DocumentRepository(db)
+            await doc_repo.update_progress(doc_id, stage, pct, processed, total)
             await db.commit()
 
         await publish_doc_progress(user_id, scope_id_str, doc_id, stage, pct)
@@ -249,9 +244,9 @@ async def _run_ingestion(
     # Cancellation Check
     async def cancellation_check() -> bool:
         async with get_short_session() as db:
-            crud_repo = DocumentCrudRepository(db)
-            doc = await crud_repo.get(doc_id)
-            return doc is not None and doc.current_stage == IngestionStage.CANCELLED.value
+            doc_repo = DocumentRepository(db)
+            doc = await doc_repo.get(doc_id)
+            return doc is not None and getattr(doc, "current_stage", None) == IngestionStage.CANCELLED.value
 
     settings = get_settings()
     chunker = SmartChunker(chunk_size=settings.CHUNK_SIZE, overlap_size=settings.CHUNK_OVERLAP)
@@ -274,9 +269,7 @@ async def _run_ingestion(
         embedder=embedder,
         vision_provider=ctx.get("vision_provider"),
         db_session_factory=cast("Any", get_short_session),
-        crud_repo_factory=DocumentCrudRepository,
-        state_repo_factory=IngestionStateRepository,
-        integrity_repo_factory=DocumentIntegrityService,
+        document_repo_factory=DocumentRepository,
         vector_store_factory=PGVectorStore,
     )
 

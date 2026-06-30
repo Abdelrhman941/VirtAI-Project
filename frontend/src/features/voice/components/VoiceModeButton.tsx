@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { PiMicrophone, PiPauseFill, PiWarningCircleFill } from 'react-icons/pi';
+import { PiMicrophone, PiPauseFill, PiWarningCircleFill, PiArrowCounterClockwise } from 'react-icons/pi';
 import { useRealtimeASR } from '../hooks/useRealtimeASR';
 
 import { VoiceIndicator } from '@/shared/components/VoiceIndicator';
@@ -38,7 +38,7 @@ export default function VoiceModeButton({
 }: VoiceModeButtonProps) {
 
   // Use realtime ASR hook for voice + transcript state (Requirement 1.1, 1.4)
-  const { isListening, isPaused, isProcessing, interimText, error, startListening, stopListening } =
+  const { isListening, isPaused, isProcessing, interimText, error, canRetry, clearError, startListening, stopListening } =
     useRealtimeASR(wsClient, pipelineState);
 
   // Determine button state and styling
@@ -60,6 +60,9 @@ export default function VoiceModeButton({
 
   // Determine button icon
   const ButtonIcon = useMemo(() => {
+    if (error && canRetry) {
+      return PiArrowCounterClockwise;
+    }
     if (error) {
       return PiWarningCircleFill;
     }
@@ -67,7 +70,7 @@ export default function VoiceModeButton({
       return PiPauseFill;
     }
     return PiMicrophone;
-  }, [error, isPaused]);
+  }, [error, canRetry, isPaused]);
 
   // Determine button title/tooltip
   const buttonTitle = useMemo(() => {
@@ -101,8 +104,17 @@ export default function VoiceModeButton({
     <div className={`voice-mode-container ${className}`}>
       {/* Main voice mode button (Requirement 1.1, 1.4) */}
       <button
-        className={`w-[52px] h-[52px] rounded-full bg-dark-secondary hover:bg-dark-tertiary flex items-center justify-center transition-colors text-white/70 hover:text-white voice-mode-btn ${buttonState}`}
+        className={`relative group w-[52px] h-[52px] rounded-full flex items-center justify-center transition-all duration-200 voice-mode-btn ${buttonState} ${error && canRetry ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30' : 'bg-dark-secondary hover:bg-dark-tertiary text-white/70 hover:text-white'}`}
         onClick={async () => {
+          if (error && canRetry) {
+            clearError();
+            stopListening();
+            const canStart = onBeforeStart ? await onBeforeStart() : true;
+            if (canStart) {
+              startListening();
+            }
+            return;
+          }
           if (!!error) return;
           if (isListening) {
             stopListening();
@@ -113,12 +125,16 @@ export default function VoiceModeButton({
             startListening();
           }
         }}
-        title={buttonTitle}
-        aria-label={ariaLabel}
-        disabled={!!error}
+        aria-label={error && canRetry ? 'Retry voice mode' : ariaLabel}
+        disabled={!!error && !canRetry}
         type="button"
       >
-        <ButtonIcon className="voice-mode-icon" size={22} />
+        <ButtonIcon className="voice-mode-icon shrink-0" size={22} />
+          
+        {/* Custom Hover Tooltip */}
+        <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-800 text-gray-100 text-xs font-medium rounded-md shadow-lg opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-50 border border-gray-700">
+          {error && canRetry ? 'Try again' : buttonTitle}
+        </div>
 
         {/* Listening animation (Requirement 8.3) */}
         <VoiceIndicator isListening={isListening} isPaused={isPaused} />

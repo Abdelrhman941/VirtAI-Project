@@ -64,13 +64,16 @@ class WSConnectionManager:
                 pass
             await self._cleanup_websocket(old)
 
-    async def unregister(self, session_id: str, websocket: WebSocket) -> None:
-        """Unregister socket only if it is still the active one."""
+    async def unregister(self, session_id: str, websocket: WebSocket) -> bool:
+        """Unregister socket only if it is still the active one. Returns True if it was active."""
+        was_active = False
         async with self._lock:
             current = self._active.get(session_id)
             if current is websocket:
                 self._active.pop(session_id, None)
+                was_active = True
         await self._cleanup_websocket(websocket)
+        return was_active
 
     async def cleanup_session(self, session_id: str) -> None:
         """Completely clean up memory tracking for a session when it is permanently destroyed."""
@@ -88,8 +91,12 @@ class WSConnectionManager:
                 fid = meta.get("family_id")
                 if uid and uid in self._user_to_ws:
                     self._user_to_ws[uid].discard(websocket)
+                    if not self._user_to_ws[uid]:
+                        del self._user_to_ws[uid]
                 if fid and fid in self._family_to_ws:
                     self._family_to_ws[fid].discard(websocket)
+                    if not self._family_to_ws[fid]:
+                        del self._family_to_ws[fid]
 
     async def stamp_and_record(self, session_id: str, payload: dict[str, Any]) -> str:
         """Attach seq_id, persist message to replay history, and return serialized JSON."""

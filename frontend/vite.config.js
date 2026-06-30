@@ -42,6 +42,23 @@ export default defineConfig({
   optimizeDeps: {
     include: ['lottie-react'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('three') || id.includes('@react-three')) {
+              return 'vendor-3d';
+            }
+            if (id.includes('react') || id.includes('zustand')) {
+              return 'vendor-react';
+            }
+            return 'vendor';
+          }
+        },
+      },
+    },
+  },
   test: {
     environment: 'happy-dom',
     exclude: ['node_modules', 'dist', '.idea', '.git', '.cache', 'tests/**/*'],

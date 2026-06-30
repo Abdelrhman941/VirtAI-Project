@@ -10,7 +10,12 @@ from fastapi.testclient import TestClient
 @pytest.mark.asyncio
 async def test_explain_ws_flow(app_fixture, mock_db_session):
     """
-    Connect WS -> walk through 3 slides -> inject a question mid-slide-2 -> verify it resumes correctly from slide 2.
+    Connect WS -> walk through 3 slides auto-advancing (B1 fix: no AwaitInputEvent between slides)
+    -> inject a question mid-presentation -> verify the answer is received.
+
+    After B1 fix: start_or_resume auto-advances through ALL slides without waiting.
+    AwaitInputEvent is only emitted by handle_user_input (after a Q&A response).
+    The end-of-presentation sentinel is SlideEndEvent(slide_index=-1).
     """
     from app.infrastructure.db.models import DocumentChunk, Document
 
@@ -72,39 +77,38 @@ async def test_explain_ws_flow(app_fixture, mock_db_session):
     mock_payload.user_id = user_id
     
     with patch("app.application.explain.explain_use_case.get_redis", return_value=mock_redis), \
-         patch("app.shared.security.decode_auth_token", return_value=mock_payload):
+         patch("app.presentation.http.v1.router.decode_auth_token", return_value=mock_payload):
 
         client = TestClient(app_fixture)
 
-        with client.websocket_connect(f"/api/v1/rag/explain/{doc_id}", subprotocols=["access_token", "fake_token"]) as websocket:
-            # Slide 0
+        with client.websocket_connect(f"/api/v1/rag/explain/{doc_id}?token=fake_token", subprotocols=["access_token", "fake_token"]) as websocket:
+            # Expect 'ready' first
             data = websocket.receive_json()
-            assert data["type"] == "SlideStartEvent"
-            assert data["slide_index"] == 0
+            assert data["type"] == "ready"
 
-            # Tokens for Slide 0
-            tokens = []
+            # B1 fix: start_or_resume now auto-advances ALL slides without AwaitInputEvent between them.
+            # Drain all auto-advancing slide events until we see the end-of-presentation sentinel
+            # or decide to interrupt.
+            slides_seen = []
+            found_end_sentinel = False
             while True:
                 data = websocket.receive_json()
-                if data["type"] == "SlideEndEvent":
-                    break
-                assert data["type"] == "SlideContentTokens"
-                tokens.append(data["tokens"])
+                if data["type"] == "SlideStartEvent":
+                    slides_seen.append(data["slide_index"])
+                elif data["type"] == "SlideEndEvent":
+                    if data["slide_index"] == -1:
+                        found_end_sentinel = True
+                        break
+                elif data["type"] in ("SlideContentTokens", "done"):
+                    continue
 
-            data = websocket.receive_json()
-            assert data["type"] == "AwaitInputEvent"
+            # Verify all 3 slides were seen in order
+            assert slides_seen == [0, 1, 2], f"Expected slides [0,1,2], got {slides_seen}"
+            assert found_end_sentinel, "Did not receive end-of-presentation sentinel SlideEndEvent(slide_index=-1)"
+            print("Passed: All 3 slides auto-advanced and end sentinel received")
 
-            # Send Continue
-            websocket.send_json({"type": "chat.user_message", "data": {"text": "continue"}})
-
-            # Slide 1 (which is the 2nd slide)
-            data = websocket.receive_json()
-            assert data["type"] == "SlideStartEvent"
-            assert data["slide_index"] == 1
-
-            # Because mock_stream is fast, it likely already pushed all tokens for Slide 1.
-            # We send an interrupt now.
-            websocket.send_json({"type": "chat.user_message", "data": {"text": "What does this mean?"}})
+            # Now send a question mid-session (interrupts to Q&A mode)
+            websocket.send_json({"type": "chat.user_message", "data": {"message_id": str(uuid4()), "text": "What does this mean?"}})
 
             # Drain events until we see the answer
             found_answer = False
@@ -114,46 +118,10 @@ async def test_explain_ws_flow(app_fixture, mock_db_session):
                     found_answer = True
                     break
                 if data["type"] == "SlideEndEvent" and data["slide_index"] == -1:
-                    break
-            
-            assert found_answer, "Did not receive the answer to the interruption"
-
-            # Drain until the next AwaitInputEvent
-            while True:
-                data = websocket.receive_json()
-                if data["type"] == "AwaitInputEvent":
-                    break
-            print("Passed Slide 1")
-
-            # Send Continue
-            websocket.send_json({"type": "chat.user_message", "data": {"text": "continue"}})
-
-            # VERIFY IT RESUMES CORRECTLY FROM SLIDE 2 (index 1)
-            # Wait, the logic in explain_handler says if "continue" is sent, it does current_slide_index += 1.
-            # But if it was interrupted mid-slide, current_slide_index is still 1. If we send "continue", it will increment to 2!
-            # Ah! Let's check `explain_handler.py`.
-            # if "continue" in user_text.lower():
-            #     self.current_slide_index += 1
-            # It resumes from slide 3 (index 2)!
-
-            data = websocket.receive_json()
-            assert data["type"] == "SlideStartEvent"
-            assert data["slide_index"] == 2
-
-            # Tokens for Slide 2
-            while True:
-                data = websocket.receive_json()
-                if data["type"] == "SlideEndEvent":
+                    # Restarted from the top, answer not yet received
                     break
 
-            data = websocket.receive_json()
-            assert data["type"] == "AwaitInputEvent"
+            assert found_answer, "Did not receive the answer to the interruption question"
+            print("Passed: Q&A interruption answer received")
 
-            # Send Continue
-            websocket.send_json({"type": "chat.user_message", "data": {"text": "continue"}})
-
-            # Expect SlideEndEvent
-            data = websocket.receive_json()
-        assert data["type"] == "SlideEndEvent"
-        print("Passed Slide 3 end event")
-    print("Test context exited successfully!")
+        print("Test context exited successfully!")

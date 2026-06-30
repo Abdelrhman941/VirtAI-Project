@@ -149,6 +149,7 @@ export function useVoiceMode(
               type: 'client.speech_stopped',
               data: {}
             });
+            return;
           }
         }
       } catch (err) {
@@ -194,6 +195,14 @@ export function useVoiceMode(
           break;
         case 'RATE_LIMIT_EXCEEDED':
           userFriendlyMessage = 'Too many requests. Please wait a moment and try again.';
+          canRetry = true;
+          break;
+        case 'TTS_ERROR':
+          userFriendlyMessage = 'Failed to generate voice response. Please try again.';
+          canRetry = true;
+          break;
+        case 'LLM_ERROR':
+          userFriendlyMessage = 'Failed to generate a response. Please try again.';
           canRetry = true;
           break;
         case 'CHUNK_SIZE_EXCEEDED':

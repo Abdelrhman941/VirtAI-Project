@@ -448,17 +448,15 @@
    12. STREAMING CURSOR
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.md-streaming-cursor {
+.streaming-active > *:last-child::after,
+.streaming-active > ul:last-child > li:last-child::after,
+.streaming-active > ol:last-child > li:last-child::after {
+  content: '▋';
   display: inline-block;
-  width: 2px;
-  height: 1em;
-  background: var(--md-cursor-color);
-  border-radius: 1px;
-  vertical-align: middle;
-  position: absolute;
-  transform: translateY(0.15em);
-  margin-inline-start: 2px;
-  animation: md-cursor-blink 1.1s ease-in-out infinite;
+  margin-inline-start: 4px;
+  color: var(--md-cursor-color);
+  animation: md-cursor-blink 1s step-end infinite;
+  vertical-align: baseline;
 }
 
 @keyframes md-cursor-blink {

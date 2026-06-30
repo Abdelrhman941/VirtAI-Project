@@ -126,6 +126,7 @@ class ConversationPipeline:
             user_id=user_id,
         )
         self._current_context = context
+        has_error = False
 
         try:
             if not text.strip():
@@ -178,17 +179,24 @@ class ConversationPipeline:
                             )
                         except asyncio.TimeoutError:
                             break
+                        
                         if sentence is None:
+                            context.sentence_queue.task_done()
                             break
 
                         context.current_sentence = sentence
                         await self.tts_stage.process(context)
                         if context.aborted:
+                            context.sentence_queue.task_done()
                             break  # type: ignore[unreachable]
                         await self.animation_stage.process(context)
                         context.sentence_index += 1
+                        
+                        context.sentence_queue.task_done()
                 except Exception as e:
                     logger.error(f"process_audio crashed: {e} | trace_id={trace_id}")
+                    nonlocal has_error
+                    has_error = True
                     await send_callback(
                         make_error(
                             code="PIPELINE_AUDIO_ERROR",
@@ -198,6 +206,14 @@ class ConversationPipeline:
                         )
                     )
                     context.abort()
+                finally:
+                    # Drain any remaining items (e.g. duplicate None sentinels) to prevent join() from deadlocking
+                    while not context.sentence_queue.empty():
+                        try:
+                            _ = context.sentence_queue.get_nowait()
+                            context.sentence_queue.task_done()
+                        except asyncio.QueueEmpty:
+                            break
 
             settings = get_settings()
 
@@ -216,6 +232,15 @@ class ConversationPipeline:
                             )
                         )
                         self._running_tasks.append(t3)
+                    
+                    # 1. Wait for LLM generation to complete
+                    await t1
+                    
+                    # 2. Explicit Queue Waiting: Wait for the sentence queue to be fully processed
+                    await context.sentence_queue.join()
+                    
+                    # 3. Wait for the audio worker to exit cleanly
+                    await t2
             except Exception:
                 context.abort()
                 raise
@@ -228,6 +253,7 @@ class ConversationPipeline:
             return
         except Exception as e:
             logger.error(f"Pipeline error: {e} | trace_id={trace_id}")
+            has_error = True
             await send_callback(
                 make_error(
                     code="PIPELINE_ERROR",
@@ -270,7 +296,8 @@ class ConversationPipeline:
                     )
 
             with suppress(Exception):
-                await send_callback(make_pipeline_state(session_id, "idle", message_id))
+                final_state = "error" if has_error else "idle"
+                await send_callback(make_pipeline_state(session_id, final_state, message_id))
             self._current_message_id = None
             self._current_context = None
             self._running_tasks.clear()

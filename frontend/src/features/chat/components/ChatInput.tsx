@@ -1,4 +1,4 @@
-import React, { KeyboardEvent, useCallback, useEffect, useRef, useMemo } from 'react';
+import React, { KeyboardEvent, useCallback, useEffect, useRef, useMemo, useState } from 'react';
 import { FiSquare } from 'react-icons/fi';
 import { PiPaperclip, PiPaperPlaneTiltFill } from 'react-icons/pi';
 import VoiceModeButton from '../../voice/components/VoiceModeButton';
@@ -7,10 +7,8 @@ import { ConnectionState } from '@/core/realtime/wsConstants';
 const MAX_CHARS = 2000;
 
 interface ChatInputProps {
-  inputValue: string;
-  onInputChange: (value: string) => void;
-  onSend: () => void;
-  onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onSend: (text: string) => void;
+  onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   pipelineState: 'idle' | 'thinking' | 'speaking' | 'error';
   onToggleDocuments: () => void;
@@ -26,8 +24,6 @@ interface ChatInputProps {
 }
 
 export default function ChatInput({
-  inputValue,
-  onInputChange,
   onSend,
   onKeyDown,
   textareaRef,
@@ -37,6 +33,7 @@ export default function ChatInput({
   onStop,
   wsClient,
 }: ChatInputProps) {
+  const [inputValue, setInputValue] = useState('');
   const requestRef = useRef<number>(0);
   const lastActionTime = useRef<number>(0);
 
@@ -82,7 +79,7 @@ export default function ChatInput({
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const el = e.target;
-      onInputChange(el.value);
+      setInputValue(el.value);
 
       const hardcodedMaxHeight = 150;
 
@@ -100,27 +97,34 @@ export default function ChatInput({
         el.style.overflowY = shouldScroll ? 'auto' : 'hidden';
       });
     },
-    [onInputChange]
+    []
   );
 
   const handleKeyDownSafe = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       const now = Date.now();
       if (now - lastActionTime.current < 500) {
-        e.preventDefault();
         return;
       }
+      if (isInputDisabled || !inputValue.trim()) return;
       lastActionTime.current = now;
+      onSend(inputValue);
+      setInputValue('');
+      return;
     }
-    onKeyDown(e);
-  }, [onKeyDown]);
+    if (onKeyDown) {
+      onKeyDown(e);
+    }
+  }, [onKeyDown, inputValue, isInputDisabled, onSend]);
 
   const handleSendSafe = useCallback(() => {
     const now = Date.now();
     if (now - lastActionTime.current < 500) return;
     if (isInputDisabled || !inputValue.trim()) return;
     lastActionTime.current = now;
-    onSend();
+    onSend(inputValue);
+    setInputValue('');
   }, [isInputDisabled, inputValue, onSend]);
 
   const isGenerating = ['thinking', 'speaking'].includes(pipelineState);
@@ -169,7 +173,7 @@ export default function ChatInput({
           {isGenerating ? (
             <button
               type="button"
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-red-500/90 text-white self-end mb-0.5 hover:bg-red-500 transition-colors animate-pulse"
+              className="w-10 h-10 rounded-full flex items-center justify-center bg-red-500/90 text-white self-end mb-0.5 hover:bg-red-500 transition-colors animate-pulse cursor-pointer"
               onClick={onStop}
               title="Halt Generation"
               aria-label="Halt generation"
@@ -179,7 +183,7 @@ export default function ChatInput({
           ) : (
             <button
               type="button"
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-gold text-white self-end mb-0.5 hover:bg-gold-deep transition-colors disabled:opacity-50 disabled:bg-white/10 disabled:text-white/30"
+              className="w-10 h-10 rounded-full flex items-center justify-center bg-gold text-white self-end mb-0.5 hover:bg-gold-deep transition-colors disabled:opacity-50 disabled:bg-white/10 disabled:text-white/30 cursor-pointer disabled:cursor-not-allowed"
               onClick={handleSendSafe}
               title="Submit inquiry"
               aria-label="Submit inquiry"

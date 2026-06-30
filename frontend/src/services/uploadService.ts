@@ -40,7 +40,7 @@ export class UploadService {
   private watchdogInterval: ReturnType<typeof setInterval> | null = null;
   private handleVisibilityChange = () => {
     if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-      const hasActive = this.state.documents.some(doc => doc.status === 'PENDING' || doc.status === 'PROCESSING');
+      const hasActive = this.state.documents.some(doc => doc.id && !['COMPLETE', 'FAILED', 'CANCELLED'].includes(doc.current_stage));
       if (hasActive) {
         this.checkActiveDocuments();
       }
@@ -69,9 +69,16 @@ export class UploadService {
           newDocs = newDocs.map(d => {
             if (d.id === docId) {
               found = true;
-              const incomingStage = doc.stage || doc.current_stage;
-              const incomingPct = doc.progress_pct !== undefined ? doc.progress_pct : doc.progress_pct;
+              let incomingStage = doc.stage || doc.current_stage;
+              let incomingPct = doc.progress_pct !== undefined ? doc.progress_pct : d.progress_pct;
               const incomingStatus = doc.status;
+
+              if (incomingStatus === 'COMPLETED') {
+                incomingStage = 'COMPLETE';
+                incomingPct = 100;
+              } else if (incomingStatus === 'FAILED') {
+                incomingStage = 'FAILED';
+              }
 
               if (
                 (incomingStage && d.current_stage !== incomingStage) ||
@@ -124,7 +131,7 @@ export class UploadService {
     if (this.watchdogInterval) return;
     this.watchdogInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        const hasActive = this.state.documents.some(doc => doc.status === 'PENDING' || doc.status === 'PROCESSING');
+        const hasActive = this.state.documents.some(doc => doc.id && !['COMPLETE', 'FAILED', 'CANCELLED'].includes(doc.current_stage));
         if (hasActive) {
           this.checkActiveDocuments();
         }
@@ -142,6 +149,12 @@ export class UploadService {
       const newDocs = this.state.documents.map(doc => {
         const updated = activeDocs.find(d => d.id === doc.id);
         if (updated) {
+          if (updated.status === 'COMPLETED') {
+            updated.current_stage = 'COMPLETE';
+            updated.progress_pct = 100;
+          } else if (updated.status === 'FAILED') {
+            updated.current_stage = 'FAILED';
+          }
           const lastWsPatch = this.wsPatchTimes.get(updated.id) || 0;
           if (lastWsPatch > fetchTime - 2000) {
             return doc;
@@ -155,6 +168,9 @@ export class UploadService {
             changed = true;
             return { ...doc, ...updated };
           }
+        } else if (doc.id && !['COMPLETE', 'FAILED', 'CANCELLED'].includes(doc.current_stage)) {
+          // Document was active but is missing from active list, meaning it reached a terminal state.
+          setTimeout(() => this.fetchDocuments(), 0);
         }
         return doc;
       });
@@ -203,11 +219,21 @@ export class UploadService {
       const data = await documentApi.list(this.currentSessionId);
       
       const newDocs = data.map(fetchedDoc => {
+        if (fetchedDoc.status === 'COMPLETED') {
+          fetchedDoc.current_stage = 'COMPLETE';
+          fetchedDoc.progress_pct = 100;
+        } else if (fetchedDoc.status === 'FAILED') {
+          fetchedDoc.current_stage = 'FAILED';
+        }
+
         const existingLocal = this.state.documents.find(d => d.id === fetchedDoc.id);
         if (existingLocal) {
           const lastWsPatch = this.wsPatchTimes.get(fetchedDoc.id) || 0;
           if (lastWsPatch > fetchStartTime) {
             return existingLocal;
+          }
+          if (fetchedDoc.progress_pct === undefined && existingLocal.progress_pct !== undefined) {
+            fetchedDoc.progress_pct = existingLocal.progress_pct;
           }
         }
         return fetchedDoc;
@@ -279,7 +305,7 @@ export class UploadService {
       this.setState({
         documents: this.state.documents.map(doc =>
           doc.temp_id === nextItem.tempId
-            ? { ...doc, id: response.id, temp_id: undefined, current_stage: response.current_stage }
+            ? { ...doc, id: response.id, temp_id: undefined, current_stage: (response.current_stage || response.status || 'QUEUED') as any, status: response.status || 'QUEUED' }
             : doc
         )
       });
@@ -290,6 +316,11 @@ export class UploadService {
       
       if (isAxiosError(err) && (err.response?.status === 400 || err.response?.status === 403)) {
         this.setState({ error: 'Session document limit (10) reached or upload forbidden.' });
+      } else if (isAxiosError(err) && err.response?.status === 404) {
+        this.setState({ error: 'Session not found or expired. Please start a new chat.' });
+        if (this.currentSessionId) {
+          window.dispatchEvent(new CustomEvent('session-invalidated', { detail: { sessionId: this.currentSessionId } }));
+        }
       } else if (err instanceof Error && (err.name === 'AbortError' || err.name === 'CanceledError')) {
         this.setState({ error: `Upload cancelled for ${nextItem.file.name}` });
       } else {

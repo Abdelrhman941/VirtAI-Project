@@ -29,6 +29,9 @@ interface AvatarCanvasWrapperProps {
   playbackStartTimeRef: React.MutableRefObject<number | null>;
   getIsAudioPlaying: () => boolean;
   getNextPlaybackTime: () => number;
+  getAnalyserNode: () => AnalyserNode | null;
+  morphTargetValuesRef?: React.MutableRefObject<Record<string, number>>;
+  currentTimeOverrideRef?: React.MutableRefObject<number | null>;
 }
 
 // DEFENSIVE: Synchronously dispose WebGL resources on unmount.
@@ -99,7 +102,10 @@ export const AvatarCanvasWrapper = memo(function AvatarCanvasWrapper({
   getAudioContext,
   playbackStartTimeRef,
   getIsAudioPlaying,
-  getNextPlaybackTime
+  getNextPlaybackTime,
+  getAnalyserNode,
+  morphTargetValuesRef,
+  currentTimeOverrideRef
 }: AvatarCanvasWrapperProps) {
   const [isContextLost, setIsContextLost] = useState(false);
 
@@ -169,6 +175,9 @@ export const AvatarCanvasWrapper = memo(function AvatarCanvasWrapper({
           playbackStartTimeRef={playbackStartTimeRef}
           getIsAudioPlaying={getIsAudioPlaying}
           getNextPlaybackTime={getNextPlaybackTime}
+          getAnalyserNode={getAnalyserNode}
+          morphTargetValuesRef={morphTargetValuesRef}
+          currentTimeOverrideRef={currentTimeOverrideRef}
         />
       </Canvas>
     </div>
@@ -183,6 +192,7 @@ export const AvatarCanvasWrapper = memo(function AvatarCanvasWrapper({
     prevProps.getAudioContext === nextProps.getAudioContext &&
     prevProps.playbackStartTimeRef === nextProps.playbackStartTimeRef &&
     prevProps.getIsAudioPlaying === nextProps.getIsAudioPlaying &&
-    prevProps.getNextPlaybackTime === nextProps.getNextPlaybackTime
+    prevProps.getNextPlaybackTime === nextProps.getNextPlaybackTime &&
+    prevProps.getAnalyserNode === nextProps.getAnalyserNode
   );
 });

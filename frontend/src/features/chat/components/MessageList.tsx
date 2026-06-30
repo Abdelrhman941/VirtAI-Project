@@ -5,29 +5,52 @@ import { StreamingMessageRenderer } from './StreamingMessageRenderer';
 import MessageBubble from './MessageBubble';
 import { ChatBubble, MessageStatus } from '../../../shared/components/ChatPrimitives';
 import { IMessage } from '../../session/types';
+import { useChatUIStore } from '../store/useChatUIStore';
+
+function StreamingLayer({ avatarName }: { avatarName: string }) {
+  const currentMessage = useChatUIStore(s => s.currentMessage);
+  const interimTranscript = useChatUIStore(s => s.interimTranscript);
+  const pipelineState = useChatUIStore(s => s.pipelineState);
+
+  return (
+    <>
+      {pipelineState === 'thinking' && !currentMessage && (
+        <ChatBubble role="assistant" isTyping ariaLabel="AI is typing">
+          <MessageStatus />
+        </ChatBubble>
+      )}
+
+      {interimTranscript && (
+        <ChatBubble role="user" isInterim ariaLabel="Interim transcript">
+          {interimTranscript}
+        </ChatBubble>
+      )}
+
+      {currentMessage && (
+        <ChatBubble role="assistant" avatarName={avatarName} ariaLabel="Assistant is typing">
+          <StreamingMessageRenderer content={currentMessage} isStreaming={true} />
+        </ChatBubble>
+      )}
+    </>
+  );
+}
 
 interface MessageListProps {
   messages: IMessage[];
-  currentMessage: string | null;
-  interimTranscript?: string;
   error?: string | null;
   avatarName: string;
   chatScrollRef: React.RefObject<HTMLDivElement>;
   messagesEndRef: React.RefObject<HTMLDivElement>;
-  pipelineState?: string;
   onSendText?: (text: string) => void;
   onScroll: (e: React.UIEvent<HTMLDivElement>) => void;
 }
 
 const MessageList = React.memo(function MessageList({
   messages,
-  currentMessage,
-  interimTranscript,
   avatarName,
   chatScrollRef,
   messagesEndRef,
   onScroll,
-  pipelineState,
 }: MessageListProps) {
   return (
     <div
@@ -62,27 +85,7 @@ const MessageList = React.memo(function MessageList({
               }}
             />
           ))}
-
-          {/* Typing indicator when AI is thinking but not yet streaming */}
-          {pipelineState === 'thinking' && !currentMessage && (
-            <ChatBubble role="assistant" isTyping ariaLabel="AI is typing">
-              <MessageStatus />
-            </ChatBubble>
-          )}
-
-          {/* Show interim ASR transcript as grayed/italic user bubble */}
-          {interimTranscript && (
-            <ChatBubble role="user" isInterim ariaLabel="Interim transcript">
-              {interimTranscript}
-            </ChatBubble>
-          )}
-
-          {/* Show streaming message if present */}
-          {currentMessage && (
-            <ChatBubble role="assistant" avatarName={avatarName} ariaLabel="Assistant is typing">
-              <StreamingMessageRenderer content={currentMessage} isStreaming={true} />
-            </ChatBubble>
-          )}
+          <StreamingLayer avatarName={avatarName} />
           <div ref={messagesEndRef} />
         </div>
       )}

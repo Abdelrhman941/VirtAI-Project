@@ -3,7 +3,7 @@ import { UploadService } from '../../services/uploadService';
 
 const globalUploadService = new UploadService();
 
-export function useDocumentList(sessionId: string | null = null) {
+export function useDocumentList(sessionId: string | null = null, ensureSession?: () => Promise<string | null>) {
   const uploadService = globalUploadService;
   const [state, setState] = useState(uploadService.getState());
 
@@ -22,7 +22,16 @@ export function useDocumentList(sessionId: string | null = null) {
     error: state.error,
     refresh: () => uploadService.fetchDocuments(),
     deleteDocument: (id: string) => uploadService.deleteDocument(id),
-    enqueueUpload: (file: File, tempId: string, fileHash: string, confirmedDuplicate = false) => uploadService.enqueueUpload(file, tempId, fileHash, confirmedDuplicate),
+    enqueueUpload: async (file: File, tempId: string, fileHash: string, confirmedDuplicate = false) => {
+      let activeSessionId = sessionId;
+      if (!activeSessionId && ensureSession) {
+        activeSessionId = await ensureSession();
+        if (activeSessionId) {
+          uploadService.initSession(activeSessionId);
+        }
+      }
+      return uploadService.enqueueUpload(file, tempId, fileHash, confirmedDuplicate);
+    },
     cancelUpload: (tempId: string) => uploadService.cancelUpload(tempId),
     uploadQueueLength: state.uploadQueue.length,
     activeUploads: state.activeUploads,

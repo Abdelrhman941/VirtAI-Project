@@ -6,10 +6,11 @@ import { formatDateOnly } from '@/shared/utils/date';
 
 interface DocumentsPanelProps {
   sessionId?: string | null;
+  onEnsureSession?: () => Promise<string | null>;
   onClose?: () => void;
 }
 
-export function DocumentsPanel({ sessionId = null, onClose }: DocumentsPanelProps) {
+export function DocumentsPanel({ sessionId = null, onEnsureSession, onClose }: DocumentsPanelProps) {
   const {
     documents,
     isLoading,
@@ -20,7 +21,7 @@ export function DocumentsPanel({ sessionId = null, onClose }: DocumentsPanelProp
     uploadQueueLength,
     activeUploads,
     clearError
-  } = useDocumentList(sessionId);
+  } = useDocumentList(sessionId, onEnsureSession);
 
   const getStatusIcon = (stage: string | undefined) => {
     if (stage === 'COMPLETE') return <FiCheckCircle className="status-icon success" />;
