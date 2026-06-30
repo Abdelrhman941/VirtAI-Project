@@ -149,40 +149,11 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   
   const rootRef = React.useRef<HTMLDivElement>(null);
 
-  React.useLayoutEffect(() => {
-    if (!rootRef.current) return;
-    
-    const existingCursor = rootRef.current.querySelector('.md-streaming-cursor-injected');
-    if (existingCursor) {
-      existingCursor.remove();
-    }
-
-    if (!streaming) return;
-
-    const cursor = document.createElement('span');
-    cursor.className = 'inline-block w-[0.5ch] h-[1em] align-middle bg-current rounded-[1px] ml-1 translate-y-[0.1em] animate-[pulse_1s_ease-in-out_infinite] md-streaming-cursor-injected';
-    cursor.setAttribute('aria-hidden', 'true');
-
-    const root = rootRef.current;
-    const blocks = Array.from(root.querySelectorAll('p, li, pre, td, th, h1, h2, h3, h4, h5, h6, blockquote'));
-    const lastBlock = blocks[blocks.length - 1];
-    
-    if (lastBlock) {
-      lastBlock.appendChild(cursor);
-    } else {
-      root.appendChild(cursor);
-    }
-
-    return () => {
-      cursor.remove();
-    };
-  }, [sanitizedContent, streaming]);
-
   return (
     <div 
       ref={rootRef}
       dir="auto"
-      className={`${PROSE_CLASSES} ${className}`.trim()} 
+      className={`${PROSE_CLASSES} ${streaming ? 'streaming-active' : ''} ${className}`.trim()} 
     >
       <ReactMarkdown
         remarkPlugins={REMARK_PLUGINS}
