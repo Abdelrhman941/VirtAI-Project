@@ -19,6 +19,9 @@ class GroqASRProvider(BaseASRProvider, StreamingASRService):
         audio_format: str = "webm",
         language: str | None = None,
     ) -> ASRResult:
+        if not self.client.api_key:
+            raise ValueError("GROQ_API_KEY is missing or empty. Please add it to your .env file.")
+
         if not audio_bytes:
             return ASRResult(transcript="", language=language or self.language)
 
@@ -58,6 +61,9 @@ class GroqASRProvider(BaseASRProvider, StreamingASRService):
     async def transcribe_stream(
         self, audio_data: np.ndarray, sample_rate: int = 16000
     ) -> StreamingASRResult:
+        if not self.client.api_key:
+            raise ValueError("GROQ_API_KEY is missing or empty. Please add it to your .env file.")
+
         if audio_data is None or len(audio_data) == 0:
             return StreamingASRResult(transcript="", is_final=True)
 
