@@ -133,22 +133,22 @@ class ExplainUseCase:
         state_data["state"] = PresentationState.EXPLAINING.value
         await self._save_state(session_key, state_data)
 
-        # Auto-advance through all remaining slides
-        for slide_index in range(current_slide_index, len(chunks)):
-            # Update persisted state so we can resume from here on reconnect
-            state_data["current_slide_index"] = slide_index
-            state_data["state"] = PresentationState.EXPLAINING.value
-            await self._save_state(session_key, state_data)
+        # Explain just the current slide
+        async for event in self._explain_single_slide(current_slide_index, chunks):
+            yield event
 
-            async for event in self._explain_single_slide(slide_index, chunks):
-                yield event
-
-        # B1 fix: emit end-of-presentation sentinel so the frontend can update UI
-        yield SlideEndEvent(slide_index=-1).model_dump()
-
-        state_data["current_slide_index"] = 0  # reset for next session
         state_data["state"] = PresentationState.AWAITING.value
         await self._save_state(session_key, state_data)
+
+        if current_slide_index == len(chunks) - 1:
+            # End of presentation: ask if they have questions
+            yield SlideContentTokens(
+                tokens="\n\n*That concludes the presentation. Do you have any questions?*"
+            ).model_dump()
+        
+        yield AwaitInputEvent().model_dump()
+
+
 
     async def handle_user_input(
         self, user_id: str, document_id: str, text: str

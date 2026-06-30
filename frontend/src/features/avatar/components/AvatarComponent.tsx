@@ -4,7 +4,8 @@ import { useGLTF } from '@react-three/drei';
 import { useGraph } from '@react-three/fiber';
 import { SkeletonUtils } from 'three-stdlib';
 import { useAvatarAnimations } from './useAvatarAnimations';
-import { useAvatarLipSync, Viseme } from './useAvatarLipSync';
+import { useAvatarLipSync } from './useAvatarLipSync';
+import { Viseme } from '@/features/voice/hooks/useGaplessAudioQueue';
 import { toast } from '@/shared/utils/toast';
 
 const TOAST_DURATION = 5000;
@@ -19,6 +20,8 @@ export interface AvatarComponentProps {
   getIsAudioPlaying?: () => boolean;
   getNextPlaybackTime?: () => number;
   getAnalyserNode?: () => AnalyserNode | null;
+  morphTargetValuesRef?: React.MutableRefObject<Record<string, number>>;
+  currentTimeOverrideRef?: React.MutableRefObject<number | null>;
 }
 
 interface GLTFResult {
@@ -35,7 +38,9 @@ export function AvatarComponent({
   playbackStartTimeRef,
   getIsAudioPlaying,
   getNextPlaybackTime,
-  getAnalyserNode
+  getAnalyserNode,
+  morphTargetValuesRef,
+  currentTimeOverrideRef
 }: AvatarComponentProps) {
   const groupRef = useRef<THREE.Group>(null);
   const avatarUrl = `/models/${avatarId}.glb`;
@@ -110,7 +115,9 @@ export function AvatarComponent({
     getIsAudioPlaying,
     getNextPlaybackTime,
     getAnalyserNode,
-    groupRef
+    groupRef,
+    morphTargetValuesRef,
+    currentTimeOverrideRef
   });
 
   useEffect(() => {

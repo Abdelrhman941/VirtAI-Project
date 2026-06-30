@@ -192,7 +192,7 @@ class IngestDocumentUseCase:
             if not self.chunker:
                 raise ValueError("Chunker is required for this stage")
             
-            chunks_text = await chunk_document(normalized, self.chunker, self.settings)
+            chunks_text = await chunk_document(raw_text, self.chunker, self.settings)
             total_chunks = len(chunks_text)
 
             logger.info(

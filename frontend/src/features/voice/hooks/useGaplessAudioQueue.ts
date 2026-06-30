@@ -35,6 +35,7 @@ export function useGaplessAudioQueue() {
   const abortControllerRef = useRef<AbortController>(new AbortController());
   const activeSourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
   const isMountedRef = useRef(true);
+  const playbackRateRef = useRef<number>(1.0);
   
   // Streaming state: tracks whether at least one chunk decoded successfully.
   // Only set to true after a successful convertInt16ToFloat32 + createBuffer call.
@@ -160,30 +161,42 @@ export function useGaplessAudioQueue() {
           // A3 fix: use apiClient so the request/response interceptors handle token refresh automatically.
           let arrayBuffer: ArrayBuffer;
           try {
+            console.log(`[GaplessAudio Debug] 1. Fetching URL: ${url}`);
             const response = await apiClient.get<ArrayBuffer>(url, {
               responseType: 'arraybuffer',
               signal: abortControllerRef.current.signal,
             });
             arrayBuffer = response.data;
+            console.log(`[GaplessAudio Debug] 2. Download successful. Byte length: ${arrayBuffer.byteLength}`);
           } catch (fetchErr: any) {
             if (fetchErr.name === 'AbortError' || fetchErr.code === 'ERR_CANCELED') return;
-            console.error('[GaplessAudio] URL fallback fetch failed:', fetchErr);
+            console.error('[GaplessAudio Debug] 2. URL fallback fetch failed:', fetchErr);
             return;
           }
 
-          let float32Data: Float32Array;
           let audioBuffer: AudioBuffer;
           try {
-            float32Data = convertInt16ToFloat32(arrayBuffer);
-            audioBuffer = ctx.createBuffer(PCM_NUM_CHANNELS, float32Data.length, PCM_SAMPLE_RATE);
-            audioBuffer.copyToChannel(float32Data, 0);
+            if (url.toLowerCase().endsWith('.mp3')) {
+              console.log(`[GaplessAudio Debug] 3. Decoding MP3 via AudioContext...`);
+              audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+              console.log(`[GaplessAudio Debug] 6. MP3 decoded successfully. Duration: ${audioBuffer.duration}s`);
+            } else {
+              console.log(`[GaplessAudio Debug] 3. Decoding raw PCM Int16 to Float32...`);
+              const float32Data = convertInt16ToFloat32(arrayBuffer);
+              console.log(`[GaplessAudio Debug] 4. Decoded Float32 length: ${float32Data.length}`);
+              
+              console.log(`[GaplessAudio Debug] 5. Creating AudioContext Buffer (Channels: ${PCM_NUM_CHANNELS}, SampleRate: ${PCM_SAMPLE_RATE})`);
+              audioBuffer = ctx.createBuffer(PCM_NUM_CHANNELS, float32Data.length, PCM_SAMPLE_RATE);
+              audioBuffer.copyToChannel(float32Data, 0);
+              console.log(`[GaplessAudio Debug] 6. AudioBuffer created successfully. Duration: ${audioBuffer.duration}s`);
+            }
           } catch (err) {
             if (err instanceof DOMException) {
-              console.error('[GaplessAudio] DOMException during audio buffer creation (URL path):', err.name, err.message);
+              console.error('[GaplessAudio Debug] DOMException during audio buffer creation (URL path):', err.name, err.message);
             } else if (err instanceof TypeError) {
-              console.error('[GaplessAudio] TypeError during audio data conversion (URL path):', err.message);
+              console.error('[GaplessAudio Debug] TypeError during audio data conversion (URL path):', err.message);
             } else {
-              console.error('[GaplessAudio] Failed to process PCM audio from URL.', err);
+              console.error('[GaplessAudio Debug] Failed to process PCM audio from URL.', err);
             }
             return;
           }
@@ -210,9 +223,12 @@ export function useGaplessAudioQueue() {
 
           const chunkOffset = scheduleTime - visemeBaseStartTimeRef.current;
 
+          console.log(`[GaplessAudio Debug] 7. Scheduling playback at time: ${scheduleTime} (Current ctx time: ${ctx.currentTime})`);
+
           const source = ctx.createBufferSource();
           activeSourceNodeRef.current = source;
           source.buffer = audioBuffer;
+          source.playbackRate.value = playbackRateRef.current;
           if (analyserNodeRef.current) {
             source.connect(analyserNodeRef.current);
           } else {
@@ -221,6 +237,7 @@ export function useGaplessAudioQueue() {
           scheduledNodesRef.current.push(source);
 
           source.onended = () => {
+            console.log(`[GaplessAudio Debug] 10. Playback finished for URL: ${url}`);
             if (!source) return;
             try {
               if (typeof source.disconnect === 'function') {
@@ -238,7 +255,9 @@ export function useGaplessAudioQueue() {
           };
 
           source.start(scheduleTime);
-          nextPlaybackTimeRef.current = scheduleTime + audioBuffer.duration;
+          console.log(`[GaplessAudio Debug] 8. source.start() executed successfully.`);
+          nextPlaybackTimeRef.current = scheduleTime + (audioBuffer.duration / playbackRateRef.current);
+          console.log(`[GaplessAudio Debug] 9. Expected end time: ${nextPlaybackTimeRef.current}`);
 
           if (visemes.length > 0 && mouthCuesRef) {
             console.log(`[Runtime Evidence] Raw Visemes Payload. Count: ${visemes.length}, First: ${JSON.stringify(visemes[0])}, Last: ${JSON.stringify(visemes[visemes.length - 1])}, Audio Duration: ${audioBuffer.duration}`);
@@ -250,8 +269,8 @@ export function useGaplessAudioQueue() {
 
             const shiftedVisemes = visemes.map((v) => ({
               ...v,
-              start: (v.start / timeScale) + chunkOffset,
-              end: (v.end / timeScale) + chunkOffset,
+              start: ((v.start / timeScale) / playbackRateRef.current) + chunkOffset,
+              end: ((v.end / timeScale) / playbackRateRef.current) + chunkOffset,
             }));
             mouthCuesRef.current = [...mouthCuesRef.current, ...shiftedVisemes];
           }
@@ -309,12 +328,13 @@ export function useGaplessAudioQueue() {
             visemeBaseStartTimeRef.current = scheduleTime;
           }
 
-          const newDuration = audioBuffer.duration;
+          const newDuration = audioBuffer.duration / playbackRateRef.current;
           if (newDuration <= 0) return;
 
           const source = ctx.createBufferSource();
           activeSourceNodeRef.current = source;
           source.buffer = audioBuffer;
+          source.playbackRate.value = playbackRateRef.current;
           
           if (analyserNodeRef.current) {
             source.connect(analyserNodeRef.current);
@@ -423,5 +443,10 @@ export function useGaplessAudioQueue() {
     getIsAudioPlaying,
     getNextPlaybackTime,
     getAnalyserNode: useCallback(() => analyserNodeRef.current, []),
+    setPlaybackRate: useCallback((rate: number) => {
+      playbackRateRef.current = rate;
+      // Note: We don't retroactively apply rate to already-scheduled nodes
+      // to avoid breaking calculated timings and gaps. It will apply to the next enqueued chunk.
+    }, []),
   };
 }

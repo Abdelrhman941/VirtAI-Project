@@ -14,7 +14,7 @@ export function useClassroomAudio() {
   // Store aborted message IDs to instantly drop late-arriving packets from the network.
   const abortedMessageIdsRef = useRef<Set<string>>(new Set());
 
-  const { enqueueAudioUrl, flushQueue, getAudioContext, unlockAudioContext, playbackStartTimeRef, getIsAudioPlaying, getNextPlaybackTime, getAnalyserNode } = useGaplessAudioQueue();
+  const { enqueueAudioUrl, flushQueue, getAudioContext, unlockAudioContext, playbackStartTimeRef, getIsAudioPlaying, getNextPlaybackTime, getAnalyserNode, setPlaybackRate } = useGaplessAudioQueue();
 
   const tryPlayChunk = useCallback(function tryPlayChunkInner(baseId: string) {
     if (abortedMessageIdsRef.current.has(baseId)) {
@@ -208,5 +208,6 @@ export function useClassroomAudio() {
     getIsAudioPlaying,
     getNextPlaybackTime,
     getAnalyserNode,
+    setPlaybackRate,
   };
 }

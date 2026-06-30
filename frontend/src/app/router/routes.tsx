@@ -12,6 +12,7 @@ const AuthPage = lazy(() => import('@/pages/Auth'));
 const AuthCallbackHandler = lazy(() => import('@/pages/AuthCallback'));
 
 const Help = lazy(() => import('@/pages/Help'));
+const AvatarPlayground = lazy(() => import('@/pages/AvatarPlayground'));
 
 interface RouteErrorBoundaryProps {
   children: ReactNode;
@@ -81,6 +82,15 @@ export default function AppRoutes() {
 
       {/* Catch-all */}
       <Route path="*" element={<RouteErrorBoundary><NotFound /></RouteErrorBoundary>} />
+
+      {/* Dev-only Playground Route */}
+      {import.meta.env.DEV && (
+        <Route path="/avatar-playground" element={
+          <RouteErrorBoundary>
+            <AvatarPlayground />
+          </RouteErrorBoundary>
+        } />
+      )}
     </Routes>
   );
 }

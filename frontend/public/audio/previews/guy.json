@@ -1,0 +1,10 @@
+[
+  { "start": 0, "end": 0.5, "value": "A" },
+  { "start": 0.5, "end": 1.0, "value": "B" },
+  { "start": 1.0, "end": 1.5, "value": "C" },
+  { "start": 1.5, "end": 2.0, "value": "D" },
+  { "start": 2.0, "end": 2.5, "value": "E" },
+  { "start": 2.5, "end": 3.0, "value": "F" },
+  { "start": 3.0, "end": 4.0, "value": "G" },
+  { "start": 4.0, "end": 5.0, "value": "H" }
+]

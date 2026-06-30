@@ -75,6 +75,13 @@ class SmartChunker:
             self.tokenizer = None
             logger.warning("tiktoken not installed — Token validation unavailable")
 
+        try:
+            from langchain_text_splitters import MarkdownTextSplitter
+            self._splitter = MarkdownTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.overlap_size)
+        except ImportError:
+            self._splitter = None
+            logger.warning("langchain_text_splitters not installed — Langchain fallback splitting disabled")
+
         # Splitting logic now handled natively within chunk()
 
     def chunk_text(self, raw_text: str) -> list[str]:
@@ -194,12 +201,23 @@ class SmartChunker:
 
             is_protected = block.get("type") in {"code", "table"}
 
+            # Force hard chunk boundary on horizontal rules (used for PDF page breaks)
+            if block_text == "---":
+                flush()
+                # Clear overlap so the new page starts fresh
+                current_blocks = []
+                continue
+
             # Oversized non-protected blocks: split with langchain
             if len(block_text) > self.chunk_size and not is_protected:
                 flush()
-                for segment in self._splitter.split_text(block_text):
-                    if segment.strip():
-                        chunks.append(segment.strip())
+                if hasattr(self, "_splitter") and self._splitter:
+                    for segment in self._splitter.split_text(block_text):
+                        if segment.strip():
+                            chunks.append(segment.strip())
+                else:
+                    # fallback if no langchain
+                    chunks.append(block_text)
                 continue
 
             # Check if adding this block exceeds the limit

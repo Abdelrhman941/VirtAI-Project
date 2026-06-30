@@ -2,7 +2,8 @@ import { useAnimations, useFBX } from '@react-three/drei';
 import React, { useEffect, useMemo, useRef, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { Viseme } from './useAvatarLipSync';
+import { useAvatarLipSync } from './useAvatarLipSync';
+import { Viseme } from '@/features/voice/hooks/useGaplessAudioQueue';
 
 const IDLE_URL = '/models/animations/Idle/Idle.fbx';
 const TALK_MANIFEST = [

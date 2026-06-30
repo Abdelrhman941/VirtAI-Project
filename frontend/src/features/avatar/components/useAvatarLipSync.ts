@@ -2,28 +2,18 @@ import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 
-const HEAD_BOB_FREQUENCY = 2;
-const HEAD_BOB_AMPLITUDE = 0.05;
+import { useLipSyncConfigStore } from '../store/useLipSyncConfigStore';
+
 const TWO_PI = Math.PI * 2;
-const HEAD_BOB_PERIOD = TWO_PI / HEAD_BOB_FREQUENCY;
-const FALLBACK_DAMPING = 5;
 const ORIGIN_ZERO = 0;
 const INACTIVE_VISEME_INFLUENCE = 0;
 
-const BLINK_DURATION = 0.15;
-const INITIAL_BLINK_TIME = 0;
 const BLINK_START_VAL = 0;
 const BLINK_END_VAL = 1;
 const BLINK_HALF_DIVISOR = 2;
-const BLINK_BASE_DELAY = 2.5;
-const BLINK_RANDOM_VARIANCE = 3.5;
 
 const TARGET_ZERO = 0;
-const BROW_THINKING = 0.6;
-const FROWN_THINKING = 0.3;
-const SMILE_SPEAKING = 0.2;
 const SPEED_IMMEDIATE = 0;
-const DEFAULT_DAMP_SPEED = 12;
 
 export interface UseAvatarLipSyncProps {
   targetMeshes: THREE.SkinnedMesh[];
@@ -35,6 +25,8 @@ export interface UseAvatarLipSyncProps {
   getNextPlaybackTime?: () => number;
   getAnalyserNode?: () => AnalyserNode | null;
   groupRef: React.RefObject<THREE.Group | null>;
+  morphTargetValuesRef?: React.MutableRefObject<Record<string, number>>;
+  currentTimeOverrideRef?: React.MutableRefObject<number | null>;
 }
 
 export function useAvatarLipSync({
@@ -46,6 +38,8 @@ export function useAvatarLipSync({
   getIsAudioPlaying,
   getAnalyserNode,
   groupRef,
+  morphTargetValuesRef,
+  currentTimeOverrideRef,
 }: UseAvatarLipSyncProps) {
   const visemeKeysList = useMemo(() => [
     'viseme_sil', 'viseme_PP', 'viseme_FF', 'viseme_TH', 'viseme_DD', 
@@ -53,7 +47,7 @@ export function useAvatarLipSync({
     'viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U'
   ], []);
   
-  const blinkStateRef = useRef({ nextBlinkTime: INITIAL_BLINK_TIME, duration: BLINK_DURATION, isBlinking: false });
+  const blinkStateRef = useRef({ nextBlinkTime: 0, duration: 0.15, isBlinking: false });
   const headBobTimeRef = useRef(ORIGIN_ZERO);
   
   // Realtime Audio Analysis Refs
@@ -104,7 +98,9 @@ export function useAvatarLipSync({
     // Determine speaking state
     const currentPipelineState = pipelineStateRef.current;
     let isAudioPlaying = false;
-    if (getIsAudioPlaying) {
+    if (currentTimeOverrideRef?.current != null) {
+      isAudioPlaying = true;
+    } else if (getIsAudioPlaying) {
       isAudioPlaying = getIsAudioPlaying();
     } else if (playbackStartTimeRef?.current != null) {
       const audioContext = getAudioContext?.();
@@ -114,10 +110,21 @@ export function useAvatarLipSync({
     }
     const isEffectivelySpeaking = currentPipelineState === 'speaking' || isAudioPlaying;
 
+    const config = useLipSyncConfigStore.getState().params;
+    const { 
+      headBobFrequency, headBobAmplitude, fallbackDamping, 
+      blinkDuration, blinkBaseDelay, blinkRandomVariance, 
+      browThinking, frownThinking, smileSpeaking, defaultDampSpeed,
+      visemeSSMultiplier, visemeAAMultiplier, visemeOMultiplier, jawOpenMultiplier,
+      consonantSpeedMultiplier, vowelSpeedMultiplier, fftSpeedMultiplier
+    } = config;
+    const HEAD_BOB_PERIOD = headBobFrequency > 0 ? TWO_PI / headBobFrequency : 0;
+
     if (targetMeshes.length > ORIGIN_ZERO) {
       const blinkState = blinkStateRef.current;
       if (!blinkState.isBlinking && t > blinkState.nextBlinkTime) {
         blinkState.isBlinking = true;
+        blinkState.duration = blinkDuration;
       }
 
       let blinkInfluence = TARGET_ZERO;
@@ -128,7 +135,7 @@ export function useAvatarLipSync({
           blinkInfluence = THREE.MathUtils.lerp(BLINK_END_VAL, BLINK_START_VAL, (t - (blinkState.nextBlinkTime + blinkState.duration / BLINK_HALF_DIVISOR)) / (blinkState.duration / BLINK_HALF_DIVISOR));
         } else {
           blinkState.isBlinking = false;
-          blinkState.nextBlinkTime = t + BLINK_BASE_DELAY + Math.random() * BLINK_RANDOM_VARIANCE;
+          blinkState.nextBlinkTime = t + blinkBaseDelay + Math.random() * blinkRandomVariance;
         }
       }
 
@@ -137,10 +144,10 @@ export function useAvatarLipSync({
       let targetSmile = TARGET_ZERO;
 
       if (currentPipelineState === 'thinking') {
-        targetBrow = BROW_THINKING;
-        targetFrown = FROWN_THINKING;
+        targetBrow = browThinking;
+        targetFrown = frownThinking;
       } else if (isEffectivelySpeaking) {
-        targetSmile = SMILE_SPEAKING;
+        targetSmile = smileSpeaking;
       }
 
       // FFT Analysis
@@ -182,22 +189,28 @@ export function useAvatarLipSync({
 
           // Mapping logic
           if (highNorm > 0.1) {
-            targetVisemeSS = highNorm * 1.5; // Consonants S, P
+            targetVisemeSS = highNorm * visemeSSMultiplier;
           }
           if (midNorm > 0.1) {
-            targetVisemeAA = midNorm * 1.5; // Wide vowels A, E
+            targetVisemeAA = midNorm * visemeAAMultiplier;
           }
           if (lowNorm > 0.1) {
-            targetVisemeO = lowNorm * 1.5; // Closed/deep vowels O, U
-            targetJawOpen = lowNorm * 0.1; // Reduced jawOpen influence from 0.5 to 0.1 to prevent overly wide jaw drops
+            targetVisemeO = lowNorm * visemeOMultiplier;
+            targetJawOpen = lowNorm * jawOpenMultiplier;
           }
         }
         
         // CHECK REAL VISEMES
         if (mouthCuesRef?.current && mouthCuesRef.current.length > 0 && playbackStartTimeRef?.current != null) {
           const audioContext = getAudioContext?.();
-          if (audioContext && audioContext.state === 'running') {
-            const elapsed = audioContext.currentTime - playbackStartTimeRef.current;
+          let elapsed = 0;
+          if (currentTimeOverrideRef?.current != null) {
+            elapsed = currentTimeOverrideRef.current;
+          } else if (audioContext && audioContext.state === 'running') {
+            elapsed = audioContext.currentTime - playbackStartTimeRef.current;
+          }
+          
+          if (elapsed > 0 || currentTimeOverrideRef?.current != null) {
             const activeCue = mouthCuesRef.current.find((c: any) => elapsed >= c.start && elapsed <= c.end);
             if (activeCue) {
               activeRealViseme = activeCue.value;
@@ -216,7 +229,7 @@ export function useAvatarLipSync({
         const influences = mesh.morphTargetInfluences;
         if (!indices || !influences) return;
 
-        const safelySetInfluence = (key: string, targetValue: number, speed: number = DEFAULT_DAMP_SPEED) => {
+        const safelySetInfluence = (key: string, targetValue: number, speed: number = defaultDampSpeed) => {
           const idx = indices[key];
           if (idx !== undefined && idx < influences.length) {
             const currentValue = influences[idx] || TARGET_ZERO;
@@ -240,7 +253,7 @@ export function useAvatarLipSync({
         // Reset all visemes to zero first (so un-triggered visemes fade out naturally)
         for (let i = 0; i < visemeKeysList.length; i++) {
           const key = visemeKeysList[i];
-          safelySetInfluence(key, INACTIVE_VISEME_INFLUENCE, DEFAULT_DAMP_SPEED);
+          safelySetInfluence(key, INACTIVE_VISEME_INFLUENCE, defaultDampSpeed);
         }
 
         // Apply targets based on Real Visemes or fallback to FFT
@@ -250,7 +263,7 @@ export function useAvatarLipSync({
             A: ['viseme_PP'],
             B: ['viseme_kk', 'viseme_SS'],
             C: ['viseme_I'],
-            D: ['viseme_aa'], // Removed jawOpen because it causes the mouth to open too wide on most models
+            D: ['viseme_aa'],
             E: ['viseme_O'],
             F: ['viseme_U'],
             G: ['viseme_FF'],
@@ -259,8 +272,8 @@ export function useAvatarLipSync({
           const targetKeys = VISEME_MAP[activeRealViseme];
           if (targetKeys) {
             targetKeys.forEach(k => {
-              const speedMultiplier = (k === 'viseme_PP' || k === 'viseme_FF') ? 2.5 : 2.0; // Faster attack for consonants
-              safelySetInfluence(k, 1.0, DEFAULT_DAMP_SPEED * speedMultiplier);
+              const speedMultiplier = (k === 'viseme_PP' || k === 'viseme_FF') ? consonantSpeedMultiplier : vowelSpeedMultiplier;
+              safelySetInfluence(k, 1.0, defaultDampSpeed * speedMultiplier);
             });
             hasRealViseme = true;
           }
@@ -268,23 +281,33 @@ export function useAvatarLipSync({
 
         if (!hasRealViseme && isEffectivelySpeaking) {
           // Apply FFT targets only if we don't have real visemes
-          safelySetInfluence('viseme_SS', Math.min(targetVisemeSS, 1.0), DEFAULT_DAMP_SPEED * 1.5);
-          safelySetInfluence('viseme_PP', Math.min(targetVisemeSS * 0.5, 1.0), DEFAULT_DAMP_SPEED * 1.5);
-          safelySetInfluence('viseme_aa', Math.min(targetVisemeAA, 1.0), DEFAULT_DAMP_SPEED * 1.5);
-          safelySetInfluence('viseme_E', Math.min(targetVisemeAA * 0.8, 1.0), DEFAULT_DAMP_SPEED * 1.5);
-          safelySetInfluence('viseme_O', Math.min(targetVisemeO, 1.0), DEFAULT_DAMP_SPEED * 1.5);
-          safelySetInfluence('jawOpen', Math.min(targetJawOpen, 1.0), DEFAULT_DAMP_SPEED * 1.5);
+          safelySetInfluence('viseme_SS', Math.min(targetVisemeSS, 1.0), defaultDampSpeed * fftSpeedMultiplier);
+          safelySetInfluence('viseme_PP', Math.min(targetVisemeSS * 0.5, 1.0), defaultDampSpeed * fftSpeedMultiplier);
+          safelySetInfluence('viseme_aa', Math.min(targetVisemeAA, 1.0), defaultDampSpeed * fftSpeedMultiplier);
+          safelySetInfluence('viseme_E', Math.min(targetVisemeAA * 0.8, 1.0), defaultDampSpeed * fftSpeedMultiplier);
+          safelySetInfluence('viseme_O', Math.min(targetVisemeO, 1.0), defaultDampSpeed * fftSpeedMultiplier);
+          safelySetInfluence('jawOpen', Math.min(targetJawOpen, 1.0), defaultDampSpeed * fftSpeedMultiplier);
+        }
+
+        if (morphTargetValuesRef) {
+          morphTargetValuesRef.current = {
+            jawOpen: influences[indices['jawOpen'] || 0] || 0,
+            viseme_aa: influences[indices['viseme_aa'] || 0] || 0,
+            viseme_O: influences[indices['viseme_O'] || 0] || 0,
+            mouthSmileLeft: influences[indices['mouthSmileLeft'] || 0] || 0,
+            eyeBlinkLeft: influences[indices['eyeBlinkLeft'] || 0] || 0,
+          };
         }
       });
     } else if (targetMeshes.length === ORIGIN_ZERO && groupRef.current) {
-      if (isEffectivelySpeaking) {
+      if (isEffectivelySpeaking && HEAD_BOB_PERIOD > 0) {
         headBobTimeRef.current = (headBobTimeRef.current + delta) % HEAD_BOB_PERIOD;
-        groupRef.current.position.y = Math.sin(headBobTimeRef.current * HEAD_BOB_FREQUENCY) * HEAD_BOB_AMPLITUDE;
+        groupRef.current.position.y = Math.sin(headBobTimeRef.current * headBobFrequency) * headBobAmplitude;
       } else {
         groupRef.current.position.y = THREE.MathUtils.damp(
           groupRef.current.position.y,
           ORIGIN_ZERO,
-          FALLBACK_DAMPING,
+          fallbackDamping,
           delta
         );
       }

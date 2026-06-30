@@ -27,6 +27,7 @@ from app.presentation.http.v1.endpoints.auth import router as auth_router
 from app.presentation.http.v1.endpoints.chat import router as chat_router
 from app.presentation.http.v1.endpoints.documents import router as documents_router
 from app.presentation.http.v1.endpoints.health import router as health_router
+from app.presentation.http.v1.endpoints.playground import router as playground_router
 from app.presentation.http.v1.endpoints.rag import router as rag_router
 from app.presentation.ws.connection_manager import WSConnectionManager
 from app.presentation.ws.explain_handler import ExplainHandler
@@ -52,6 +53,7 @@ router.include_router(chat_router, prefix="/chat", tags=["chat"])
 router.include_router(auth_router, prefix="/auth", tags=["auth"])
 router.include_router(documents_router, prefix="/documents", tags=["documents"])
 router.include_router(rag_router, prefix="/rag", tags=["rag"])
+router.include_router(playground_router, prefix="/playground", tags=["playground"])
 
 
 @router.websocket("/ws/{avatar_id}")
@@ -300,7 +302,7 @@ async def explain_websocket(
         await websocket.close(code=4003, reason="Invalid token")
         return
 
-    await websocket.accept()
+    await websocket.accept(subprotocol="access_token")
     await websocket.send_json({"type": "ready", "session_id": document_id})
     logger.info(f"[WS] Explain connection accepted | document={document_id} | user={token_payload.user_id}")
     
