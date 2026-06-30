@@ -292,7 +292,7 @@ export default function AvatarPlayground() {
         <AvatarCanvasWrapper
           avatarId="avatar1"
           pipelineState={getIsAudioPlaying() || isFrozen ? "speaking" : "idle"}
-          movementEnabled={true}
+          movementEnabled={false}
           mouthCuesRef={mouthCuesRef}
           getAudioContext={getAudioContext}
           playbackStartTimeRef={playbackStartTimeRef}

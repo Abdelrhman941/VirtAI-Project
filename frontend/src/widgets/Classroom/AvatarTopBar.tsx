@@ -50,13 +50,13 @@ export function AvatarTopBar({
         {/* Right Section (Action Buttons) */}
         <div className="flex items-center gap-3">
 
-          {hasDocuments && !hasMessages && (
-            <ToolbarButton
-              onClick={onStartExplain}
-              icon={<FiMonitor size={15} />}
-              label="Explain Slide"
-            />
-          )}
+          <ToolbarButton
+            onClick={onStartExplain}
+            disabled={!hasDocuments}
+            title={!hasDocuments ? "Please upload syllabus or reference materials to start presentation" : "Explain Slide"}
+            icon={<FiMonitor size={15} />}
+            label="Explain Slide"
+          />
           
           <ToolbarButton
             onClick={onGenerateSummary}

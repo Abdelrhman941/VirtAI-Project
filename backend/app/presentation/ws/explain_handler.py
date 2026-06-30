@@ -36,6 +36,11 @@ class ExplainHandler:
                     payload_type = data.get("type")
                     if payload_type == "chat.user_message" or payload_type == "client.speech_stopped":
                         await self._handle_interruption(data)
+                    elif payload_type == "ping":
+                        try:
+                            await self.websocket.send_json({"type": "pong"})
+                        except (RuntimeError, asyncio.exceptions.IncompleteReadError) as e:
+                            logger.debug(f"[WS] Failed to send pong (connection closed?): {e}")
                 except json.JSONDecodeError:
                     pass
         finally:

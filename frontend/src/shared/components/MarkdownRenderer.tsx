@@ -136,6 +136,13 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   const sanitizedContent = React.useMemo(() => {
     let sanitized = content.replace(/\n{3,}/g, '\n\n');
     sanitized = sanitized.replace(/^((?:[\p{Extended_Pictographic}\p{Emoji_Presentation}]\s*)+)\n+(?=#+\s)/gmu, '$1 ');
+    
+    // Convert LaTeX math delimiters to markdown math delimiters
+    // \[ ... \] -> $$ ... $$
+    sanitized = sanitized.replace(/\\\[([\s\S]*?)\\\]/g, '$$$$$1$$$$');
+    // \( ... \) -> $ ... $
+    sanitized = sanitized.replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$$');
+    
     return sanitized;
   }, [content]);
   

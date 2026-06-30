@@ -126,9 +126,9 @@ class ExplainUseCase:
         current_slide_index = state_data["current_slide_index"]
 
         if current_slide_index >= len(chunks):
-            # Wrap around to the beginning when all slides have been seen
-            current_slide_index = 0
-            state_data["current_slide_index"] = 0
+            # End the presentation properly if they advance past the end
+            yield SlideEndEvent(slide_index=-1).model_dump()
+            return
 
         state_data["state"] = PresentationState.EXPLAINING.value
         await self._save_state(session_key, state_data)
@@ -185,15 +185,14 @@ class ExplainUseCase:
 
         metadata_filter = {"slide_index": state_data["current_slide_index"]}
 
-        response_text = await self.chat_use_case.execute_rag_query(
+        async for token in self.chat_use_case.stream_rag_query(
             query=text,
             user_id=user_id,
             session_id=None,
             document_id=document_id,
             metadata_filter=metadata_filter,
-        )
-
-        yield SlideContentTokens(tokens=response_text).model_dump()
+        ):
+            yield SlideContentTokens(tokens=token).model_dump()
         yield {"type": "done"}
 
         state_data["state"] = PresentationState.AWAITING.value
