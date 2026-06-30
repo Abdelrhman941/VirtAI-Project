@@ -32,6 +32,7 @@ erDiagram
         datetime created_at
         datetime updated_at
         integer message_count
+        datetime last_message_at
     }
 
     messages {
@@ -72,10 +73,7 @@ erDiagram
         datetime completed_at
         string upload_source
         string document_sha256
-        string normalized_content_hash
         integer file_size
-        integer retry_count
-        integer queue_time_ms
         string retrieval_scope
         uuid scope_id
         string storage_key
@@ -124,8 +122,18 @@ erDiagram
         uuid id PK
         uuid quiz_id FK
         uuid user_id FK
-        jsonb answers
         integer score
+        datetime created_at
+    }
+
+    quiz_attempt_answers {
+        uuid id PK
+        uuid attempt_id FK
+        uuid question_id FK
+        integer selected_option
+        boolean is_correct
+        integer time_spent_ms
+        integer hesitation_count
         datetime created_at
     }
 
@@ -158,6 +166,8 @@ erDiagram
     messages ||--o| visualization_cache : "caches"
     quizzes ||--o{ quiz_questions : "contains"
     quizzes ||--o{ quiz_attempts : "attempts"
+    quiz_attempts ||--o{ quiz_attempt_answers : "contains"
+    quiz_questions ||--o{ quiz_attempt_answers : "answered_in"
 ```
 
 ---
