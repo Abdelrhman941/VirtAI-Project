@@ -1,0 +1,33 @@
+# 🤖 Dependabot Configuration for VirtAI Project
+version: 2
+updates:
+
+  # 1. 🐍 Backend (Python / pip)
+  # Dependabot will look for 'requirements.txt' or 'pyproject.toml' in the backend folder
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "backend"
+      - "dependencies"
+
+  # 2. ⚛️ Frontend (npm / Node.js)
+  # Dependabot will look for 'package.json' in the frontend folder
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "frontend"
+      - "dependencies"
+
+  # 3. 🐳 Docker (Dockerfiles and docker-compose)
+  # Dependabot will check Dockerfiles to ensure base images are up-to-date
+  - package-ecosystem: "docker"
+    directory: "/" # Checks root for docker-compose and subfolders for Dockerfiles
+    schedule:
+      interval: "weekly"
+    labels:
+      - "docker"
+      - "dependencies"
