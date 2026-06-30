@@ -69,7 +69,66 @@ class WebSocketHandler:
                     if "text" in msg:
                         data = msg["text"]
                     elif "bytes" in msg:
-                        # Ignore binary messages for now, but do not crash.
+                        data = msg["bytes"]
+                        if not data:
+                            continue
+                            
+                        # The frontend appends a 1-byte flag to indicate `is_final`
+                        is_final = data[-1] == 1
+                        pcm_bytes = data[:-1]
+                        
+                        if self.session and hasattr(self.session, "pipeline") and self.session.pipeline._asr:
+                            if not getattr(self, "_voice_mode_handler", None):
+                                from app.presentation.ws.voice_mode_handler import VoiceModeHandler
+                                sender = OutboundSender(self.ws, self.connection_manager)
+                                
+                                async def _turn_callback(transcript: str) -> None:
+                                    import uuid
+                                    msg_id = str(uuid.uuid4())
+                                    
+                                    async def send_cb(m: Any) -> None:
+                                        await sender.send_protocol_message(m, self.session_id, False, True)
+                                    
+                                    async def send_bin_cb(d: bytes) -> None:
+                                        await sender.send_binary(d)
+                                        
+                                    if hasattr(self, "_generation_task") and self._generation_task and not self._generation_task.done():
+                                        logger.info(f"[WS] Cancelling previous generation task for session {self.session_id}")
+                                        self.session.pipeline.abort()
+                                        self._generation_task.cancel()
+                                        
+                                    self._generation_task = asyncio.create_task(
+                                        self.session.pipeline.process_message(
+                                            message_id=msg_id,
+                                            text=transcript,
+                                            session_id=self.session_id,
+                                            send_callback=send_cb,
+                                            send_binary_callback=send_bin_cb,
+                                            user_id=self.user_id,
+                                        )
+                                    )
+                                    
+                                    def _log_task_exception(task: asyncio.Task) -> None:
+                                        try:
+                                            exc = task.exception()
+                                            if exc and not isinstance(exc, asyncio.CancelledError):
+                                                logger.error(f"[WS] Unhandled exception in generation task: {exc}")
+                                        except asyncio.CancelledError:
+                                            pass
+                                            
+                                    self._generation_task.add_done_callback(_log_task_exception)
+
+                                self._voice_mode_handler = VoiceModeHandler(
+                                    websocket=self.ws,
+                                    session_id=self.session_id,
+                                    asr_service=self.session.pipeline._asr,
+                                    conversation_pipeline=self.session.pipeline,
+                                    turn_callback=_turn_callback,
+                                    outbound_sender=sender,
+                                    audio_pipeline=self.session.audio_pipeline
+                                )
+                                
+                            await self._voice_mode_handler.handle_audio_chunk(pcm_bytes, is_final=is_final)
                         continue
                     else:
                         continue
@@ -213,6 +272,10 @@ class WebSocketHandler:
                     if self.session and hasattr(self.session, "pipeline"):
                         self.session.pipeline.abort()
                         logger.info(f"[WS] Aborted generation for session {self.session_id}")
+
+                elif msg_type == "client.speech_stopped":
+                    if getattr(self, "_voice_mode_handler", None):
+                        await self._voice_mode_handler.process_accumulated_audio()
 
             except ValidationError as e:
                 logger.error(f"[WS] Validation error: {e}")
