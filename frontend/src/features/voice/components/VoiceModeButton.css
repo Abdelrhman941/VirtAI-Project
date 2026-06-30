@@ -1,0 +1,342 @@
+/* =============== Voice Mode Container =============== */
+.voice-mode-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  position: relative;
+}
+
+/* =============== Status Indicator =============== */
+.voice-status-indicator {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  min-width: 240px;
+  max-width: 380px;
+  width: max-content;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  box-shadow: 0 4px 20px rgb(0 0 0 / 40%);
+  animation: slide-in 0.3s ease;
+}
+
+/* Position status indicators above the button when in inline layout */
+.voice-mode-container .voice-status-indicator {
+  position: absolute;
+  bottom: calc(100% + 0.75rem);
+  right: -8px;
+  white-space: normal;
+  overflow-wrap: break-word;
+  z-index: 1000;
+}
+
+/* =============== Voice Mode Button =============== */
+.voice-mode-btn {
+  position: relative;
+  border-radius: 50%;
+  border: none;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+  overflow: visible;
+  will-change: transform, box-shadow;
+}
+
+.voice-mode-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.voice-mode-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+/* =============== Button States =============== */
+
+/* Idle state */
+.voice-mode-btn.idle {
+  /* Let Tailwind handle background and color */
+}
+
+.voice-mode-btn.idle:hover:not(:disabled) {
+  /* Let Tailwind handle hover state */
+}
+
+/* Listening state */
+.voice-mode-btn.listening {
+  background: rgb(76 175 80 / 15%);
+  border-color: rgb(76 175 80 / 30%);
+  color: var(--success, #4caf50);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
+}
+
+@media (hover: hover) {
+  .voice-mode-btn.listening:hover:not(:disabled) {
+    background: rgb(76 175 80 / 25%);
+    border-color: rgb(76 175 80 / 50%);
+    box-shadow: 0 6px 16px rgb(0 0 0 / 40%);
+  }
+}
+
+/* Paused state */
+.voice-mode-btn.paused {
+  background: rgb(255 152 0 / 15%);
+  border-color: rgb(255 152 0 / 30%);
+  color: var(--warning, #ff9800);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
+}
+
+/* Error state */
+.voice-mode-btn.error {
+  background: rgb(239 68 68 / 15%);
+  border-color: rgb(239 68 68 / 30%);
+  color: var(--error, #ef4444);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
+}
+
+/* Processing state (listening + waiting for transcript) */
+.voice-mode-btn.processing {
+  background: rgb(33 150 243 / 15%);
+  border-color: rgb(33 150 243 / 30%);
+  color: var(--info, #2196f3);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
+  animation: processing-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes processing-glow {
+  0%,
+  100% {
+    background: rgb(33 150 243 / 15%);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 30%);
+  }
+
+  50% {
+    background: rgb(33 150 243 / 25%);
+    box-shadow: 0 6px 16px rgb(0 0 0 / 40%);
+  }
+}
+
+/* =============== Voice Mode Icon =============== */
+.voice-mode-icon {
+  position: relative;
+  z-index: 2;
+  font-size: 1.2rem;
+}
+
+/* =============== Voice Activity Indicator =============== */
+.voice-activity-indicator {
+  position: absolute;
+  inset: -8px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.pulse-ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--success, #4caf50);
+  border-radius: 50%;
+  opacity: 0;
+  animation: pulse-animation 2s ease-out infinite;
+}
+
+.pulse-ring-delay {
+  animation-delay: 1s;
+}
+
+@keyframes pulse-animation {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* =============== Transcript Bubble =============== */
+.voice-transcript-bubble {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgb(33 150 243 / 10%);
+  border: 1px solid rgb(33 150 243 / 30%);
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  max-width: 280px;
+  min-width: 60px;
+  z-index: 1001;
+  animation: slide-in 0.2s ease;
+  box-shadow: 0 4px 20px rgb(0 0 0 / 40%);
+}
+
+.voice-transcript-bubble .transcript-text {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--text-secondary, #b0b0b0);
+  font-style: italic;
+  overflow-wrap: break-word;
+  display: block;
+  max-width: 75ch;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Paused indicator */
+.voice-status-indicator.paused {
+  background: rgb(255 152 0 / 10%);
+  border: 1px solid rgb(255 152 0 / 30%);
+  color: var(--warning, #ff9800);
+}
+
+.status-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.voice-status-indicator.paused .status-icon {
+  color: var(--warning, #ff9800);
+}
+
+/* Error indicator — compact: icon + retry button only */
+.voice-status-indicator.error {
+  background: rgb(30 20 20 / 97%);
+  border: 1px solid rgb(239 68 68 / 50%);
+  color: var(--error, #ef4444);
+  flex-direction: row;
+  align-items: center;
+  min-width: auto;
+  max-width: 420px;
+  width: fit-content;
+  backdrop-filter: blur(12px);
+}
+
+.voice-status-indicator.error .status-icon {
+  color: var(--error, #ef4444);
+}
+
+.status-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.status-text {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+  max-width: 75ch;
+}
+
+.status-instruction {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  opacity: 0.8;
+  font-style: italic;
+}
+
+.retry-button {
+  margin-top: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid rgb(239 68 68 / 50%);
+  background: rgb(239 68 68 / 15%);
+  color: var(--error, #ef4444);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+  align-self: flex-start;
+}
+
+.retry-button:hover {
+  background: rgb(239 68 68 / 25%);
+  border-color: rgb(239 68 68 / 70%);
+  transform: translateY(-1px);
+}
+
+.retry-button:active {
+  transform: translateY(0);
+}
+
+/* =============== Responsive Design =============== */
+@media (width <= 768px) {
+  .voice-mode-btn {
+    font-size: 1rem;
+  }
+
+  .voice-status-indicator {
+    font-size: 0.875rem;
+    padding: 8px 12px;
+    min-width: 180px;
+    max-width: 320px;
+  }
+}
+
+/* =============== Accessibility =============== */
+@media (prefers-reduced-motion: reduce) {
+  .voice-mode-btn,
+  .pulse-ring,
+  .voice-status-indicator,
+  .voice-transcript-bubble {
+    animation: none;
+    transition: none;
+  }
+
+  .voice-mode-btn.processing {
+    animation: none;
+  }
+
+  .voice-mode-btn:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .voice-mode-btn:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+  .voice-mode-btn {
+    border-width: 3px;
+  }
+
+  .voice-status-indicator {
+    border-width: 2px;
+  }
+}

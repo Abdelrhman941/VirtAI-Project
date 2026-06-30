@@ -1,0 +1,1 @@
+"""VirtAI backend application package."""

@@ -1,0 +1,229 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-avatar-chat-backend"
+version = "1.0.0"
+description = "AI Avatar Chat Backend - FastAPI WebSocket server with LLM, TTS, and RAG"
+requires-python = ">=3.10"
+dependencies = [
+    # Web Framework
+    "fastapi==0.115.0",
+    "uvicorn[standard]==0.30.6",
+    "websockets==13.1",
+    "python-multipart==0.0.12",
+    # AI Services
+    "edge-tts==7.2.7",
+    # Audio Processing
+    "pydub>=0.25.1",
+    "numpy>=1.24.0",
+    # Utils
+    "python-dotenv==1.0.1",
+    "pydantic==2.9.2",
+    "pydantic-settings==2.5.2",
+    # Logging
+    "loguru==0.7.2",
+    # Auth & Database
+    "bcrypt<4.0.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-jose[cryptography]>=3.3.0",
+    # PostgreSQL + SQLAlchemy + Alembic + pgvector
+    "asyncpg>=0.29.0",
+    "sqlalchemy>=2.0.25",
+    "alembic>=1.13.0",
+    "pgvector>=0.2.0",
+    "greenlet>=3.0.0",
+    # Redis (existing)
+    "redis[hiredis]>=5.0.0",
+    "httpx>=0.27.0,<0.29.0",
+    "email-validator>=2.0.0",
+    # RAG dependencies
+    "langchain==1.3.2",
+    "langgraph==1.2.2",
+    "langgraph-sdk==0.3.15",
+    "langchain-text-splitters>=0.0.1",
+    "pymupdf>=1.24.0",
+    "pymupdf_layout",
+    "pytesseract>=0.3.13",
+    "pdf2image>=1.17.0",
+    "openai>=1.0.0",
+    "tiktoken>=0.7.0",
+    "cohere>=5.13.0",
+    "google-genai>=0.8.0",
+    "groq>=0.9.0",
+    "sentence-transformers>=2.7.0",
+    "qdrant-client>=1.10.0",
+    "fastapi-health>=0.4.0",
+    # Background Workers & Async I/O
+    "arq>=0.25.0",
+    "aiofiles>=23.2.1",
+    "fastembed>=0.3.1",
+    # Metrics
+    "prometheus-client>=0.20.0",
+    "prometheus-fastapi-instrumentator>=7.0.0",
+    "filetype>=1.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff==0.8.4",
+    "black==24.10.0",
+    "mypy==1.13.0",
+    "pytest==8.3.4",
+    "pytest-asyncio==0.24.0",
+    "pytest-cov==6.0.0",
+    "hypothesis==6.122.3",
+    "requests>=2.31.0",
+    "bandit>=1.7.7",
+    "pip-audit>=2.7.2",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+fix = true
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".pytest_cache",
+    "*.egg-info",
+    "dist",
+    "build",
+]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B", "C4", "SIM", "TCH", "PTH", "RUF"]
+ignore = [
+    "E501",
+    "B008",
+    "UP007",
+    # Gradual typing/import cleanup baseline.
+    "TC001",
+    "TC002",
+    "TC003",
+    # Legacy public API/schema names and exception names.
+    "N802",
+    "N806",
+    "N815",
+    "N818",
+    # Existing script/path cleanup baseline.
+    "PTH100",
+    "PTH107",
+    "PTH110",
+    "PTH120",
+    "PTH123",
+    # Legacy import-layout exceptions in compatibility modules/scripts.
+    "E402",
+    # Existing pedagogical prompt text and schema export ordering.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "RUF012",
+    "RUF022",
+    # Low-risk style cleanups to handle gradually.
+    "B007",
+    "B904",
+    "B905",
+    "C401",
+    "E712",
+    "PTH113",
+    "PTH208",
+    "SIM102",
+    "SIM103",
+    "SIM105",
+    "SIM108",
+    "SIM117",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/**/*.py" = ["T201"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  \.git
+  | \.venv
+  | venv
+  | __pycache__
+  | \.pytest_cache
+  | \.egg-info
+  | dist
+  | build
+)/
+'''
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "edge_tts.*",
+    "groq.*",
+    "slowapi.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["load_tests", ".git", "venv", ".venv", "build", "__pycache__"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = ["-v", "--strict-markers", "--tb=short", "--ignore=tests/load/"]
+markers = [
+    "asyncio: mark test as async",
+    "integration: mark test as integration test",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+show_missing = true
+precision = 2
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["alembic*", "uploads*"]

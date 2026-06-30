@@ -1,0 +1,142 @@
+name: Load Tests
+
+# ─────────────────────────────────────────────────────────────────────────
+# Load tests NEVER run in the PR gate.
+#
+# Trigger only:
+#   1. workflow_dispatch — manually, with a real target host
+#
+# The weekly schedule trigger has been intentionally omitted.
+# REASON: A scheduled run has no way to provide a real target host.
+#         The fallback of localhost:8000 would fail immediately with
+#         "connection refused" because no backend runs on the GitHub
+#         Actions runner during a scheduled trigger.
+#
+# Re-add the schedule trigger only when a persistent staging environment
+# is available and TARGET_HOST can be sourced from a repository secret:
+#
+#   schedule:
+#     - cron: "0 2 * * 0"
+#   env:
+#     TARGET_HOST: ${{ secrets.STAGING_HOST }}
+# ─────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_host:
+        description: "Target host URL (e.g. http://your-staging-server:8000)"
+        required: true
+        # No default. Forcing the caller to provide a real host prevents
+        # accidental localhost runs that silently fail with connection refused.
+      users:
+        description: "Number of concurrent users"
+        required: false
+        default: "10"
+      spawn_rate:
+        description: "Users spawned per second"
+        required: false
+        default: "2"
+      duration:
+        description: "Test duration (e.g. 60s, 2m)"
+        required: false
+        default: "60s"
+
+jobs:
+  load-test-rag:
+    name: Locust — RAG Throughput
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: locust-pip-${{ runner.os }}
+          restore-keys: locust-pip-
+
+      - name: Install Locust
+        run: pip install locust
+
+      - name: Run RAG throughput load test
+        working-directory: backend
+        env:
+          TARGET_HOST: ${{ github.event.inputs.target_host }}
+          LOCUST_USERS: ${{ github.event.inputs.users }}
+          LOCUST_SPAWN_RATE: ${{ github.event.inputs.spawn_rate }}
+          LOCUST_RUN_TIME: ${{ github.event.inputs.duration }}
+        run: |
+          locust \
+            -f load_tests/test_rag_throughput.py \
+            --headless \
+            --host "$TARGET_HOST" \
+            -u "$LOCUST_USERS" \
+            -r "$LOCUST_SPAWN_RATE" \
+            -t "$LOCUST_RUN_TIME" \
+            --csv=rag_throughput_results \
+            --html=rag_throughput_report.html
+
+      - name: Upload RAG load test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-load-test-results
+          path: |
+            backend/rag_throughput_results*.csv
+            backend/rag_throughput_report.html
+          retention-days: 14
+
+  load-test-summary:
+    name: Locust — Summary Concurrent
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: locust-pip-${{ runner.os }}
+          restore-keys: locust-pip-
+
+      - name: Install Locust
+        run: pip install locust
+
+      - name: Run summary concurrent load test
+        working-directory: backend
+        env:
+          TARGET_HOST: ${{ github.event.inputs.target_host }}
+          LOCUST_USERS: ${{ github.event.inputs.users }}
+          LOCUST_SPAWN_RATE: ${{ github.event.inputs.spawn_rate }}
+          LOCUST_RUN_TIME: ${{ github.event.inputs.duration }}
+        run: |
+          locust \
+            -f load_tests/test_summary_concurrent.py \
+            --headless \
+            --host "$TARGET_HOST" \
+            -u "$LOCUST_USERS" \
+            -r "$LOCUST_SPAWN_RATE" \
+            -t "$LOCUST_RUN_TIME" \
+            --csv=summary_concurrent_results \
+            --html=summary_concurrent_report.html
+
+      - name: Upload summary load test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: summary-load-test-results
+          path: |
+            backend/summary_concurrent_results*.csv
+            backend/summary_concurrent_report.html
+          retention-days: 14

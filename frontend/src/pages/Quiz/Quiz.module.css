@@ -1,0 +1,200 @@
+.quizCardContainer {
+  position: relative;
+  background: var(--card-bg, #1a1a1a);
+  border: 1px solid rgba(180, 171, 139, 0.15);
+  border-radius: 16px;
+  padding: 3rem;
+  width: 100%;
+  min-width: 320px;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.quizCardContainer::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, var(--color-crimson, #6d001a) 0%, transparent 70%);
+  filter: blur(60px);
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.quizTitle {
+  font-family: var(--font-display, 'Clash Display', sans-serif);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+  margin: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.quizSubtitle {
+  font-size: 1rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+  margin: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.selectContainer {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.quizStartBtn {
+  background: linear-gradient(135deg, var(--color-gold, #B4AB8B), var(--color-gold-soft, #C9C0A0));
+  color: #0A0908;
+  font-weight: 600;
+  font-size: 1.125rem;
+  height: 56px;
+  border-radius: 12px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgb(180 171 139 / 18%);
+  position: relative;
+  z-index: 1;
+}
+
+.quizStartBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, var(--color-gold-soft, #C9C0A0), var(--color-gold, #B4AB8B));
+  box-shadow: 0 6px 20px rgb(180 171 139 / 30%);
+}
+
+.quizStartBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.quizStartBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(100%);
+  transform: none;
+  box-shadow: none;
+}
+
+.lectureList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.lectureCard {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.25rem 1.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
+}
+
+.lectureCard:hover {
+  background: rgba(180, 171, 139, 0.04);
+  border-color: rgba(180, 171, 139, 0.2);
+}
+
+.lectureCard.selected {
+  border-color: var(--color-gold, #B4AB8B);
+  background: rgb(180 171 139 / 8%);
+}
+
+.checkbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(180, 171, 139, 0.3);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.selected .checkbox {
+  border-color: var(--color-gold, #B4AB8B);
+  background: var(--color-gold, #B4AB8B);
+}
+
+.checkmark {
+  width: 10px;
+  height: 10px;
+  background: #0A0908;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.lectureInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow: hidden;
+}
+
+.lectureTitle {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary, #ffffff);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lectureMeta {
+  font-size: 0.8rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.5));
+  margin: 0;
+}
+
+.emptyState, .loadingState {
+  text-align: center;
+  color: var(--text-muted, rgba(255, 255, 255, 0.5));
+  padding: 3rem 2rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0.75rem;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.backBtn {
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  color: var(--text-secondary, #b0b0b0);
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  z-index: 50;
+}
+
+.backBtn:hover {
+  color: var(--text-primary, #ffffff);
+}

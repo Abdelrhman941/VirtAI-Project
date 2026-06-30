@@ -1,0 +1,175 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: virtai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-virtai}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - virtai-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-virtai}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    container_name: virtai-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --save 60 1
+      --loglevel warning
+    volumes:
+      - redis-data:/data
+    networks:
+      - virtai-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  backend-init:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: virtai-backend:latest
+    container_name: virtai-backend-init
+    env_file:
+      - ./backend/.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      XDG_CACHE_HOME: /app/.cache
+      HF_HOME: /app/models/huggingface
+    networks:
+      - virtai-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["alembic", "upgrade", "head"]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: virtai-backend:latest
+    container_name: virtai-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      XDG_CACHE_HOME: /app/.cache
+      HF_HOME: /app/models/huggingface
+    volumes:
+      - backend-data:/app/.data
+      - backend-cache:/app/.cache
+      - backend-models:/app/models/huggingface
+    networks:
+      - virtai-network
+    depends_on:
+      backend-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/api/v1/health']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  worker:
+    image: virtai-backend:latest
+    pull_policy: never
+    container_name: virtai-worker
+    restart: unless-stopped
+    command: ['python', '-m', 'arq', 'app.infrastructure.worker.arq_settings.WorkerSettings']
+    env_file:
+      - ./backend/.env
+    environment:
+      PYTHONPATH: /app
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      XDG_CACHE_HOME: /app/.cache
+      HF_HOME: /app/models/huggingface
+    volumes:
+      - backend-data:/app/.data
+      - backend-cache:/app/.cache
+      - backend-models:/app/models/huggingface
+    networks:
+      - virtai-network
+    depends_on:
+      backend-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import redis; redis.Redis(host='redis', password='${REDIS_PASSWORD}').ping()"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: virtai-frontend
+    restart: unless-stopped
+    networks:
+      - virtai-network
+
+  tts:
+    build:
+      context: ./tts
+      dockerfile: Dockerfile
+    container_name: virtai-tts
+    restart: unless-stopped
+    environment:
+      TTS_HOME: /app/voices
+      HF_HOME: /app/voices/huggingface
+    volumes:
+      - tts_config:/app/config
+      - tts_data:/app/voices
+    networks:
+      - virtai-network
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    deploy:
+      resources:
+        reservations:
+          cpus: '1.0'
+          memory: '3G'
+
+volumes:
+  postgres-data:
+  redis-data:
+  backend-data:
+  backend-cache:
+  backend-models:
+  tts_config:
+  tts_data:
+
+networks:
+  virtai-network:
+    driver: bridge

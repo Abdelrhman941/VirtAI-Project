@@ -1,0 +1,34 @@
+.explain-btn-wrapper {
+  display: inline-flex;
+}
+
+.explain-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 15%);
+  color: var(--text-primary, #ffffff);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+.explain-action-btn:hover {
+  background: rgb(255 255 255 / 15%);
+  border-color: rgb(255 255 255 / 30%);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 640px) {
+  .explain-btn-text {
+    display: none;
+  }
+  .explain-action-btn {
+    padding: 0.5rem;
+  }
+}

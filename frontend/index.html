@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- Primary SEO -->
+    <title>VirtAI — Virtual AI Assistant for Speech & Chat</title>
+    <meta
+      name="description"
+      content="VirtAI is a virtual AI assistant that converts speech to text, understands your intent, and responds with natural voice using AI models."
+    />
+    <meta name="robots" content="index,follow" />
+
+    <link rel="canonical" href="https://virtai.app/" />
+    <meta property="og:url" content="https://virtai.app/" />
+
+    <!-- UI / PWA -->
+    <meta name="theme-color" content="#B4AB8B" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/assets/icons/icon.ico" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/assets/icons/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png" />
+
+    <!-- Preload Hero Assets for LCP -->
+    <link rel="preload" as="image" href="/assets/images/image.webp" fetchpriority="high" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Social sharing (Open Graph) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="VirtAI" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="VirtAI — Virtual AI Assistant" />
+    <meta
+      property="og:description"
+      content="Talk to VirtAI using your voice and get intelligent spoken responses powered by AI."
+    />
+    <meta property="og:image" content="https://virtai.app/assets/images/image.webp" />
+
+    <!-- Social sharing (Twitter) -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="VirtAI — Virtual AI Assistant" />
+    <meta
+      name="twitter:description"
+      content="AI-powered voice assistant for speech, chat, and responses."
+    />
+    <meta name="twitter:image" content="https://virtai.app/assets/images/image.webp" />
+
+    <!-- Misc -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="author" content="VirtAI Team" />
+    <meta name="application-name" content="VirtAI" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Structured data (JSON-LD) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "VirtAI",
+        "url": "https://virtai.app/",
+        "description": "A real-time AI teaching assistant powered by speech recognition, large language models, and a 3D avatar.",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Web",
+        "image": "https://virtai.app/assets/images/image.webp",
+        "offers": {
+          "@type": "Offer",
+          "price": "0.00",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/app/main.jsx"></script>
+</body>
+</html>

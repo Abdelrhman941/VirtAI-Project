@@ -1,0 +1,45 @@
+services:
+  backend:
+    ports:
+      - '127.0.0.1:8000:8000'
+    volumes:
+      - ./backend/app:/app/app:cached
+      - ./backend/alembic:/app/alembic:cached
+      - ./backend/alembic.ini:/app/alembic.ini:ro
+      - ./backend/.env:/app/.env:ro
+    command: >
+      sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app"
+    environment:
+      - WATCHFILES_FORCE_POLLING=false
+
+  worker:
+    volumes:
+      - ./backend/app:/app/app:cached
+      - ./backend/.env:/app/.env:ro
+    command: sh -c "python -u -m arq app.infrastructure.worker.arq_settings.WorkerSettings --watch /app/app"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - 3000:3000
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+
+  tts:
+    ports:
+      - '127.0.0.1:8080:8000'
+    pull_policy: never
+
+  postgres:
+    ports:
+      - '127.0.0.1:5432:5432'
+
+  redis:
+    ports:
+      - '127.0.0.1:6379:6379'
+
+volumes:
+  frontend-node-modules:

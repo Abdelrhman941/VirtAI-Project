@@ -1,0 +1,112 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  lint-and-type:
+    name: Lint · Format · Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: backend-pip-${{ runner.os }}-${{ hashFiles('backend/pyproject.toml') }}
+          restore-keys: backend-pip-${{ runner.os }}-
+
+      - name: Install dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Ruff — lint
+        run: python -m ruff check app tests
+
+      - name: Black — format check
+        run: python -m black --check app tests
+
+      - name: Mypy — type check (domain + application layers)
+        run: python -m mypy --follow-imports=silent app/domain app/application
+
+  test:
+    name: Pytest (unit + integration)
+    runs-on: ubuntu-latest
+    needs: lint-and-type
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: backend-pip-${{ runner.os }}-${{ hashFiles('backend/pyproject.toml') }}
+          restore-keys: backend-pip-${{ runner.os }}-
+
+      - name: Install dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run unit tests with coverage
+        env:
+          DEBUG: "False"
+          ENVIRONMENT: "development"
+        run: |
+          python -m pytest \
+            tests/domain \
+            tests/shared \
+            tests/unit \
+            tests/schemas \
+            tests/presentation \
+            tests/application \
+            -v --tb=short \
+            --cov=app \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing
+
+      # tests/integration contains 4 files:
+      #   test_auth_lifecycle_real_services.py — marked @pytest.mark.integration
+      #     + skipif(RUN_AUTH_INTEGRATION_TESTS != "1") — auto-skipped in CI
+      #   test_db_integrations.py   — uses FakeAsyncSession, no live services
+      #   test_endpoints_health.py  — uses dependency_overrides, no live services
+      #   test_explain_ws.py        — uses TestClient + mocks, no live services
+      # The -m "not integration" filter is redundant here (the skipif already
+      # handles it) but is kept as an explicit safety guard.
+      - name: Run integration tests (mocked services, no live DB/Redis)
+        env:
+          DEBUG: "False"
+          ENVIRONMENT: "development"
+        run: |
+          python -m pytest \
+            tests/integration \
+            -v --tb=short -m "not integration"
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          retention-days: 7

@@ -1,0 +1,29 @@
+services:
+  backend:
+    env_file:
+      - ./backend/.env.prod
+    environment:
+      - ENVIRONMENT=production
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-secure-production-secret-key-123456789}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-dummy-client-id}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-dummy-client-secret}
+      - GOOGLE_REDIRECT_URI=https://my-prod-domain.com/api/v1/auth/google/callback
+
+  worker:
+    env_file:
+      - ./backend/.env.prod
+    environment:
+      - PYTHONPATH=/app
+      - ENVIRONMENT=production
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-secure-production-secret-key-123456789}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-dummy-client-id}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-dummy-client-secret}
+
+  frontend:
+    container_name: virtai-frontend-prod
+    ports:
+      - "3000:8080"
+    networks:
+      - virtai-network
+    restart: unless-stopped
+    volumes: []

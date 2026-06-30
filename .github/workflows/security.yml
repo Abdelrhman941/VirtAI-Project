@@ -1,0 +1,111 @@
+name: Security Scan
+
+# ─────────────────────────────────────────────────────────────────────────
+# Security scans run:
+#   1. On every PR to main and push to main (audit new code immediately)
+#   2. On a weekly schedule (catch newly disclosed CVEs in dependencies)
+#   3. Manually via workflow_dispatch
+#
+# Jobs are NON-BLOCKING (|| true) until the baseline is cleared and
+# confirmed. Remove || true per-job once that job's baseline is clean.
+# ─────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Every Wednesday at 03:00 UTC
+    - cron: "0 3 * * 3"
+  workflow_dispatch:
+
+jobs:
+  python-security:
+    name: Bandit + pip-audit (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: security-pip-${{ runner.os }}-${{ hashFiles('backend/pyproject.toml') }}
+          restore-keys: security-pip-${{ runner.os }}-
+
+      - name: Install backend package + dev tools
+        working-directory: backend
+        # [dev] extras include bandit>=1.7.7 and pip-audit>=2.7.2
+        run: pip install -e ".[dev]"
+
+      - name: Bandit — static security analysis
+        working-directory: backend
+        # -ll: report medium and high severity only
+        # || true: non-blocking until baseline is cleared
+        run: |
+          python -m bandit -r app -ll -f txt -o bandit_report.txt || true
+          cat bandit_report.txt
+
+      - name: pip-audit — known CVE scan
+        working-directory: backend
+        # Audit the installed environment directly (no process substitution).
+        # pip-audit without --requirement scans all packages in the active venv.
+        # || true: non-blocking until baseline is cleared
+        run: |
+          pip-audit -o pip_audit_report.txt || true
+          cat pip_audit_report.txt
+
+      - name: Upload Python security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-security-reports
+          path: |
+            backend/bandit_report.txt
+            backend/pip_audit_report.txt
+          retention-days: 30
+
+  node-security:
+    name: npm audit (Node)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: npm audit
+        working-directory: frontend
+        # --audit-level=high: surface high/critical only
+        # || true: non-blocking until baseline is cleared
+        run: npm audit --audit-level=high || true
+
+  # ── OPTIONAL — uncomment when images are built in CI ──────────────────
+  # container-scan:
+  #   name: Trivy Container Scan (Backend)
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Build backend image
+  #       run: docker build -t virtai-backend:ci ./backend
+  #     - name: Trivy vulnerability scan
+  #       uses: aquasecurity/trivy-action@master
+  #       with:
+  #         image-ref: virtai-backend:ci
+  #         format: table
+  #         exit-code: "0"          # change to "1" to hard-block on CRITICAL
+  #         severity: HIGH,CRITICAL

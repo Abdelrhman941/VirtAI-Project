@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Virt-AI: Avatar GLB Inspector</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1e1e1e;
+      color: white;
+    }
+
+    #canvas-container {
+      flex: 1;
+      position: relative;
+    }
+
+    #controls-panel {
+      width: 350px;
+      background: #2d2d2d;
+      padding: 20px;
+      overflow-y: auto;
+      border-left: 1px solid #444;
+    }
+
+    h2 {
+      font-size: 1.2rem;
+      margin-top: 0;
+      color: #4facfe;
+    }
+
+    .mesh-section {
+      background: #3d3d3d;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+    }
+
+    .mesh-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #555;
+      padding-bottom: 5px;
+      color: #cecece;
+    }
+
+    .slider-container {
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .slider-label {
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 3px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .upload-btn {
+      background: #4facfe;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .upload-btn:hover {
+      background: #3a8ee6;
+    }
+
+    #file-input {
+      display: none;
+    }
+  </style>
+  <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+
+<body>
+
+  <div id="canvas-container"></div>
+
+  <div id="controls-panel">
+    <h2>Avatar Inspector</h2>
+    <button class="upload-btn" onclick="document.getElementById('file-input').click()">Upload avatar1.glb</button>
+    <input type="file" id="file-input" accept=".glb, .gltf">
+
+    <div id="morph-targets-gui">
+      <p style="font-size: 0.9rem; color: #aaa;">Upload a model to see its Morph Targets (Visemes & Expressions) here.
+      </p>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    // 1. Setup Basic Scene
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#1e1e1e');
+
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.set(0, 1.5, 3); // Look at face
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1.4, 0);
+    controls.update();
+
+    // Lights
+    scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+    dirLight.position.set(1, 2, 3);
+    scene.add(dirLight);
+
+    let currentModel = null;
+
+    // Render Loop
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Resize handler
+    window.addEventListener('resize', () => {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+
+    // 2. Handle File Upload locally (No server needed)
+    document.getElementById('file-input').addEventListener('change', function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const contents = e.target.result;
+        const loader = new GLTFLoader();
+
+        loader.parse(contents, '', function (gltf) {
+          if (currentModel) scene.remove(currentModel); // clear old model
+
+          currentModel = gltf.scene;
+          // Lower it a bit to match camera
+          currentModel.position.set(0, -0.2, 0);
+          scene.add(currentModel);
+
+          console.log("=== MODEL LOADED SUCCESSFULLY ===");
+          console.log(currentModel);
+
+          buildInspectorGUI(currentModel);
+        }, function (error) {
+          console.error("Error parsing GLB:", error);
+          alert("Error loading model. See console.");
+        });
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // 3. Build UI for Morph Targets
+    function buildInspectorGUI(model) {
+      const guiContainer = document.getElementById('morph-targets-gui');
+      guiContainer.innerHTML = ''; // Clear previous
+
+      let foundMorphs = false;
+
+      model.traverse((child) => {
+        if (child.isMesh && child.morphTargetDictionary) {
+          foundMorphs = true;
+
+          const meshSection = document.createElement('div');
+          meshSection.className = 'mesh-section';
+
+          const title = document.createElement('div');
+          title.className = 'mesh-title';
+          title.innerText = `Mesh: ${child.name}`;
+          meshSection.appendChild(title);
+
+          // Sort keys alphabetically for easier reading
+          const keys = Object.keys(child.morphTargetDictionary).sort();
+
+          keys.forEach(key => {
+            const index = child.morphTargetDictionary[key];
+
+            const sliderDiv = document.createElement('div');
+            sliderDiv.className = 'slider-container';
+
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'slider-label';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.innerText = key;
+
+            const valSpan = document.createElement('span');
+            valSpan.innerText = '0.00';
+            valSpan.id = `val-${child.name}-${key}`;
+
+            labelDiv.appendChild(nameSpan);
+            labelDiv.appendChild(valSpan);
+
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.min = '0';
+            slider.max = '1';
+            slider.step = '0.01';
+            slider.value = '0';
+
+            // Change morph target on slider move
+            slider.addEventListener('input', (e) => {
+              const val = parseFloat(e.target.value);
+              child.morphTargetInfluences[index] = val;
+              document.getElementById(`val-${child.name}-${key}`).innerText = val.toFixed(2);
+            });
+
+            sliderDiv.appendChild(labelDiv);
+            sliderDiv.appendChild(slider);
+            meshSection.appendChild(sliderDiv);
+          });
+
+          guiContainer.appendChild(meshSection);
+        }
+      });
+
+      if (!foundMorphs) {
+        guiContainer.innerHTML = '<p style="color: #ff5555;">No Morph Targets (Visemes/Expressions) found in this model!</p>';
+      }
+    }
+  </script>
+</body>
+
+</html>

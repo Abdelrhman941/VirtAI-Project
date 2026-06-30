@@ -1,0 +1,41 @@
+.diagram-btn-wrapper {
+  display: inline-flex;
+}
+
+.diagram-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 15%);
+  color: var(--text-primary, #ffffff);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+.diagram-action-btn:hover:not(:disabled) {
+  background: rgb(255 255 255 / 15%);
+  border-color: rgb(255 255 255 / 30%);
+  transform: translateY(-1px);
+}
+
+.diagram-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: rgb(255 255 255 / 4%);
+  border-color: rgb(255 255 255 / 5%);
+}
+
+@media (max-width: 640px) {
+  .diagram-btn-text {
+    display: none;
+  }
+  .diagram-action-btn {
+    padding: 0.5rem;
+  }
+}

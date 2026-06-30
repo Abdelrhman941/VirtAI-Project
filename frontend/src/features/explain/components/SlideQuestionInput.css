@@ -1,0 +1,106 @@
+.slide-question-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--card-bg, #1a1a1a);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  margin-top: 1.5rem;
+  border: 1px solid rgba(180, 171, 139, 0.15);
+}
+
+.slide-question-prompt {
+  font-weight: 500;
+  color: var(--text-primary, #F5F1EC);
+  margin: 0;
+}
+
+.slide-question-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.slide-question-input {
+  flex: 1;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid rgba(180, 171, 139, 0.2);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-primary, #F5F1EC);
+  border-radius: 9999px;
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.25s ease;
+}
+
+.slide-question-input::placeholder {
+  color: var(--text-muted, #8c8c8c);
+}
+
+.slide-question-input:focus {
+  border-color: var(--color-gold, #B4AB8B);
+  box-shadow: 0 0 14px rgb(180 171 139 / 15%);
+}
+
+.slide-question-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-gold, #B4AB8B);
+  color: #0A0908;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-question-submit:hover:not(:disabled) {
+  background: var(--color-gold-soft, #C9C0A0);
+  box-shadow: 0 0 12px rgb(180 171 139 / 25%);
+  transform: scale(1.05);
+}
+
+.slide-question-submit:disabled {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.2);
+  cursor: not-allowed;
+}
+
+.slide-question-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.slide-question-or {
+  color: var(--text-muted, #8c8c8c);
+  font-size: 0.875rem;
+}
+
+.slide-continue-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  background: transparent;
+  color: var(--color-gold, #b4ab8b);
+  border: 1px solid var(--color-gold, #b4ab8b);
+  border-radius: 9999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-continue-btn:hover {
+  background: rgb(180 171 139 / 8%);
+  border-color: var(--color-gold-soft, #c9c0a0);
+  box-shadow: 0 0 12px rgb(180 171 139 / 15%);
+  transform: scale(1.02);
+}
+
+.slide-continue-btn:active {
+  transform: scale(1);
+}

@@ -1,0 +1,30 @@
+.streaming-message-container {
+  /* Prevent layout jump by providing wrapping guarantees */
+  word-break: break-word;
+  min-height: 1.5em; /* Start with at least one line height */
+}
+
+/* While streaming, disable ligatures and prioritize speed */
+.streaming-message-container.is-streaming {
+  font-variant-ligatures: none;
+  -webkit-font-variant-ligatures: none;
+  text-rendering: optimizeSpeed;
+}
+
+/* Attach cursor to the last text-bearing element to keep it inline */
+.streaming-message-container.is-streaming > *:last-child::after,
+.streaming-message-container.is-streaming:empty::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background-color: currentColor;
+  vertical-align: middle;
+  margin-left: 2px;
+  animation: stream-cursor-blink 0.85s step-end infinite;
+}
+
+@keyframes stream-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}

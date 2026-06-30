@@ -1,0 +1,15 @@
+/* Legacy styles removed. Visualization result styles are now handled inline or via Tailwind where possible, 
+   but we'll keep minimal styles here if needed. */
+
+.visualize-result {
+  max-width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.visualize-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}

@@ -1,0 +1,103 @@
+# ═══════════════════════════════════════════
+#  Python
+# ═══════════════════════════════════════════
+__pycache__/
+*.py[cod]
+*.pyd
+*.egg
+*.egg-info/
+.eggs/
+
+# ═══════════════════════════════════════════
+#  Virtual Environment
+# ═══════════════════════════════════════════
+venv/
+.venv/
+env/
+
+# ═══════════════════════════════════════════
+#  Environment & Secrets
+# ═══════════════════════════════════════════
+.env
+.env.*
+!*.example
+backend/.env
+
+# ═══════════════════════════════════════════
+#  Testing
+# ═══════════════════════════════════════════
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
+coverage.xml
+__tests__/
+*_reports
+
+# ═══════════════════════════════════════════
+#  Linting & Type Checking
+# ═══════════════════════════════════════════
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+backend/.cache
+
+# ═══════════════════════════════════════════
+#  Runtime Data & Database
+# ═══════════════════════════════════════════
+.data/
+*.db
+*.sqlite3
+processing/
+
+# ═══════════════════════════════════════════
+#  Logs
+# ═══════════════════════════════════════════
+logs/
+*.log
+
+# ═══════════════════════════════════════════
+#  Build & Distribution
+# ═══════════════════════════════════════════
+dist/
+build/
+*.whl
+.worktrees/
+
+# ═══════════════════════════════════════════
+#  Frontend (Node.js)
+# ═══════════════════════════════════════════
+*node_modules/
+frontend/package-lock.json
+frontend/dist/
+frontend/.next/
+frontend/.nuxt/
+
+# ═══════════════════════════════════════════
+#  IDE & Editor
+# ═══════════════════════════════════════════
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.kiro/
+
+# ═══════════════════════════════════════════
+#  OS Files
+# ═══════════════════════════════════════════
+.DS_Store
+Thumbs.db
+desktop.ini
+.agents/
+.playwright-cli
+.npm-cache
+reports_frontend/
+
+# ═══════════════════════════════════════════
+#  Other Files
+# ═══════════════════════════════════════════
+VirtAI-Project/
+bundle-stats.html
+Spec-Files/
+openedai-speech.tar

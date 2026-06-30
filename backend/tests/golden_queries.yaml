@@ -1,0 +1,11 @@
+queries:
+  - question: "What is the exact memory limit for the background worker process?"
+    ground_truth: "The memory limit for the background worker process is exactly 512MB."
+  - question: "Compare the processing speeds of the SmartChunker versus the markdown_chunker."
+    ground_truth: "The SmartChunker processes at 50 pages per second, whereas the markdown_chunker operates at 120 pages per second."
+  - question: "List the three required fields in the JSON payload for a SessionDrafted event."
+    ground_truth: "The three required fields are session_id, timestamp, and initial_state."
+  - question: "According to the Q3 financial report, what was the total revenue from enterprise subscriptions?"
+    ground_truth: "The total revenue from enterprise subscriptions in Q3 was $4.2 million."
+  - question: "Explain how the RerankerPort handles missing embedding metadata during the hybrid search fallback."
+    ground_truth: "If embedding metadata is missing, the RerankerPort defaults to a sparse keyword match score of 0.5 and logs a warning."
