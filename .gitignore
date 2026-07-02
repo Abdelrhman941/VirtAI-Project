@@ -72,6 +72,7 @@ frontend/package-lock.json
 frontend/dist/
 frontend/.next/
 frontend/.nuxt/
+frontend/.pnpm-store/
 
 # ═══════════════════════════════════════════
 #  IDE & Editor

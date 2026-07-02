@@ -27,6 +27,9 @@ services:
     volumes:
       - ./frontend:/app
       - frontend-node-modules:/app/node_modules
+    depends_on:
+      backend:
+        condition: service_started
 
   tts:
     ports:

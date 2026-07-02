@@ -114,6 +114,7 @@
   "engines": {
     "node": ">=18.18"
   },
+  "packageManager": "pnpm@9.15.9",
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx}": [
       "eslint --fix",

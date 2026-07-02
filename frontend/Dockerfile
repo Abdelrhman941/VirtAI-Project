@@ -1,7 +1,7 @@
 # Stage 1: builder
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 COPY package.json pnpm-lock.yaml .npmrc ./
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --ignore-scripts
