@@ -1,0 +1,15 @@
+/* KaTeX overrides */
+.katex {
+  font-size: 1.02em;
+  color: hsl(var(--foreground));
+}
+
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.75rem 1rem;
+  margin: 1.25rem 0;
+  background: hsl(var(--foreground) / 0.03);
+  border: 1px solid hsl(var(--border) / 0.1);
+  border-radius: var(--radius);
+}
