@@ -104,9 +104,10 @@ Two independent root causes were identified and fixed. See `WALKTHROUGH.md` for 
 
 
 ## Batch 5 — Rebuild the Markdown Renderer as a Design System
-- [ ] 5.1 scaffold shared/markdown design system (types, plugins, sanitize schema)
-- [ ] 5.2 renderer + streaming split + Shiki lazy code block
-- [ ] 5.3 migrate consumers + delete legacy renderers
+- [x] 5.1 scaffold shared/markdown design system (types, plugins, sanitize schema)
+- [x] 5.2 renderer + streaming split + Shiki lazy code block
+- [x] 5.3 migrate consumers + delete legacy renderers
+
 
 ## Batch 6 — Message Scroller (chat transcript)
 - [ ] 6.1 wire MessageScrollerProvider + swap transcript viewport

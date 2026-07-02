@@ -1,7 +1,7 @@
 import React from 'react';
 import { PiLightbulbFilament, PiClockFill } from 'react-icons/pi';
 import { Bot, User } from 'lucide-react';
-import { StreamingMessageRenderer } from './StreamingMessageRenderer';
+import { StreamingMarkdownRenderer } from '@/shared/markdown';
 import MessageBubble from './MessageBubble';
 import { ChatBubble, MessageStatus } from '../../../shared/components/ChatPrimitives';
 import { IMessage } from '../../session/types';
@@ -28,7 +28,7 @@ function StreamingLayer({ avatarName }: { avatarName: string }) {
 
       {currentMessage && (
         <ChatBubble role="assistant" avatarName={avatarName} ariaLabel="Assistant is typing">
-          <StreamingMessageRenderer content={currentMessage} isStreaming={true} />
+          <StreamingMarkdownRenderer content={currentMessage} streaming={true} variant="chat" />
         </ChatBubble>
       )}
     </>

@@ -255,3 +255,23 @@ All three must exit with code 0 before any Batch 1 work begins.
   - `VisualizeButton.tsx` migrated to use shadcn `<Button>` for the main visualization toggle and sub-actions.
 - **Cleanup**: Deleted legacy `.css` files (`DiagramButton.css`, `ExplainButton.css`, `VoiceModeButton.css`, `VisualizeButton.css`).
 
+---
+
+## 12. Milestone: Batch 5 Complete (Rebuild Markdown Renderer as Design System)
+
+- **Scaffolding**: Created a modern design system structure under `frontend/src/shared/markdown/` to encapsulate type safety, plugin compositions, and formatting helpers.
+- **Normalization & Sanitization**:
+  - Unified mathematical syntax delimiter translation in `normalizeMarkdown.ts`.
+  - Statically declared sanitization overrides in `sanitizeSchema.ts` to secure output against script injection while safely retaining custom HTML features (e.g. KaTeX rendering, syntax highlighted Shiki tags, etc.).
+- **Plugin Composition**: Centralized GFM, math, line breaks, and sanitization setups under remark and rehype compositions.
+- **Performance Optimization**: Separated hot streaming buffers from frozen prefixes in `splitForStreaming.ts` to minimize re-parsing overheads on streamed deltas.
+- **Custom Render Elements**: Refactored markdown formatting into discrete, semantic, styled modules:
+  - `CodeBlock`: Integrates a lazy-loaded `ShikiHighlighter` for syntax coloring and copy-to-clipboard actions.
+  - `Mermaid`: Lazily loads `mermaid` rendering inline diagrams within code blocks.
+  - `InlineCode`, `Table`, `Link`, `Heading`, `ListItem`, `Image`, `BlockQuote`: Designed with proper classes and attributes.
+- **Migration**:
+  - Updated chat transcript messages (`MessageBubble.tsx`, `MessageList.tsx`) to utilize the new `MarkdownRenderer` and `StreamingMarkdownRenderer` pipelines.
+  - Updated presentation components (`ExplainSession.tsx`) and summary viewer panels (`SummaryViewer.tsx`) to consume the system components.
+- **Cleanup**: Erased the legacy `StreamingMessageRenderer.tsx` and the original `MarkdownRenderer.tsx` alongside their associated CSS styles to eliminate duplicate rendering pipelines.
+
+

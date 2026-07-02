@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { FiX, FiFileText } from 'react-icons/fi';
-import MarkdownRenderer from '@/shared/components/MarkdownRenderer';
+import { StreamingMarkdownRenderer } from '@/shared/markdown';
 
 interface SummaryViewerProps {
   summaryData: string;
@@ -48,7 +48,7 @@ export function SummaryViewer({ summaryData, isLoading, onClose }: SummaryViewer
         <div className="max-w-3xl mx-auto pb-20">
           <div className="bg-dark-secondary/80 backdrop-blur-sm border border-white/5 rounded-2xl p-6 lg:p-8 shadow-2xl">
             {summaryData ? (
-              <MarkdownRenderer content={summaryData} streaming={isLoading} />
+              <StreamingMarkdownRenderer content={summaryData} streaming={isLoading} variant="summary" />
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-white/40">
                 <span className="animate-pulse">Analyzing document structure...</span>

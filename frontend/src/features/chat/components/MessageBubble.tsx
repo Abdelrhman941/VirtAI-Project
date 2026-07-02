@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import CopyButton from '../../../shared/components/CopyButton';
-import { StreamingMessageRenderer } from './StreamingMessageRenderer';
+import { MarkdownRenderer } from '@/shared/markdown';
 import { VisualizeButton } from './VisualizeButton';
 import { IMessage } from '../../session/types';
 import { formatTimeOnly } from '../../../shared/utils/date';
@@ -29,7 +29,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = memo(function MessageBubble(
         msg.content
       ) : (
         <>
-          <StreamingMessageRenderer content={msg.content} isStreaming={false} />
+          <MarkdownRenderer content={msg.content} variant="chat" />
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <CopyButton content={msg.content} />
           </div>

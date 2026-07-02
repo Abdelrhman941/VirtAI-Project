@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import MarkdownRenderer from '../../../shared/components/MarkdownRenderer';
+import { StreamingMarkdownRenderer } from '@/shared/markdown';
 import { FiStopCircle, FiPauseCircle } from 'react-icons/fi';
 import { PresentationState } from '../hooks/useExplainWS';
 import { SlideQuestionInput } from './SlideQuestionInput';
@@ -58,9 +58,10 @@ export function ExplainSession({
       <div className="explain-content" ref={contentRef}>
         <div className="explain-content-wrapper">
           <div className="markdown-body">
-            <MarkdownRenderer
+            <StreamingMarkdownRenderer
               content={content || "Analyzing slide context and preparing instructional content..."}
               streaming={currentState === 'EXPLAINING'}
+              variant="explain"
             />
           </div>
         </div>
