@@ -134,6 +134,9 @@ services:
     restart: unless-stopped
     networks:
       - virtai-network
+    depends_on:
+      backend:
+        condition: service_healthy
 
   tts:
     build:
