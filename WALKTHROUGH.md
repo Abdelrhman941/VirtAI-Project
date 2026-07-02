@@ -274,4 +274,18 @@ All three must exit with code 0 before any Batch 1 work begins.
   - Updated presentation components (`ExplainSession.tsx`) and summary viewer panels (`SummaryViewer.tsx`) to consume the system components.
 - **Cleanup**: Erased the legacy `StreamingMessageRenderer.tsx` and the original `MarkdownRenderer.tsx` alongside their associated CSS styles to eliminate duplicate rendering pipelines.
 
+---
+
+## 13. Milestone: Batch 6 Complete (Message Scroller & Chat Transcript)
+
+- **Scroller Component**: Created a React Context-backed compound scroller system under `frontend/src/shared/components/ui/message-scroller.tsx` consisting of `MessageScrollerProvider`, `MessageScrollerViewport`, `MessageScrollerContent`, `MessageScrollerItem`, and `MessageScrollerButton`.
+- **Auto-Scroll & Pinning**: Implemented a `MutationObserver` on the layout wrapper inside the viewport component that automatically pins the scrolling boundary to the bottom during active message streaming or delta updates if the user is near the bottom threshold.
+- **Session Switch Restoration**: Configured the provider with `defaultScrollPosition="last-anchor"` key-bound to the active session ID, resolving automated restore operations to the last user message turn during switch intervals.
+- **Framer Motion Animations**:
+  - Bound new message entries within `<MessageScrollerItem>` to a custom `framer-motion` sliding/fading animation.
+  - Bound the scroll-to-latest button overlay inside `<ScrollToLatestButton>` to layout exit/entry fades using `<AnimatePresence>`.
+- **Transcript Outline**: Designed the `ChatOutlineBadge` component tracking the intersection of visible messages against the conversation turns, rendering a relative progress bar indicator.
+- **Cleanup**: Purged all manual scroll-tracking refs, layout edge calculations, variables (`shouldStickToBottom`, `scrollPositionsRef`, `getActiveRefs`), and `onScrollToBottom` prop-passing chains from `ClassroomShell.tsx`, `AssistantPanel.tsx`, `MessageList.tsx`, and `MessageBubble.tsx`.
+
+
 

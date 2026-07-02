@@ -110,9 +110,10 @@ Two independent root causes were identified and fixed. See `WALKTHROUGH.md` for 
 
 
 ## Batch 6 — Message Scroller (chat transcript)
-- [ ] 6.1 wire MessageScrollerProvider + swap transcript viewport
-- [ ] 6.2 animate MessageScrollerItem with framer-motion + right-rail outline
-- [ ] 6.3 remove legacy scroll refs + onScrollToBottom prop chain
+- [x] 6.1 wire MessageScrollerProvider + swap transcript viewport
+- [x] 6.2 animate MessageScrollerItem with framer-motion + right-rail outline
+- [x] 6.3 remove legacy scroll refs + onScrollToBottom prop chain
+
 
 ## Batch 7 — Shimmer for "Thinking…" states
 - [ ] 7.1 replace typing dots with shimmer Marker across all "thinking" states

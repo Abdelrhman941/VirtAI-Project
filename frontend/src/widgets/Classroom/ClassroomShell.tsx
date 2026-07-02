@@ -20,6 +20,7 @@ import { useClassroomAudio } from './hooks/useClassroomAudio';
 import { useClassroomChat } from './hooks/useClassroomChat';
 import { useClassroomState } from './hooks/useClassroomState';
 import { useChatUIStore } from '@/features/chat/store/useChatUIStore';
+import { MessageScrollerProvider } from '@/shared/components/ui/message-scroller';
 
 import { FiMonitor, FiShare2, FiEdit3, FiMessageSquare, FiFileText } from 'react-icons/fi';
 import { ErrorState } from '@/shared/components/UIStates';
@@ -181,60 +182,23 @@ export default function ClassroomShell() {
     await session.deleteSession(sessionId);
   }, [disconnect, session, currentSessionId]);
 
-  // Desktop Refs
-  const desktopMessagesEndRef = useRef<HTMLDivElement>(null);
-  const desktopChatScrollRef = useRef<HTMLDivElement>(null);
+  // Textarea Refs
   const desktopTextareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Mobile Refs
-  const mobileMessagesEndRef = useRef<HTMLDivElement>(null);
-  const mobileChatScrollRef = useRef<HTMLDivElement>(null);
   const mobileTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const shouldStickToBottom = useRef<boolean>(true);
-
-  // Helper to get currently active/visible refs
-  const getActiveRefs = useCallback(() => {
-    if (desktopChatScrollRef.current && desktopChatScrollRef.current.clientHeight > 0) {
-      return {
-        chatScrollRef: desktopChatScrollRef,
-        messagesEndRef: desktopMessagesEndRef,
-        textareaRef: desktopTextareaRef
-      };
-    }
-    return {
-      chatScrollRef: mobileChatScrollRef,
-      messagesEndRef: mobileMessagesEndRef,
-      textareaRef: mobileTextareaRef
-    };
-  }, []);
-  const scrollPositionsRef = useRef<Map<string | null, number>>(new Map());
-  const prevSessionIdRef = useRef<string | null>(currentSessionId);
   const isCreatingSessionRef = useRef<boolean>(false);
 
-  useEffect(() => {
-    const prevId = prevSessionIdRef.current;
-    const nextId = currentSessionId;
-    if (prevId !== nextId) {
-      resetAvatarAudio();
-
-      const { chatScrollRef } = getActiveRefs();
-      if (chatScrollRef.current) {
-        scrollPositionsRef.current.set(prevId, chatScrollRef.current.scrollTop);
-      }
-      requestAnimationFrame(() => {
-        const saved = scrollPositionsRef.current.get(nextId);
-        const { chatScrollRef: activeRef } = getActiveRefs();
-        if (activeRef.current && saved !== null && saved !== undefined) {
-          activeRef.current.scrollTop = saved;
-          shouldStickToBottom.current = false;
-        } else {
-          shouldStickToBottom.current = true;
-        }
-      });
-      prevSessionIdRef.current = nextId;
+  // Helper to get currently active/visible textarea ref
+  const getActiveTextareaRef = useCallback(() => {
+    if (desktopTextareaRef.current && desktopTextareaRef.current.clientHeight > 0) {
+      return desktopTextareaRef;
     }
-  }, [currentSessionId, resetAvatarAudio, getActiveRefs]);
+    return mobileTextareaRef;
+  }, []);
+
+  useEffect(() => {
+    resetAvatarAudio();
+  }, [currentSessionId, resetAvatarAudio]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -248,54 +212,6 @@ export default function ClassroomShell() {
     window.addEventListener('open-sessions', handleOpenSessions);
     return () => window.removeEventListener('open-sessions', handleOpenSessions);
   }, [openSettings]);
-
-  const handleChatScroll = useCallback(() => {
-    const { chatScrollRef } = getActiveRefs();
-    const el = chatScrollRef.current;
-    if (!el) return;
-
-    // Add a small 1px buffer to account for subpixel rendering issues
-    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_STICK_THRESHOLD_PX + 1;
-    shouldStickToBottom.current = isAtBottom;
-  }, [getActiveRefs]);
-
-  const prevMessagesLength = useRef(currentSession?.messages?.length || 0);
-  const prevPipelineState = useRef(conversationState.pipelineState);
-
-  useLayoutEffect(() => {
-    const { chatScrollRef, messagesEndRef } = getActiveRefs();
-    const el = chatScrollRef.current;
-    const endEl = messagesEndRef.current;
-    if (!el || !endEl) return;
-
-    const currentLength = currentSession?.messages?.length || 0;
-    const isNewMessage = currentLength > prevMessagesLength.current;
-    const isNewThinkingState = conversationState.pipelineState === 'thinking' && prevPipelineState.current !== 'thinking';
-
-    prevMessagesLength.current = currentLength;
-    prevPipelineState.current = conversationState.pipelineState;
-
-    // Force stick to bottom when a new message block or thinking bubble appears
-    if (isNewMessage || isNewThinkingState) {
-      shouldStickToBottom.current = true;
-    }
-
-    if (shouldStickToBottom.current) {
-      // Determine if we are actively streaming high-frequency chunks
-      // Check Zustand store directly since we removed it from React state
-      const isStreaming = !!useChatUIStore.getState().currentMessage || !!useChatUIStore.getState().interimTranscript;
-
-      // Use 'auto' during streaming to prevent browser smooth-scroll cancellation (jitter/stuck).
-      // Use 'smooth' for new message initialization or when thinking state starts for premium UX.
-      const behavior = (isNewMessage || isNewThinkingState) && !isStreaming ? 'smooth' : 'auto';
-
-      endEl.scrollIntoView({ behavior, block: 'end' });
-    }
-  }, [
-    currentSession?.messages,
-    conversationState.pipelineState,
-    getActiveRefs
-  ]);
 
   const handleStop = useCallback(() => {
     abortGeneration();
@@ -317,19 +233,16 @@ export default function ClassroomShell() {
     // Await audio context unlock so it's strictly bound to this gesture
     unlockAudioContext().catch(console.warn);
 
-    // Force scroll to bottom when user explicitly sends a message
-    shouldStickToBottom.current = true;
-
     commitAndSend(payload);
 
-    const { textareaRef } = getActiveRefs();
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+    const activeTextarea = getActiveTextareaRef().current;
+    if (activeTextarea) {
+      activeTextarea.style.height = 'auto';
     }
     if (!isConnected && currentSessionId !== null) {
       toast.warning('Offline', 'Message queued. Will send when connected.', 3000);
     }
-  }, [isConnected, currentSessionId, commitAndSend, getActiveRefs]);
+  }, [isConnected, currentSessionId, commitAndSend, getActiveTextareaRef]);
 
 
 
@@ -391,8 +304,9 @@ export default function ClassroomShell() {
         <title>{avatarName} — VirtAI Classroom</title>
       </Helmet>
 
-      {/* Root Layout: Handled by AppLayout, we just provide the full width/height container */}
-      <div className="flex w-full h-full relative text-white font-sans">
+      <MessageScrollerProvider key={currentSessionId} defaultScrollPosition="last-anchor">
+        {/* Root Layout: Handled by AppLayout, we just provide the full width/height container */}
+        <div className="flex w-full h-full relative text-white font-sans">
 
         {/* Floating Sidebars/Drawers */}
         <SettingsDrawer
@@ -485,9 +399,6 @@ export default function ClassroomShell() {
                 messages={currentSession?.messages}
                 chatError={conversationState.error}
                 avatarName={avatarName}
-                chatScrollRef={desktopChatScrollRef}
-                messagesEndRef={desktopMessagesEndRef}
-                onChatScroll={handleChatScroll}
                 pipelineState={pipelineState}
                 onSendMessage={handleSendMessage}
 
@@ -545,9 +456,6 @@ export default function ClassroomShell() {
                 messages={currentSession?.messages}
                 chatError={conversationState.error}
                 avatarName={avatarName}
-                chatScrollRef={mobileChatScrollRef}
-                messagesEndRef={mobileMessagesEndRef}
-                onChatScroll={handleChatScroll}
                 pipelineState={pipelineState}
                 onSendMessage={handleSendMessage}
 
@@ -638,6 +546,7 @@ export default function ClassroomShell() {
 
         </main>
       </div>
+      </MessageScrollerProvider>
     </>
   );
 }

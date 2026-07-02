@@ -4,6 +4,7 @@ import { DiagramContainer } from '@/features/diagrams/components/DiagramContaine
 import { DocumentPicker } from '@/features/diagrams/components/DocumentPicker';
 import { QuizContainer } from '@/features/quiz/components/QuizContainer';
 import { MessageList, ChatInput } from '@/features/chat';
+import { ChatOutlineBadge } from '@/shared/components/chat/ChatOutlineBadge';
 import { PresentationState } from '@/features/explain/hooks/useExplainWS';
 import { ISession } from '@/features/session/types';
 
@@ -44,9 +45,6 @@ export interface AssistantPanelProps {
   messages?: ISession['messages'];
   chatError: string | null;
   avatarName: string;
-  chatScrollRef: RefObject<HTMLDivElement>;
-  messagesEndRef: RefObject<HTMLDivElement>;
-  onChatScroll: () => void;
   pipelineState: PipelineState | string;
   
   // Input Props
@@ -81,9 +79,6 @@ export const AssistantPanel = React.memo(function AssistantPanel({
   messages,
   chatError,
   avatarName,
-  chatScrollRef,
-  messagesEndRef,
-  onChatScroll,
   pipelineState,
   onSendMessage,
   onKeyDown,
@@ -159,10 +154,8 @@ export const AssistantPanel = React.memo(function AssistantPanel({
         messages={messages || []}
         error={chatError}
         avatarName={avatarName}
-        chatScrollRef={chatScrollRef}
-        messagesEndRef={messagesEndRef}
-        onScroll={onChatScroll}
       />
+      <ChatOutlineBadge messages={messages || []} />
       <div className="mt-auto">
         <ChatInput
           onSend={onSendMessage}

@@ -10,10 +10,9 @@ interface MessageBubbleProps {
   msg: IMessage;
   isLast?: boolean;
   avatarName: string;
-  onScrollToBottom?: () => void;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = memo(function MessageBubble({ msg, isLast, avatarName, onScrollToBottom }) {
+const MessageBubble: React.FC<MessageBubbleProps> = memo(function MessageBubble({ msg, isLast, avatarName }) {
   const isUser = msg.role === 'user';
   const canonicalTimestamp = msg.created_at;
   const timeString = msg.status === 'pending' ? 'Sending...' : formatTimeOnly(canonicalTimestamp);
@@ -34,7 +33,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = memo(function MessageBubble(
             <CopyButton content={msg.content} />
           </div>
           {isLast && msg.id && (
-            <VisualizeButton messageId={msg.id} locale="en" onExpand={onScrollToBottom} />
+            <VisualizeButton messageId={msg.id} locale="en" />
           )}
         </>
       )}
