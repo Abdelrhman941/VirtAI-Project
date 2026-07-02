@@ -377,46 +377,6 @@
   box-shadow: 0 0 15px rgb(180 171 139 / 30%);
 }
 
-.avatar-card-name {
-  font-family: var(--font-display, sans-serif);
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary, #fff);
-}
-
-@media (width <=480px) {
-  .avatar-card-name {
-    font-size: 14px;
-  }
-}
-
-.avatar-card-desc {
-  font-size: 13px;
-  color: var(--text-muted, #808080);
-  text-align: center;
-}
-
-@media (width <=480px) {
-  .avatar-card-desc {
-    font-size: 12px;
-  }
-}
-
-.avatar-card-check {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--color-gold, #b4ab8b);
-  color: var(--primary-bg, #121212);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: bold;
-}
 
 /* ── Voice tab scroll wrapper ─────────────────────────────── */
 .voice-tab-scroll {
@@ -602,45 +562,6 @@
   }
 }
 
-/* ── All set tab ──────────────────────────────────────────── */
-.allset-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  height: 100%;
-}
-
-.allset-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 24px 0;
-  padding: 20px 28px;
-  background: rgb(255 255 255 / 5%);
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 14px;
-  min-width: 260px;
-}
-
-.allset-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 15px;
-  color: var(--text-secondary, #b0b0b0);
-}
-
-.allset-item .check-icon {
-  color: var(--success, #4caf50);
-  font-size: 16px;
-}
-
-.allset-item .item-value {
-  color: var(--text-primary, #fff);
-  font-weight: 600;
-}
 
 /* ── Avatar preview panel ─────────────────────────────────── */
 .preview-panel {
@@ -1075,26 +996,6 @@
 
 .shiny-save-btn:active:not(:disabled) {
   transform: scale(0.98);
-}
-
-/* ── Section headers ──────────────────────────────────────── */
-.setup-section-title {
-  font-family: var(--font-display, sans-serif);
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
-  color: var(--text-primary, #fff);
-  margin: 0;
-}
-
-.setup-section-subtitle {
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.6;
-  letter-spacing: 0.01em;
-  color: var(--text-muted, #808080);
-  margin: 6px 0 0;
 }
 
 /* ── Responsive: Tablet (≤1024px) ─────────────────────────── */

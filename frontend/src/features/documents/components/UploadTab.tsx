@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FiFileText, FiUploadCloud, FiX } from 'react-icons/fi';
 import { Document } from '../types';
+import './UploadTab.css';
 
 const MAX_FILE_SIZE_MB = 25;
 const ACCEPTED_EXTENSIONS = new Set(['pdf', 'txt', 'md']);

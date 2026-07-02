@@ -1,0 +1,17 @@
+/* ── Slide Drawer Base Styles ── */
+.slide-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: none;
+  pointer-events: none;
+}
+
+.slide-drawer.open {
+  display: block;
+}
+
+.slide-drawer .drawer-overlay,
+.slide-drawer .drawer-content {
+  pointer-events: auto;
+}

@@ -64,12 +64,11 @@ export default function AllSetTab({
   const isReady = !!avatar && !!voice;
 
   return (
-    <div className="allset-container">
+    <div className="flex flex-col items-center justify-center p-5 h-full">
       <SuccessAnimation />
 
       <motion.h2
-        className="setup-section-title"
-        style={{ textAlign: 'center', marginTop: 20 }}
+        className="setup-section-title text-center mt-5"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8 }}
@@ -78,8 +77,7 @@ export default function AllSetTab({
       </motion.h2>
 
       <motion.p
-        className="setup-section-subtitle"
-        style={{ textAlign: 'center' }}
+        className="setup-section-subtitle text-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1 }}
@@ -88,20 +86,20 @@ export default function AllSetTab({
       </motion.p>
 
       <motion.div
-        className="allset-summary"
+        className="flex flex-col gap-2.5 my-6 py-5 px-7 bg-white/5 border border-white/10 rounded-xl min-w-[260px]"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.1 }}
       >
-        <div className="allset-item">
-          <FiCheck className="check-icon" />
+        <div className="flex items-center gap-2.5 text-[15px] text-text-secondary">
+          <FiCheck className="text-success text-[16px]" />
           <span>Teaching Assistant Avatar:</span>
-          <span className="item-value truncate block max-w-[200px] overflow-hidden text-ellipsis" dir="auto" title={avatar?.name ?? '—'}>{avatar?.name ?? '—'}</span>
+          <span className="text-text-primary font-semibold truncate block max-w-[200px] overflow-hidden text-ellipsis" dir="auto" title={avatar?.name ?? '—'}>{avatar?.name ?? '—'}</span>
         </div>
-        <div className="allset-item">
-          <FiCheck className="check-icon" />
+        <div className="flex items-center gap-2.5 text-[15px] text-text-secondary">
+          <FiCheck className="text-success text-[16px]" />
           <span>Speech Profile:</span>
-          <span className="item-value truncate block max-w-[200px] overflow-hidden text-ellipsis" dir="auto" title={voice?.name ?? '—'}>{voice?.name ?? '—'}</span>
+          <span className="text-text-primary font-semibold truncate block max-w-[200px] overflow-hidden text-ellipsis" dir="auto" title={voice?.name ?? '—'}>{voice?.name ?? '—'}</span>
         </div>
       </motion.div>
 

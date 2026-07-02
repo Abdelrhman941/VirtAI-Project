@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useId, useRef, useState, ReactNode } from 'react';
+import './SlideDrawer.css';
 
 interface SlideDrawerProps {
   title: string;

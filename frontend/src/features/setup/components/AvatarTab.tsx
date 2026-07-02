@@ -71,12 +71,12 @@ const AvatarTab = memo(function AvatarTab({ selected, onSelect }: AvatarTabProps
                 loading="lazy"
                 decoding="async"
               />
-              <span className="avatar-card-name truncate block w-full text-ellipsis overflow-hidden" dir="auto" title={avatar.name}>{avatar.name}</span>
-              <span className="avatar-card-desc truncate block w-full text-ellipsis overflow-hidden" dir="auto" title={avatar.description}>{avatar.description}</span>
+              <span className="font-display font-semibold text-[var(--text-primary,#fff)] text-[18px] max-[480px]:text-[14px] truncate block w-full text-ellipsis overflow-hidden" dir="auto" title={avatar.name}>{avatar.name}</span>
+              <span className="text-center text-[var(--text-muted,#808080)] text-[13px] max-[480px]:text-[12px] truncate block w-full text-ellipsis overflow-hidden" dir="auto" title={avatar.description}>{avatar.description}</span>
 
               <SelectionCheckmark
                 isSelected={isSelected}
-                className="avatar-card-check"
+                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[var(--color-gold)] text-[var(--primary-bg)] flex items-center justify-center text-[14px] font-bold"
                 size={13}
               />
             </motion.button>
