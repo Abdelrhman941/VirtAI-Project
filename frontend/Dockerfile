@@ -1,11 +1,12 @@
 # Stage 1: builder
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    HUSKY=0 npm install --no-audit --no-fund --legacy-peer-deps
+RUN corepack enable && corepack prepare pnpm@latest --activate
+COPY package.json pnpm-lock.yaml .npmrc ./
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 # Stage 2: production
 FROM nginxinc/nginx-unprivileged:alpine
