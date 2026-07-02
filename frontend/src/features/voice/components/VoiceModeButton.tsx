@@ -3,7 +3,7 @@ import { PiMicrophone, PiPauseFill, PiWarningCircleFill, PiArrowCounterClockwise
 import { useRealtimeASR } from '../hooks/useRealtimeASR';
 
 import { VoiceIndicator } from '@/shared/components/VoiceIndicator';
-import './VoiceModeButton.css';
+import { Button } from '@/shared/components/ui/button';
 
 /**
  * Props for VoiceModeButton component
@@ -101,10 +101,19 @@ export default function VoiceModeButton({
   }, [isListening, isPaused, error]);
 
   return (
-    <div className={`voice-mode-container ${className}`}>
+    <div className={`relative flex flex-col items-center gap-3 ${className}`}>
       {/* Main voice mode button (Requirement 1.1, 1.4) */}
-      <button
-        className={`relative group w-[52px] h-[52px] rounded-full flex items-center justify-center transition-all duration-200 voice-mode-btn ${buttonState} ${error && canRetry ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30' : 'bg-dark-secondary hover:bg-dark-tertiary text-white/70 hover:text-white'}`}
+      <Button
+        variant="ghost"
+        size="icon-xl"
+        className={`group relative flex items-center justify-center rounded-full transition-all duration-200 overflow-visible
+          ${buttonState === 'listening' ? 'bg-green-500/15 border-green-500/30 text-green-500 shadow-md hover:bg-green-500/25' : ''}
+          ${buttonState === 'paused' ? 'bg-orange-500/15 border-orange-500/30 text-orange-500 shadow-md' : ''}
+          ${buttonState === 'error' && canRetry ? 'bg-red-500/15 border-red-500/30 text-red-500 shadow-md hover:bg-red-500/25' : ''}
+          ${buttonState === 'error' && !canRetry ? 'bg-red-500/15 border-red-500/30 text-red-500 shadow-md opacity-50 cursor-not-allowed' : ''}
+          ${buttonState === 'idle' ? 'bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white/70 hover:text-white border border-[#333]' : ''}
+          ${buttonState === 'processing' ? 'bg-blue-500/15 border-blue-500/30 text-blue-500 shadow-md animate-pulse' : ''}
+        `}
         onClick={async () => {
           if (error && canRetry) {
             clearError();
@@ -129,7 +138,7 @@ export default function VoiceModeButton({
         disabled={!!error && !canRetry}
         type="button"
       >
-        <ButtonIcon className="voice-mode-icon shrink-0" size={22} />
+        <ButtonIcon className="shrink-0 size-[22px] relative z-10" />
           
         {/* Custom Hover Tooltip */}
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-800 text-gray-100 text-xs font-medium rounded-md shadow-lg opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-50 border border-gray-700">
@@ -138,20 +147,20 @@ export default function VoiceModeButton({
 
         {/* Listening animation (Requirement 8.3) */}
         <VoiceIndicator isListening={isListening} isPaused={isPaused} />
-      </button>
+      </Button>
 
       {/* Interim transcript display (Step 4.2: visual feedback) */}
       {interimText && (
-        <div className="voice-transcript-bubble" role="status" aria-live="polite">
-          <span className="transcript-text">{interimText}</span>
+        <div className="absolute bottom-[calc(100%+0.5rem)] left-1/2 -translate-x-1/2 bg-blue-500/10 border border-blue-500/30 rounded-lg px-3 py-1.5 max-w-[280px] min-w-[60px] z-[1001] shadow-[0_4px_20px_rgba(0,0,0,0.4)] animate-in slide-in-from-bottom-2" role="status" aria-live="polite">
+          <span className="text-[0.8125rem] leading-relaxed text-[#b0b0b0] italic break-words block max-w-[75ch]">{interimText}</span>
         </div>
       )}
 
       {/* Paused indicator (Requirement 7.2, 8.4) */}
       {isPaused && (
-        <div className="voice-status-indicator paused" role="status" aria-live="polite">
-          <PiPauseFill className="status-icon" />
-          <span className="status-text">Paused (assistant speaking)</span>
+        <div className="absolute bottom-[calc(100%+0.75rem)] -right-2 flex items-start gap-2 px-4 py-3 rounded-xl text-sm min-w-[240px] max-w-[380px] w-max leading-relaxed break-words shadow-[0_4px_20px_rgba(0,0,0,0.4)] animate-in slide-in-from-bottom-2 bg-orange-500/10 border border-orange-500/30 text-orange-500 z-[1000]" role="status" aria-live="polite">
+          <PiPauseFill className="text-base shrink-0 mt-0.5" />
+          <span className="text-sm">Paused (assistant speaking)</span>
         </div>
       )}
     </div>

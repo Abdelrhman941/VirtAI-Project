@@ -5,7 +5,7 @@ export function useClassroomAudio() {
   // Structure: { baseId: { chunkIndex: { url, cues, durationMs } } }
   const chunksRef = useRef<Record<string, Record<string, { url?: string; cues?: Viseme[]; durationMs?: number }>>>({});
   const expectedChunkRef = useRef<Record<string, number>>({});
-  const missingChunkTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const missingChunkTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   
   const mouthCuesRef = useRef<Viseme[]>([]);
   const playedAudioIdsRef = useRef<Set<string>>(new Set());

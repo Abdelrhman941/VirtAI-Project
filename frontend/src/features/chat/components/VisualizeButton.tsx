@@ -12,7 +12,7 @@ import {
 } from 'react-icons/fi';
 import { getVisualization } from '../api/visualizationApi';
 import { getVisualizationTranslations, Locale } from '../i18n/visualizationI18n';
-import './VisualizeButton.css';
+import { Button } from '@/shared/components/ui/button';
 
 interface VisualizeButtonProps {
   messageId: string;
@@ -180,16 +180,17 @@ export function VisualizeButton({ messageId, locale = 'en', onExpand }: Visualiz
     <div className="visualize-container mt-4 animate-in fade-in duration-300 mx-auto max-w-2xl w-full">
       {/* Idle / Error — show button */}
       {!imageUrl && !svgContent && !isLoading && (
-        <button
+        <Button
           type="button"
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full transition-colors duration-200 bg-white/5 text-[#D4B47A] border border-[#D4B47A]/30 hover:border-[#D4B47A] hover:bg-[#D4B47A]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+          variant="outline"
+          className="rounded-full bg-white/5 text-[#D4B47A] border-[#D4B47A]/30 hover:border-[#D4B47A] hover:bg-[#D4B47A]/10 h-8 px-3 text-xs gap-1.5 transition-colors duration-200"
           onClick={() => handleVisualize()}
           title={t.visualize}
           aria-label={t.visualize}
         >
           <FiImage size={14} />
           <span>{imageError ? 'Retry Visualization' : t.visualize}</span>
-        </button>
+        </Button>
       )}
 
       {/* Error message */}
@@ -202,14 +203,15 @@ export function VisualizeButton({ messageId, locale = 'en', onExpand }: Visualiz
       {/* Loading skeleton */}
       {isLoading && (
         <div className="w-full flex flex-col gap-2">
-          <button
+          <Button
             type="button"
-            className="flex w-fit items-center gap-1.5 px-3 py-1.5 text-xs rounded-full bg-white/5 text-[#D4B47A] border border-[#D4B47A]/30 opacity-70 cursor-not-allowed"
+            variant="outline"
+            className="w-fit rounded-full bg-white/5 text-[#D4B47A] border-[#D4B47A]/30 opacity-70 cursor-not-allowed h-8 px-3 text-xs gap-1.5"
             disabled
           >
             <FiLoader className="animate-spin" size={14} />
             <span>{t.generating}</span>
-          </button>
+          </Button>
           <div className="w-full h-52 bg-white/5 animate-pulse rounded-lg border border-white/10 mt-2" />
         </div>
       )}
@@ -224,34 +226,42 @@ export function VisualizeButton({ messageId, locale = 'en', onExpand }: Visualiz
               <span>Visualization</span>
             </div>
             <div className="flex items-center gap-1">
-              <button
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={handleDownload}
-                className="text-white/40 hover:text-[#D4B47A] transition-colors p-1.5 rounded-md hover:bg-white/5"
+                className="text-white/40 hover:text-[#D4B47A] hover:bg-white/5"
                 title="Download"
               >
                 <FiDownload size={14} />
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => handleVisualize(true)}
-                className="text-white/40 hover:text-[#D4B47A] transition-colors p-1.5 rounded-md hover:bg-white/5"
+                className="text-white/40 hover:text-[#D4B47A] hover:bg-white/5"
                 title="Regenerate"
               >
                 <FiRefreshCcw size={14} />
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setIsLightboxOpen(true)}
-                className="text-white/40 hover:text-[#D4B47A] transition-colors p-1.5 rounded-md hover:bg-white/5"
+                className="text-white/40 hover:text-[#D4B47A] hover:bg-white/5"
                 title="Fullscreen"
               >
                 <FiMaximize2 size={14} />
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={handleClose}
-                className="text-white/40 hover:text-white transition-colors p-1.5 rounded-md hover:bg-white/5"
+                className="text-white/40 hover:text-white hover:bg-white/5"
                 title="Close"
               >
                 <FiX size={14} />
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -291,8 +301,10 @@ export function VisualizeButton({ messageId, locale = 'en', onExpand }: Visualiz
           onClick={() => setIsLightboxOpen(false)}
         >
           <div className="absolute top-4 right-4 flex items-center gap-3 z-[10000]">
-            <button
-              className="p-2.5 text-white bg-black rounded-full hover:bg-neutral-800 transition-colors border border-white/20 shadow-md"
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full bg-black text-white hover:bg-neutral-800 border-white/20 shadow-md"
               onClick={(e) => {
                 e.stopPropagation();
                 handleDownload();
@@ -300,9 +312,11 @@ export function VisualizeButton({ messageId, locale = 'en', onExpand }: Visualiz
               title="Download"
             >
               <FiDownload size={20} />
-            </button>
-            <button
-              className="p-2.5 text-white bg-black rounded-full hover:bg-neutral-800 transition-colors border border-white/20 shadow-md"
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full bg-black text-white hover:bg-neutral-800 border-white/20 shadow-md"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsLightboxOpen(false);
@@ -310,7 +324,7 @@ export function VisualizeButton({ messageId, locale = 'en', onExpand }: Visualiz
               title="Close"
             >
               <FiX size={20} />
-            </button>
+            </Button>
           </div>
           {svgContent ? (
             <div

@@ -1,6 +1,11 @@
-import { AnimatePresence, motion } from 'framer-motion';
-import { useCallback, useEffect, useId, useRef, useState, ReactNode } from 'react';
-import './SlideDrawer.css';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { cn } from '@/shared/utils/cn';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from '@/shared/components/ui/sheet';
 
 interface SlideDrawerProps {
   title: string;
@@ -35,15 +40,23 @@ export default function SlideDrawer({
   maxWidth = 480,
   resizable = false,
 }: SlideDrawerProps) {
-  const drawerRef = useRef(null);
-  const previousFocusRef = useRef(null);
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
   );
   const [isResizing, setIsResizing] = useState(false);
-  const id = useId();
+  const titleId = useId();
+  const descId = useId();
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  // Resizing logic
+  // Track mobile breakpoint
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 1023px)');
+    const handleChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  // Resizing logic (desktop only)
   useEffect(() => {
     if (!isResizing) return;
 
@@ -52,15 +65,10 @@ export default function SlideDrawer({
       const dynamicMaxWidth = Math.min(maxWidth, window.innerWidth - 320);
       if (newWidth < minWidth) newWidth = minWidth;
       if (newWidth > dynamicMaxWidth) newWidth = dynamicMaxWidth;
-      
-      if (onWidthChange) {
-        onWidthChange(newWidth);
-      }
+      onWidthChange?.(newWidth);
     };
 
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
+    const handleMouseUp = () => setIsResizing(false);
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
@@ -73,65 +81,21 @@ export default function SlideDrawer({
     };
   }, [isResizing, minWidth, maxWidth, onWidthChange]);
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 1023px)');
-    const handleChange = (e) => setIsMobile(e.matches);
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  // Focus restoration
-  useEffect(() => {
-    if (isOpen) {
-      previousFocusRef.current = document.activeElement;
-    } else if (previousFocusRef.current) {
-      previousFocusRef.current.focus();
-      previousFocusRef.current = null;
-    }
-  }, [isOpen]);
-
-  // Focus first focusable element on open
-  useEffect(() => {
-    if (!isOpen || !drawerRef.current) return;
-    const firstFocusable = drawerRef.current.querySelector(
-      'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    requestAnimationFrame(() => firstFocusable?.focus());
-  }, [isOpen]);
-
-  // Escape key handler
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  // Focus trap
-  const handleKeyDown = useCallback((e) => {
-    if (e.key !== 'Tab') {
-      return;
-    }
-    const drawer = drawerRef.current;
-    if (!drawer) {
-      return;
-    }
+  // Focus trap (Tab cycling) — Radix Dialog handles ESC and focus-lock natively,
+  // but we preserve the custom Tab handler for backward-compat with any inner
+  // content that bypasses Radix's focus scope.
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key !== 'Tab') return;
+    const container = contentRef.current;
+    if (!container) return;
     const focusable = Array.from(
-      drawer.querySelectorAll(
+      container.querySelectorAll<HTMLElement>(
         'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])'
       )
-    ).filter((el) => !(el as HTMLButtonElement).disabled && (el as HTMLElement).offsetParent !== null);
-    if (focusable.length === 0) {
-      return;
-    }
-    const first = focusable[0] as HTMLElement;
-    const last = focusable[focusable.length - 1] as HTMLElement;
+    ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
     if (e.shiftKey && document.activeElement === first) {
       e.preventDefault();
       last.focus();
@@ -142,86 +106,84 @@ export default function SlideDrawer({
   }, []);
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.aside key="drawer-wrapper" className={`slide-drawer open ${className}`} style={{ zIndex }}>
-          <motion.div
-            className="drawer-overlay"
-            onClick={onClose}
-            role="presentation"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          />
-          <motion.div
-            className={`drawer-content ${contentClassName} ${isResizing ? 'resizing' : ''}`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={title ? `${id}-title` : undefined}
-            aria-describedby={description ? `${id}-desc` : undefined}
-            ref={drawerRef}
-            style={{ width: (!isMobile && width) ? width : undefined }}
-            onKeyDown={handleKeyDown}
-            drag={isMobile && enableDrag ? 'y' : false}
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0}
-            onDragEnd={(e, info) => {
-              if (isMobile && enableDrag && info.offset.y > 100) {
-                onClose();
-              }
+    <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <SheetContent
+        // Radix Dialog handles focus-trap, ESC, scroll-lock, and portal rendering.
+        // We override the default Sheet styles and preserve the existing class hooks
+        // so that feature-level CSS (documents-drawer-content, sidebar-minimal) keeps working.
+        side={isMobile ? 'bottom' : 'right'}
+        showCloseButton={false}
+        style={{ zIndex, ...((!isMobile && width) ? { width } : {}) }}
+        className={cn(
+          // Reset shadcn visual defaults — our feature CSS provides all layout/visual styles.
+          // We do NOT reset inset/position — the `side` prop handles those correctly.
+          '!bg-transparent !border-0 !shadow-none !gap-0 !p-0 [&]:w-auto [&]:max-w-none',
+          // Preserve the existing drawer-content class hook so feature CSS (documents-drawer-content,
+          // sidebar-minimal) continues to apply its full layout and visual styles
+          `drawer-content ${contentClassName}`,
+          isResizing ? 'resizing' : '',
+          className
+        )}
+        aria-labelledby={title ? `${titleId}-title` : undefined}
+        aria-describedby={description ? `${descId}-desc` : undefined}
+        onKeyDown={handleKeyDown}
+      >
+        <div ref={contentRef} style={{ display: 'contents' }}>
+        {/* Accessible title and description — visually hidden, preserved for AT */}
+        {title && (
+          <SheetTitle id={`${titleId}-title`} className="sr-only">
+            {title}
+          </SheetTitle>
+        )}
+        {description && (
+          <SheetDescription id={`${descId}-desc`} className="sr-only">
+            {description}
+          </SheetDescription>
+        )}
+
+        {/* Resizable handle (desktop only) */}
+        {!isMobile && resizable && (
+          <div
+            className="drawer-resize-handle"
+            onMouseDown={() => setIsResizing(true)}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: '6px',
+              cursor: 'col-resize',
+              zIndex: 10,
+              backgroundColor: isResizing ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+              transition: 'background-color 0.2s ease',
             }}
-            initial={isMobile ? { y: '100%' } : { x: '100%' }}
-            animate={isMobile ? { y: 0 } : { x: 0 }}
-            exit={isMobile ? { y: '100%' } : { x: '100%' }}
-            transition={{ type: 'tween', ease: [0.2, 0.8, 0.2, 1], duration: 0.3 }}
-          >
-            {!isMobile && resizable && (
-              <div
-                className="drawer-resize-handle"
-                onMouseDown={() => setIsResizing(true)}
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: '6px',
-                  cursor: 'col-resize',
-                  zIndex: 10,
-                  backgroundColor: isResizing ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                  transition: 'background-color 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isResizing) (e.target as HTMLElement).style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                }}
-                onMouseLeave={(e) => {
-                  if (!isResizing) (e.target as HTMLElement).style.backgroundColor = 'transparent';
-                }}
-              />
-            )}
-            {isMobile && (
-              <div
-                className="drawer-drag-handle"
-                style={
-                  enableDrag
-                    ? {
-                      width: '40px',
-                      height: '5px',
-                      background: 'var(--border-color)',
-                      margin: '12px auto 0',
-                      borderRadius: '4px',
-                      flexShrink: 0,
-                    }
-                    : undefined
-                }
-              />
-            )}
-            {title && <h2 id={`${id}-title`} className="sr-only">{title}</h2>}
-            {description && <p id={`${id}-desc`} className="sr-only">{description}</p>}
-            {children || null}
-          </motion.div>
-        </motion.aside>
-      )}
-    </AnimatePresence>
+            onMouseEnter={(e) => {
+              if (!isResizing) (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+            }}
+            onMouseLeave={(e) => {
+              if (!isResizing) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+            }}
+          />
+        )}
+
+        {/* Mobile drag handle pill */}
+        {isMobile && enableDrag && (
+          <div
+            className="drawer-drag-handle"
+            style={{
+              width: '40px',
+              height: '5px',
+              background: 'var(--border-color)',
+              margin: '12px auto 0',
+              borderRadius: '4px',
+              flexShrink: 0,
+            }}
+          />
+        )}
+
+        {children ?? null}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

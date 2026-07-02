@@ -1,6 +1,6 @@
 import React from 'react';
 import { FiShare2 } from 'react-icons/fi';
-import './DiagramButton.css';
+import { Button } from '@/shared/components/ui/button';
 
 interface DiagramButtonProps {
   onClick: () => void;
@@ -9,17 +9,16 @@ interface DiagramButtonProps {
 
 export function DiagramButton({ onClick, disabled }: DiagramButtonProps) {
   return (
-    <button
+    <Button
       type="button"
-      className="classroom-action-btn"
-      data-variant="diagram"
+      variant="action"
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       aria-label="Generate Diagram"
       title={disabled ? "Upload a document first to generate a diagram" : "Generate Diagram"}
     >
-      <FiShare2 />
+      <FiShare2 className="size-4" />
       <span>Diagram</span>
-    </button>
+    </Button>
   );
 }

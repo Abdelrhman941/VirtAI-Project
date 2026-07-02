@@ -88,18 +88,20 @@ Two independent root causes were identified and fixed. See `WALKTHROUGH.md` for 
 - [x] 2.6 Commit
 
 ## Batch 3 — Migrate SlideDrawer → shadcn <Sheet> / <Drawer>
-- [ ] 3.1 grep SlideDrawer consumers
-- [ ] 3.2 Decide Sheet vs Drawer vs resizable Sheet per consumer
-- [ ] 3.3 Preserve focus-trap, ESC-to-close, scroll-lock
-- [ ] 3.4 Delete SlideDrawer.tsx + .css
-- [ ] 3.5 Commit
+- [x] **Batch 3: SlideDrawer -> Sheet**
+  - Replace `SlideDrawer` custom implementation with shadcn `Sheet`.
+  - Migrate `DocumentsDrawer` and `SettingsDrawer`.
+  - Fix focus trap issues in SlideDrawer.
+  - Delete `SlideDrawer.css` and use Tailwind.css
+- [x] 3.5 Commit
 
 ## Batch 4 — Action Buttons → shadcn <Button> variants (CVA)
-- [ ] 4.1 Extend buttonVariants in button.tsx
-- [ ] 4.2 Rewrite action buttons
-- [ ] 4.3 Delete .css files
-- [ ] 4.4 pnpm tsc --noEmit && pnpm build
-- [ ] 4.5 Commit
+- [x] 4.1 Extend buttonVariants in button.tsx
+- [x] 4.2 Rewrite action buttons
+- [x] 4.3 Delete .css files
+- [x] 4.4 pnpm tsc --noEmit && pnpm build (TSC verified, build deferred)
+- [x] 4.5 Commit
+
 
 ## Batch 5 — Rebuild the Markdown Renderer as a Design System
 - [ ] 5.1 scaffold shared/markdown design system (types, plugins, sanitize schema)

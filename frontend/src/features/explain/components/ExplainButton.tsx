@@ -1,6 +1,6 @@
 import React from 'react';
 import { FiMonitor } from 'react-icons/fi';
-import './ExplainButton.css';
+import { Button } from '@/shared/components/ui/button';
 
 interface ExplainButtonProps {
   onClick: () => void;
@@ -11,17 +11,16 @@ export function ExplainButton({ onClick, isVisible }: ExplainButtonProps) {
   if (!isVisible) return null;
 
   return (
-    <button
+    <Button
       type="button"
-      className="classroom-action-btn"
-      data-variant="explain"
+      variant="action"
       onClick={!isVisible ? undefined : onClick}
       disabled={!isVisible}
       aria-label="Start Presentation"
       title="Start slide-by-slide presentation"
     >
-      <FiMonitor />
+      <FiMonitor className="size-4" />
       <span>Explain</span>
-    </button>
+    </Button>
   );
 }

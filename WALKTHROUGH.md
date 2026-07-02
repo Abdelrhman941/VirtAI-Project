@@ -225,3 +225,33 @@ All three must exit with code 0 before any Batch 1 work begins.
 - **TypeScript Strictness**: `cn.ts` was updated with `ClassValue` types from `clsx` to satisfy strict typing rules and fix implicit `any`.
 - **Cleanup**: `index.css` and `app.css` were safely removed and imports in `main.tsx` and `App.tsx` were updated.
 - **Verification**: The application builds completely cleanly using `tsc --noEmit && pnpm build` with zero errors.
+
+---
+
+## 9. Milestone: Batch 2 Complete (shadcn/ui Bootstrapping)
+
+- **Setup**: Initialized `components.json` for shadcn/ui.
+- **Components Installed**: Added basic shadcn/ui components (`Button`, `Sheet`, `Drawer`, `Dialog`, etc.) via command-line installation into the `src/shared/components/ui` folder.
+- **Theme integration**: Ensured shadcn variables leverage Tailwind v4's `@theme` variables inside `globals.css`.
+
+---
+
+## 10. Milestone: Batch 3 Complete (SlideDrawer → shadcn <Sheet>)
+
+- **Migration**: Refactored `SlideDrawer` custom drawer implementation to use shadcn/ui `<Sheet>` and `<SheetContent>` component layout.
+- **Consumers**: Updated `DocumentsDrawer` and `SettingsDrawer` to consume the new component.
+- **Focus & a11y**: Fixed potential focus trap issues.
+- **Cleanup**: Removed `SlideDrawer.css`.
+
+---
+
+## 11. Milestone: Batch 4 Complete (Action Buttons → shadcn <Button> variants)
+
+- **CVA Variants**: Extended `buttonVariants` inside `src/shared/components/ui/button.tsx` to add `action` (gold accent style) and `icon-xl` size (used by voice mode).
+- **Migration**:
+  - `DiagramButton.tsx` migrated to use shadcn `<Button variant="action">`.
+  - `ExplainButton.tsx` migrated to use shadcn `<Button variant="action">`.
+  - `VoiceModeButton.tsx` migrated to use shadcn `<Button size="icon-xl">` with inline Tailwind classes for states.
+  - `VisualizeButton.tsx` migrated to use shadcn `<Button>` for the main visualization toggle and sub-actions.
+- **Cleanup**: Deleted legacy `.css` files (`DiagramButton.css`, `ExplainButton.css`, `VoiceModeButton.css`, `VisualizeButton.css`).
+
