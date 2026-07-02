@@ -35,10 +35,10 @@ describe('ChatInput', () => {
   it('submits on Enter key press without shift', () => {
     render(
       <ChatInput 
-        onSend={mockOnSend} 
-        disabled={false} 
-        placeholder="Type here..." 
-        clearError={mockClearError} 
+        onSend={mockOnSend}
+        textareaRef={{ current: null }}
+        pipelineState="idle"
+        onToggleDocuments={vi.fn()}
       />
     );
 
@@ -59,10 +59,10 @@ describe('ChatInput', () => {
   it('does not submit on Shift+Enter', () => {
     render(
       <ChatInput 
-        onSend={mockOnSend} 
-        disabled={false} 
-        placeholder="Type here..." 
-        clearError={mockClearError} 
+        onSend={mockOnSend}
+        textareaRef={{ current: null }}
+        pipelineState="idle"
+        onToggleDocuments={vi.fn()}
       />
     );
 
@@ -83,10 +83,10 @@ describe('ChatInput', () => {
   it('submits on send button click', () => {
     render(
       <ChatInput 
-        onSend={mockOnSend} 
-        disabled={false} 
-        placeholder="Type here..." 
-        clearError={mockClearError} 
+        onSend={mockOnSend}
+        textareaRef={{ current: null }}
+        pipelineState="idle"
+        onToggleDocuments={vi.fn()}
       />
     );
 

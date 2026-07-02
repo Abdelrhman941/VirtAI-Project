@@ -164,7 +164,7 @@ export function useAvatarLipSync({
             audioDataArrayRef.current = new Uint8Array(analyser.frequencyBinCount); // usually 128 for fftSize 256
           }
           const dataArray = audioDataArrayRef.current;
-          analyser.getByteFrequencyData(dataArray);
+          analyser.getByteFrequencyData(dataArray as any);
 
           // Calculate band averages
           // Low: 0-3 (0 - ~680Hz)

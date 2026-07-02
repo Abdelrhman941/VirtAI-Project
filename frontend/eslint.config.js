@@ -2,13 +2,11 @@ import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
-import tailwind from 'eslint-plugin-tailwindcss';
 
 export default [
   {
     ignores: ['dist/**', 'node_modules/**', '*.config.ts', 'vite.config.*']
   },
-  ...tailwind.configs['flat/recommended'],
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
@@ -46,19 +44,17 @@ export default [
       ...tseslint.configs.recommended.rules,
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
-      'tailwindcss/classnames-order': 'warn',
-      'tailwindcss/no-contradicting-classname': 'error',
-      'tailwindcss/no-custom-classname': ['error', {
-        whitelist: ['shimmer', 'scroll-fade.*', 'no-scrollbar', 'prose.*', 'katex.*', 'katex-display']
-      }],
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': 'warn',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-empty-object-type': 'off',
       '@typescript-eslint/ban-ts-comment': 'off',
+      '@typescript-eslint/no-unsafe-function-type': 'warn',
       'react-hooks/exhaustive-deps': 'off',
       'react-hooks/rules-of-hooks': 'off',
-      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/refs': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/purity': 'warn',
       'react/display-name': 'off',
       'react/no-unescaped-entities': 'off',
       'react/react-in-jsx-scope': 'off',

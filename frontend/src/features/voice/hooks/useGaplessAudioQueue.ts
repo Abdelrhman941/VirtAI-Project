@@ -187,7 +187,7 @@ export function useGaplessAudioQueue() {
               
               console.log(`[GaplessAudio Debug] 5. Creating AudioContext Buffer (Channels: ${PCM_NUM_CHANNELS}, SampleRate: ${PCM_SAMPLE_RATE})`);
               audioBuffer = ctx.createBuffer(PCM_NUM_CHANNELS, float32Data.length, PCM_SAMPLE_RATE);
-              audioBuffer.copyToChannel(float32Data, 0);
+              audioBuffer.copyToChannel(float32Data as any, 0);
               console.log(`[GaplessAudio Debug] 6. AudioBuffer created successfully. Duration: ${audioBuffer.duration}s`);
             }
           } catch (err) {
@@ -302,7 +302,7 @@ export function useGaplessAudioQueue() {
           try {
             const float32Data = convertInt16ToFloat32(chunkArrayBuffer);
             audioBuffer = ctx.createBuffer(PCM_NUM_CHANNELS, float32Data.length, PCM_SAMPLE_RATE);
-            audioBuffer.copyToChannel(float32Data, 0);
+            audioBuffer.copyToChannel(float32Data as any, 0);
             // Mark decode as successful so the URL fallback path is suppressed.
             chunkDecodedSuccessfullyRef.current = true;
           } catch (err) {

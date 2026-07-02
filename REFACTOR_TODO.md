@@ -1,8 +1,8 @@
 # VirtAI Frontend Refactor — TODO
 
 **Last updated by:** Antigravity / 2026-07-02
-**Current batch:** 0
-**Overall progress:** 0/16 tasks done
+**Current batch:** 0-E (build investigation)
+**Overall progress:** Batch 0 done, build environment being stabilised
 **Branch:** refactor/styling-foundation
 
 ---
@@ -15,10 +15,56 @@
 - [x] 0.5 Capture the before bundle baseline
 - [x] 0.6 Commit
 
-## Baselines
-- CSS bundle size (dist/assets/*.css): 221.36 KB
+## Baselines (pre-refactor)
+- CSS bundle size (dist/assets/*.css): 221.36 KB total
 - JS bundle size (dist/assets/*.js) — total gzipped: ~1.71 MB
 - visualizer HTML output path: dist/stats.html
+
+## Batch 0-E — Build Environment Investigation (BLOCKING)
+
+### Context
+`pnpm build` failed with 8 `MISSING_EXPORT` errors after upgrading to Vite 8 (Rolldown bundler).
+Two independent root causes were identified and fixed. See `WALKTHROUGH.md` for full forensics.
+
+### Root Cause 1 — @react-three/fiber v8 + Zustand v5 + Rolldown strict ESM
+- **Package:** `@react-three/fiber@8.18.0`
+- **Bug:** R3F v8 ships a pre-bundled ESM that does `import create from 'zustand'` (CJS-compat
+  default import, zustand v3 API). Rolldown (Vite 8) is a strict ESM bundler and hard-errors when
+  the default export doesn't exist in the resolved module (zustand v5 removed the default export).
+- **Compounding factor:** R3F v8 also declares `peerDependencies: react >= 18 < 19` — not
+  compatible with React 19 at all.
+- **Fix:** Upgrade to `@react-three/fiber@^9.6.1` + `@react-three/drei@^10.7.7`
+  (R3F v9 supports React 19, adopts zustand v5 named exports).
+- [x] 0-E.1 Identified root cause (R3F v8 / zustand v5 / Rolldown strict ESM)
+- [x] 0-E.2 `pnpm add @react-three/fiber@^9.6.1 @react-three/drei@^10.7.7`
+
+### Root Cause 2 — @mermaid-js/parser version mismatch on disk
+- **Package:** `@mermaid-js/parser`
+- **Bug:** `mermaid@11.16.0` requires `@mermaid-js/parser@^1.2.0` but v1.1.1 was installed on
+  disk. Functions `createRailroadServices`, `createRailroadAbnfServices`, `createRailroadPegServices`,
+  and `createRailroadEbnfServices` were added in v1.2.0 and are missing in v1.1.1.
+  Root cause: pnpm store cache stale entry from prior `npm install` run that displaced into `.ignored/`.
+- **Fix:** `pnpm add @mermaid-js/parser@1.2.0` (pin exact version to force resolution).
+- [x] 0-E.3 Identified root cause (parser v1.1.1 on disk vs v1.2.0 required)
+- [x] 0-E.4 `pnpm add @mermaid-js/parser@1.2.0` (force resolution)
+
+### Root Cause 3 — framer-motion vs motion version conflict
+- **Package:** `framer-motion`, `motion-dom`
+- **Bug:** `framer-motion@11.18.2` and `motion@12.40.0` were installed concurrently, causing Vite to
+  resolve mismatched `motion-dom` versions (v12 for v11), leading to `MISSING_EXPORT` errors.
+- **Fix:** Upgrade to `framer-motion@^12.0.0` to match `motion`.
+- [x] 0-E.5 `pnpm add framer-motion@^12.0.0`
+
+### Root Cause 4 — TypeScript 5.9 strictness
+- **Bug:** `tsc --noEmit` failed with 9 errors, mostly related to `ArrayBufferLike` strictness in TS 5.9 and missing React props.
+- **Fix:** Fixed 6 files to cast `Uint8Array/Float32Array` correctly, pass correct arguments to `toast.error`, and add missing `useNavigate` hook.
+- [x] 0-E.6 Fixed all TS errors.
+
+### Gates (must all pass before Batch 1)
+- [x] 0-E.7 `pnpm build` exits 0 (verified!)
+- [x] 0-E.8 `pnpm tsc --noEmit` exits 0 — verified!
+- [x] 0-E.9 `pnpm lint` exits 0 — verified!
+- [x] 0-E.10 Commit fix + update WALKTHROUGH.md
 
 ## Batch 1 — Audit, cn Fix, Globals + Design Tokens
 - [ ] 1.1 Read and archive files locally

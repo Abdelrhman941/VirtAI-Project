@@ -80,7 +80,7 @@ export function useQuizSession() {
       console.error('Quiz Generation Error:', err);
       setError(err.message || 'An unexpected error occurred while generating the quiz.');
       setState('error');
-      toast.error(err.message || 'Failed to generate quiz');
+      toast.error('Quiz Error', err.message || 'Failed to generate quiz');
     }
   }, []);
 

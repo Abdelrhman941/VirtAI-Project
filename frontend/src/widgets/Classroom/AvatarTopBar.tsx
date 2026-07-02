@@ -35,6 +35,7 @@ export function AvatarTopBar({
   onStartQuiz,
   onOpenSettings
 }: AvatarTopBarProps) {
+  const navigate = useNavigate();
 
   return (
     <header className="w-full pb-2 relative z-[60]">
