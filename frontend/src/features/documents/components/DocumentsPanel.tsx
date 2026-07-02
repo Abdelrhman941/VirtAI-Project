@@ -1,8 +1,20 @@
+import { useState } from 'react';
 import { FiCheckCircle, FiClock, FiFileText, FiLoader, FiTrash2, FiXCircle } from 'react-icons/fi';
 import { useDocumentList } from '../useDocumentList';
 import './DocumentsPanel.css';
 import { UploadTab } from './UploadTab';
 import { formatDateOnly } from '@/shared/utils/date';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/shared/components/ui/alert-dialog';
+
 
 interface DocumentsPanelProps {
   sessionId?: string | null;
@@ -22,6 +34,8 @@ export function DocumentsPanel({ sessionId = null, onEnsureSession, onClose }: D
     activeUploads,
     clearError
   } = useDocumentList(sessionId, onEnsureSession);
+
+  const [docToDelete, setDocToDelete] = useState<{ id: string; filename: string } | null>(null);
 
   const getStatusIcon = (stage: string | undefined) => {
     if (stage === 'COMPLETE') return <FiCheckCircle className="status-icon success" />;
@@ -118,7 +132,7 @@ export function DocumentsPanel({ sessionId = null, onEnsureSession, onClose }: D
                 </div>
                 <button
                   className="icon-button delete"
-                  onClick={() => doc.id && deleteDocument(doc.id)}
+                  onClick={() => doc.id && setDocToDelete({ id: doc.id, filename: doc.filename })}
                   title="Delete Resource"
                   disabled={!doc.id}
                 >
@@ -137,6 +151,33 @@ export function DocumentsPanel({ sessionId = null, onEnsureSession, onClose }: D
           </ul>
         )}
       </section>
+
+      <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
+        <AlertDialogContent className="bg-dark-secondary border border-white/10 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Resource?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              Are you sure you want to delete &quot;{docToDelete?.filename}&quot;? This will permanently remove the resource from the active session.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-white/5 border border-white/10 hover:bg-white/10 text-white">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white border-0"
+              onClick={() => {
+                if (docToDelete) {
+                  deleteDocument(docToDelete.id);
+                  setDocToDelete(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

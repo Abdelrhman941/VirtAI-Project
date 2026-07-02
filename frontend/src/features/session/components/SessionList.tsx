@@ -13,6 +13,23 @@ import { ISession } from '../types';
 import SessionHoverPreview from './SessionHoverPreview';
 
 import { formatRelativeTime, safeParseDate } from '@/shared/utils/date';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/shared/components/ui/alert-dialog';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/shared/components/ui/context-menu';
 
 export interface SessionListProps {
   sessions: ISession[];
@@ -33,10 +50,11 @@ interface SessionListItemProps {
   onEditValueChange: (val: string) => void;
   onSaveEdit: (id: string) => void;
   onEditKeyDown: (e: React.KeyboardEvent<HTMLInputElement>, id: string) => void;
-  onContextMenu: (e: React.MouseEvent, id: string) => void;
   onMouseEnter: (session: ISession, element: HTMLElement) => void;
   onMouseLeave: () => void;
   onSelect: (id: string) => void;
+  startEditing: (session: ISession) => void;
+  setDeleteSessionId: (id: string) => void;
 }
 
 const SessionListItem = memo(function SessionListItem({
@@ -47,50 +65,69 @@ const SessionListItem = memo(function SessionListItem({
   onEditValueChange,
   onSaveEdit,
   onEditKeyDown,
-  onContextMenu,
   onMouseEnter,
   onMouseLeave,
   onSelect,
+  startEditing,
+  setDeleteSessionId,
 }: SessionListItemProps) {
   const displayTime = session.last_message_at;
 
   return (
-    <div
-      className="sidebar-session-item-wrapper"
-      onContextMenu={(e) => onContextMenu(e, session.id)}
-      onMouseEnter={(e) => onMouseEnter(session, e.currentTarget)}
-      onMouseLeave={onMouseLeave}
-    >
-      <button
-        className={`sidebar-session-item ${isActive ? 'active' : ''}`}
-        onClick={() => onSelect(session.id)}
-        aria-label={`Open chat: ${session.title || 'New chat'}`}
-      >
-        <PiChatCircleTextFill className="session-icon" />
+    <ContextMenu>
+      <ContextMenuTrigger>
+        <div
+          className="sidebar-session-item-wrapper"
+          onMouseEnter={(e) => onMouseEnter(session, e.currentTarget)}
+          onMouseLeave={onMouseLeave}
+        >
+          <button
+            className={`sidebar-session-item ${isActive ? 'active' : ''}`}
+            onClick={() => onSelect(session.id)}
+            aria-label={`Open chat: ${session.title || 'New chat'}`}
+          >
+            <PiChatCircleTextFill className="session-icon" />
 
-        <div className="session-info">
-          {isEditing ? (
-            <input
-              type="text"
-              className="session-edit-input"
-              value={editValue}
-              onChange={(e) => onEditValueChange(e.target.value)}
-              onBlur={() => onSaveEdit(session.id)}
-              onKeyDown={(e) => onEditKeyDown(e, session.id)}
-              autoFocus
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <div className="session-title-row min-w-0">
-              <span className="session-title truncate block w-full overflow-hidden text-ellipsis" dir="auto" title={session.title || 'New chat'}>{session.title || 'New chat'}</span>
-              {displayTime && (
-                <span className="session-time">{formatRelativeTime(displayTime)}</span>
+            <div className="session-info">
+              {isEditing ? (
+                <input
+                  type="text"
+                  className="session-edit-input"
+                  value={editValue}
+                  onChange={(e) => onEditValueChange(e.target.value)}
+                  onBlur={() => onSaveEdit(session.id)}
+                  onKeyDown={(e) => onEditKeyDown(e, session.id)}
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <div className="session-title-row min-w-0">
+                  <span className="session-title truncate block w-full overflow-hidden text-ellipsis" dir="auto" title={session.title || 'New chat'}>{session.title || 'New chat'}</span>
+                  {displayTime && (
+                    <span className="session-time">{formatRelativeTime(displayTime)}</span>
+                  )}
+                </div>
               )}
             </div>
-          )}
+          </button>
         </div>
-      </button>
-    </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="bg-dark-tertiary/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-xl p-1 z-[9999]">
+        <ContextMenuItem
+          className="flex items-center gap-2 w-full text-left px-3.5 py-2.5 text-sm text-white/80 hover:bg-white/10 hover:text-white rounded-lg transition-colors cursor-pointer"
+          onClick={() => startEditing(session)}
+        >
+          <PiPencilSimpleFill size={16} /> Rename Session
+        </ContextMenuItem>
+        <ContextMenuSeparator className="bg-white/10 my-1 mx-2" />
+        <ContextMenuItem
+          className="flex items-center gap-2 w-full text-left px-3.5 py-2.5 text-sm text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+          onClick={() => setDeleteSessionId(session.id)}
+        >
+          <PiTrashSimpleFill size={16} /> Delete Session
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 });
 
@@ -114,43 +151,8 @@ const SessionList = memo(function SessionList({
   const [hoverElement, setHoverElement] = useState<HTMLElement | null>(null);
   const { logout } = useLogout();
 
-  // Context menu state: { sessionId, x, y } or null
-  const [contextMenu, setContextMenu] = useState<{
-    sessionId: string;
-    x: number;
-    y: number;
-  } | null>(null);
+  const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
   const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
-  const contextMenuRef = useRef<HTMLDivElement>(null);
-
-  // Close context menu on any click outside of it
-  useEffect(() => {
-    if (!contextMenu) {
-      return;
-    }
-    function handleClickOutside(event: MouseEvent) {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
-        setContextMenu(null);
-      }
-    }
-    const id = setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside);
-    }, 0);
-    return () => {
-      clearTimeout(id);
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [contextMenu]);
-
-  // Close context menu on scroll
-  useEffect(() => {
-    if (!contextMenu) {
-      return;
-    }
-    const handleScroll = () => setContextMenu(null);
-    window.addEventListener('scroll', handleScroll, true);
-    return () => window.removeEventListener('scroll', handleScroll, true);
-  }, [contextMenu]);
 
   // Schwartzian transform: parse each timestamp exactly once, then sort.
   // The previous version called `new Date()` inside the comparator, executing
@@ -190,24 +192,9 @@ const SessionList = memo(function SessionList({
       });
   }, [sortedIds, sessions, currentSessionId]);
 
-  const handleContextMenu = useCallback((e: React.MouseEvent, sessionId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setContextMenu({ sessionId, x: e.clientX, y: e.clientY });
-  }, []);
-
-  const handleDelete = useCallback(
-    (sessionId: string) => {
-      onDeleteSession(sessionId);
-      setContextMenu(null);
-    },
-    [onDeleteSession]
-  );
-
   const startEditing = useCallback((session: ISession) => {
     setEditingId(session.id);
     setEditValue(session.title || 'New chat');
-    setContextMenu(null);
   }, []);
 
   const saveEdit = useCallback(
@@ -259,8 +246,6 @@ const SessionList = memo(function SessionList({
     setHoverElement(null);
   }, []);
 
-  const contextSession = contextMenu ? sessions.find((s) => s.id === contextMenu.sessionId) : null;
-
   return (
     <div className="sidebar-inner" style={{ width: '100%', position: 'relative' }}>
 
@@ -310,10 +295,11 @@ const SessionList = memo(function SessionList({
                   onEditValueChange={setEditValue}
                   onSaveEdit={saveEdit}
                   onEditKeyDown={handleEditKeyDown}
-                  onContextMenu={handleContextMenu}
                   onMouseEnter={handleItemMouseEnter}
                   onMouseLeave={handleItemMouseLeave}
                   onSelect={handleSessionSelect}
+                  startEditing={startEditing}
+                  setDeleteSessionId={setDeleteSessionId}
                 />
               );
             })
@@ -333,62 +319,57 @@ const SessionList = memo(function SessionList({
         </div>
       </div>
 
-      {contextMenu &&
-        contextSession &&
-        createPortal(
-          <div
-            className="flex flex-col min-w-[160px] bg-dark-tertiary/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-xl overflow-hidden p-1 z-[9999]"
-            ref={contextMenuRef}
-            style={{
-              position: 'fixed',
-              top: contextMenu.y,
-              left: contextMenu.x,
-            }}
-          >
-            <button 
-              className="flex items-center gap-2 w-full text-left px-3.5 py-2.5 text-sm text-white/80 hover:bg-white/10 hover:text-white rounded-lg transition-colors"
-              onClick={() => startEditing(contextSession)}
+      <AlertDialog open={!!deleteSessionId} onOpenChange={(open) => !open && setDeleteSessionId(null)}>
+        <AlertDialogContent className="bg-dark-secondary border border-white/10 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Session?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              Are you sure you want to delete this session? This will permanently remove all logs and history associated with it. This operation cannot be reversed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-white/5 border border-white/10 hover:bg-white/10 text-white">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white border-0"
+              onClick={() => {
+                if (deleteSessionId) {
+                  onDeleteSession(deleteSessionId);
+                  setDeleteSessionId(null);
+                }
+              }}
             >
-              <PiPencilSimpleFill size={16} /> Rename Session
-            </button>
-            <div className="h-px bg-white/10 my-1 mx-2" />
-            <button
-              className="flex items-center gap-2 w-full text-left px-3.5 py-2.5 text-sm text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-              onClick={() => handleDelete(contextMenu.sessionId)}
-            >
-              <PiTrashSimpleFill size={16} /> Delete Session
-            </button>
-          </div>,
-          document.body
-        )}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {isConfirmClearOpen &&
-        createPortal(
-          <div className="clear-confirm-overlay">
-            <div className="clear-confirm-modal">
-              <h3 className="clear-confirm-title">Delete All Sessions?</h3>
-              <p className="clear-confirm-desc">This will permanently erase all active and archived sessions from this device. This operation cannot be reversed.</p>
-              <div className="clear-confirm-actions">
-                <button
-                  className="clear-confirm-cancel"
-                  onClick={() => setIsConfirmClearOpen(false)}
-                >
-                  Keep Sessions
-                </button>
-                <button
-                  className="clear-confirm-danger"
-                  onClick={() => {
-                    setIsConfirmClearOpen(false);
-                    onClearAllSessions?.();
-                  }}
-                >
-                  Delete All Sessions
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
+      <AlertDialog open={isConfirmClearOpen} onOpenChange={setIsConfirmClearOpen}>
+        <AlertDialogContent className="bg-dark-secondary border border-white/10 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete All Sessions?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              This will permanently erase all active and archived sessions from this device. This operation cannot be reversed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-white/5 border border-white/10 hover:bg-white/10 text-white">
+              Keep Sessions
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white border-0"
+              onClick={() => {
+                setIsConfirmClearOpen(false);
+                onClearAllSessions?.();
+              }}
+            >
+              Delete All Sessions
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {hoveredSession && hoverElement && (
         <SessionHoverPreview

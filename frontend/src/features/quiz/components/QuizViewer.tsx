@@ -3,7 +3,16 @@ import { QuizData, QuizQuestion } from '../hooks/useQuizSession';
 import { FiCheckCircle, FiXCircle, FiBarChart2, FiArrowLeft, FiArrowRight } from 'react-icons/fi';
 import apiClient from '@/core/api/apiClient';
 import { toast } from 'sonner';
-import { ConfirmDialog } from '../../../shared/components/ConfirmDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/shared/components/ui/alert-dialog';
 
 interface QuizViewerProps {
   quiz: QuizData;
@@ -334,16 +343,27 @@ export function QuizViewer({ quiz, onRetake, onViewAnalytics }: QuizViewerProps)
         )}
       </div>
 
-      <ConfirmDialog
-        isOpen={isConfirmSubmitOpen}
-        title="Unanswered Questions"
-        message="You haven't answered all questions. Are you sure you want to submit anyway?"
-        confirmText="Submit Anyway"
-        cancelText="Keep Answering"
-        onConfirm={executeSubmit}
-        onCancel={() => setIsConfirmSubmitOpen(false)}
-        isDestructive={true}
-      />
+      <AlertDialog open={isConfirmSubmitOpen} onOpenChange={setIsConfirmSubmitOpen}>
+        <AlertDialogContent className="bg-dark-secondary border border-white/10 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unanswered Questions</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              You haven&apos;t answered all questions. Are you sure you want to submit anyway?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-white/5 border border-white/10 hover:bg-white/10 text-white">
+              Keep Answering
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white border-0"
+              onClick={executeSubmit}
+            >
+              Submit Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

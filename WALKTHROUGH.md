@@ -317,4 +317,21 @@ All three must exit with code 0 before any Batch 1 work begins.
   - Applied the scroll-fade mask and scrollbar hiding to `VoiceTab.tsx` speech profiles selector grid container.
   - Wired `scroll-fade scroll-fade-24` styling directly onto the `MessageScrollerViewport` in `MessageList.tsx` to smooth transcripts.
 
+---
+
+## 16. Milestone: Batch 9 Complete (Radix Context Menu & Alert Dialogs)
+
+- **Shadcn ContextMenu Migration**:
+  - Integrated `frontend/src/shared/components/ui/context-menu.tsx` inside `SessionList.tsx`.
+  - Replaced the custom pointer positioning math, refs, and portal menus with `<ContextMenu>` and `<ContextMenuTrigger>` wrapped around individual `SessionListItem` nodes, providing native mobile long-press support.
+- **Shadcn AlertDialog Migration**:
+  - Replaced the custom overlay container `.clear-confirm-overlay` and `.clear-confirm-modal` with shadcn `<AlertDialog>` in `SessionList.tsx` for destructive action confirmations.
+  - Wired two `AlertDialog` flows in the sidebar: one for individual chat session deletion (`deleteSessionId`), and another for clearing session history (`isConfirmClearOpen`).
+  - Wrapped document deletion inside `DocumentsPanel.tsx` with a confirmation `<AlertDialog>` validating resource removal.
+  - Replaced the custom helper `ConfirmDialog` in `QuizViewer.tsx` with a unified shadcn `<AlertDialog>`.
+- **Cleanup**:
+  - Deleted the obsolete custom dialog file [`frontend/src/shared/components/ConfirmDialog.tsx`](file:///mnt/d/A/Projects/VirtAI-Project/frontend/src/shared/components/ConfirmDialog.tsx).
+  - Cleaned up custom modal CSS classes (`.clear-confirm-overlay`, `.clear-confirm-modal`, etc.) from `Classroom.css`.
+
+
 
