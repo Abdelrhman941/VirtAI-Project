@@ -304,3 +304,17 @@ All three must exit with code 0 before any Batch 1 work begins.
   - Upgraded the RAG upload index button in `UploadTab.tsx` with a `shimmer-duration-1100` "Indexing document..." text state.
   - Implemented a floating crimson-glow `Listening...` status badge inside `VoiceModeButton.tsx` which animates during active microphone input before interim speech is registered.
 
+---
+
+## 15. Milestone: Batch 8 Complete (Scroll-fade & Masking Utilities)
+
+- **CSS Masking Utilities**:
+  - Implemented modern CSS `mask-image` linear-gradients for vertical scroll-fades (`.scroll-fade` and `.scroll-fade-24`) and horizontal rails (`.scroll-fade-x`) in `frontend/src/app/styles/globals.css`.
+  - Added `.no-scrollbar` utility classes for hiding scrollbars.
+- **Scroll Container Upgrades**:
+  - Added scroll-fade masks and custom scrollbar hiding configurations to `SessionList.tsx` scrollable history container.
+  - Applied the scroll-fade mask and scrollbar hiding behavior to `DocumentsPanel.tsx` resource library list.
+  - Applied the scroll-fade mask and scrollbar hiding to `VoiceTab.tsx` speech profiles selector grid container.
+  - Wired `scroll-fade scroll-fade-24` styling directly onto the `MessageScrollerViewport` in `MessageList.tsx` to smooth transcripts.
+
+

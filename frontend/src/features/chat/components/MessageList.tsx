@@ -86,7 +86,7 @@ const MessageList = React.memo(function MessageList({
 }: MessageListProps) {
   return (
     <MessageScroller>
-      <MessageScrollerViewport className="flex-1 w-full relative">
+      <MessageScrollerViewport className="flex-1 w-full relative scroll-fade scroll-fade-24">
         <MessageScrollerContent className="w-full pb-20">
           {messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[300px]">

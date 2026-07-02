@@ -541,3 +541,51 @@ input[type="password"]::-webkit-contacts-auto-fill-button {
   text-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
 
+/* Scroll-fade Masking Styles */
+.scroll-fade {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    black var(--scroll-fade-size, 24px),
+    black calc(100% - var(--scroll-fade-size, 24px)),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    black var(--scroll-fade-size, 24px),
+    black calc(100% - var(--scroll-fade-size, 24px)),
+    transparent 100%
+  );
+}
+
+.scroll-fade-x {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0px,
+    black var(--scroll-fade-size, 24px),
+    black calc(100% - var(--scroll-fade-size, 24px)),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0px,
+    black var(--scroll-fade-size, 24px),
+    black calc(100% - var(--scroll-fade-size, 24px)),
+    transparent 100%
+  );
+}
+
+.scroll-fade-24 {
+  --scroll-fade-size: 24px;
+}
+
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+

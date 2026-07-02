@@ -120,7 +120,8 @@ Two independent root causes were identified and fixed. See `WALKTHROUGH.md` for 
 
 
 ## Batch 8 — Scroll-fade on session / documents / history lists
-- [ ] 8.1 apply scroll-fade-24 to all long lists + MessageScroller viewport
+- [x] 8.1 apply scroll-fade-24 to all long lists + MessageScroller viewport
+
 
 ## Batch 9 — Context Menu (rename / delete) + Alert Dialog (delete confirm)
 - [ ] 9.1 shadcn ContextMenu + AlertDialog for rename/delete + clear-all flows
