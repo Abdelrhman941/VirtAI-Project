@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     visualizer({
-      filename: 'bundle-stats.html',
+      filename: 'dist/stats.html',
       open: false,
       gzipSize: true,
       brotliSize: true,

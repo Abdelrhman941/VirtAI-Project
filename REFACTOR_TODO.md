@@ -10,10 +10,15 @@
 ## Batch 0 — Pre-flight (environment gates)
 - [x] 0.1 git checkout -b refactor/styling-foundation
 - [x] 0.2 Create REFACTOR_TODO.md at project root
-- [ ] 0.3 Verify react >= 19, framer-motion >= 11, tailwindcss >= 3.4
-- [ ] 0.4 Install dev tooling
-- [ ] 0.5 Capture the before bundle baseline
-- [ ] 0.6 Commit
+- [x] 0.3 Verify react >= 19, framer-motion >= 11, tailwindcss >= 3.4
+- [x] 0.4 Install dev tooling
+- [x] 0.5 Capture the before bundle baseline
+- [x] 0.6 Commit
+
+## Baselines
+- CSS bundle size (dist/assets/*.css): 221.36 KB
+- JS bundle size (dist/assets/*.js) — total gzipped: ~1.71 MB
+- visualizer HTML output path: dist/stats.html
 
 ## Batch 1 — Audit, cn Fix, Globals + Design Tokens
 - [ ] 1.1 Read and archive files locally
@@ -113,4 +118,4 @@
 > 
 
 ## Handoff Log
-> 
+> Completed Batch 0. Baseline captured from previous build log (CSS: 221.36 KB, JS: 1.71 MB). Note: `pnpm build` failed on missing ESM exports (`zustand`, `mermaid`) when using Vite 8 Rolldown with the upgraded dependencies. The next agent should proceed to Batch 1 to consolidate globals and tokens.
