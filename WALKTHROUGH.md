@@ -214,3 +214,14 @@ All three must exit with code 0 before any Batch 1 work begins.
 > The bugs were in upstream packages (R3F v8 shipping CJS-compat code; mermaid depending
 > on a parser version not present on disk). The fix is always to **update to the correct
 > ecosystem-blessed versions**, never to apply Rolldown interop workarounds.
+
+---
+
+## 8. Milestone: Batch 1 Complete (Design Tokens & CSS Consolidation)
+
+- **Audit & Extraction**: The legacy `index.css` and `app.css` files were audited. Root CSS variables (typography scales, premium color palette, spacing, and transition speeds) alongside legacy kebab-case utilities (e.g. `.glass-panel`, `.shimmer`) were extracted and verified.
+- **Consolidation**: Both files were successfully combined into `src/app/styles/globals.css`. 
+- **Tailwind v4 Integration**: `globals.css` properly uses Tailwind v4's `@theme` directive, removing the need for a legacy `tailwind.config.ts`.
+- **TypeScript Strictness**: `cn.ts` was updated with `ClassValue` types from `clsx` to satisfy strict typing rules and fix implicit `any`.
+- **Cleanup**: `index.css` and `app.css` were safely removed and imports in `main.tsx` and `App.tsx` were updated.
+- **Verification**: The application builds completely cleanly using `tsc --noEmit && pnpm build` with zero errors.

@@ -80,12 +80,12 @@ Two independent root causes were identified and fixed. See `WALKTHROUGH.md` for 
 - [x] 1.11 Commit
 
 ## Batch 2 — Bootstrap shadcn/ui
-- [ ] 2.1 Install deps
-- [ ] 2.2 Create components.json
-- [ ] 2.3 Add primitives via CLI
-- [ ] 2.4 Verify utilities
-- [ ] 2.5 pnpm tsc --noEmit && pnpm build
-- [ ] 2.6 Commit
+- [x] 2.1 Install deps
+- [x] 2.2 Create components.json
+- [x] 2.3 Add primitives via CLI
+- [x] 2.4 Verify utilities
+- [x] 2.5 pnpm tsc --noEmit && pnpm build
+- [x] 2.6 Commit
 
 ## Batch 3 — Migrate SlideDrawer → shadcn <Sheet> / <Drawer>
 - [ ] 3.1 grep SlideDrawer consumers
