@@ -333,5 +333,21 @@ All three must exit with code 0 before any Batch 1 work begins.
   - Deleted the obsolete custom dialog file [`frontend/src/shared/components/ConfirmDialog.tsx`](file:///mnt/d/A/Projects/VirtAI-Project/frontend/src/shared/components/ConfirmDialog.tsx).
   - Cleaned up custom modal CSS classes (`.clear-confirm-overlay`, `.clear-confirm-modal`, etc.) from `Classroom.css`.
 
+---
+
+## 17. Milestone: Batch 10 Complete (Help Page Carousel with Autoplay)
+
+- **Shadcn Carousel Integration**:
+  - Migrated `frontend/src/pages/Help/index.tsx` to consume the canonical `<Carousel>`, `<CarouselContent>`, and `<CarouselItem>` shadcn primitives.
+  - Custom pointer slide animations and states (`currentStep`, `direction`) were removed in favor of the Embla React hook-backed rendering engine.
+- **Autoplay Plugin Configuration**:
+  - Added `"embla-carousel-autoplay": "^8.6.0"` to `package.json` dependencies and resolved package links.
+  - Implemented the official `Autoplay` plugin on the `<Carousel>` component configured with a 5000ms delay, `stopOnInteraction: true`, and `stopOnMouseEnter: true` parameters.
+- **Navigation Controls**:
+  - Replaced the custom chevron buttons with `<CarouselPrevious>` and `<CarouselNext>` components styled to sit cleanly inline within the right-hand `.navControls` sidebar layout using the `static` position utility override.
+- **Accessibility & Gestures**:
+  - Retained full touch swipe gesture support and keyboard arrow navigation (via Embla's default focus listeners).
+
+
 
 

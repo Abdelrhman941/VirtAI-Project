@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FeatureCard, Feature } from './FeatureCard';
-import { FiChevronLeft, FiChevronRight, FiArrowLeft } from 'react-icons/fi';
-import { motion, AnimatePresence } from 'framer-motion';
-import useReducedMotionPreference from '@/features/overview/hooks/useReducedMotionPreference';
+import { FiArrowLeft } from 'react-icons/fi';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/shared/components/ui/carousel';
+import Autoplay from 'embla-carousel-autoplay';
 import styles from './Help.module.css';
 
 const features: Feature[] = [
@@ -17,55 +23,14 @@ const features: Feature[] = [
 
 export default function HelpPage() {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(0);
-  const [direction, setDirection] = useState(1);
-  const shouldReduceMotion = useReducedMotionPreference();
 
-  const handleNext = () => {
-    setDirection(1);
-    setCurrentStep((prev) => Math.min(prev + 1, features.length - 1));
-  };
-
-  const handlePrev = () => {
-    setDirection(-1);
-    setCurrentStep((prev) => Math.max(prev - 1, 0));
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') {
-        handleNext();
-      } else if (e.key === 'ArrowLeft') {
-        handlePrev();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+  const autoplayPlugin = React.useMemo(() => {
+    return Autoplay({
+      delay: 5000,
+      stopOnInteraction: true,
+      stopOnMouseEnter: true,
+    });
   }, []);
-
-  const slideVariants = {
-    enter: (d) => ({
-      x: shouldReduceMotion ? 0 : d > 0 ? 50 : -50,
-      opacity: 0
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-      transition: {
-        duration: shouldReduceMotion ? 0.01 : 0.35,
-        ease: [0.16, 1, 0.3, 1] as const, // easeOutExpo
-      }
-    },
-    exit: (d) => ({
-      x: shouldReduceMotion ? 0 : d > 0 ? -50 : 50,
-      opacity: 0,
-      transition: {
-        duration: shouldReduceMotion ? 0.01 : 0.25,
-        ease: [0.16, 1, 0.3, 1] as const, // easeOutExpo
-      }
-    })
-  };
 
   return (
     <div className="classroom-shell w-full h-full flex bg-dark relative">
@@ -89,42 +54,36 @@ export default function HelpPage() {
               <p className={styles.helpTagline}>Discover what you can do with VirtAI</p>
             </div>
             
-            <div className={styles.contentRow}>
-              <div className="flex-1 overflow-hidden min-h-[460px] flex items-center">
-                <AnimatePresence mode="wait" custom={direction}>
-                  <motion.div
-                    key={currentStep}
-                    custom={direction}
-                    variants={slideVariants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    className={styles.featureCardWrapper}
-                  >
-                    <FeatureCard feature={features[currentStep]} />
-                  </motion.div>
-                </AnimatePresence>
+            <Carousel
+              plugins={[autoplayPlugin]}
+              opts={{
+                loop: true,
+              }}
+              className="w-full"
+            >
+              <div className={styles.contentRow}>
+                <div className="flex-1 overflow-hidden min-h-[460px] flex items-center">
+                  <CarouselContent className="w-full">
+                    {features.map((feature) => (
+                      <CarouselItem key={feature.id} className="w-full select-none">
+                        <div className={styles.featureCardWrapper}>
+                          <FeatureCard feature={feature} />
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                </div>
+                
+                <div className={styles.navControls}>
+                  <CarouselPrevious
+                    className="static translate-y-0 w-12 h-12 rounded-full border-gold text-gold-soft hover:bg-gold/10 hover:text-white"
+                  />
+                  <CarouselNext
+                    className="static translate-y-0 w-12 h-12 rounded-full border-gold text-gold-soft hover:bg-gold/10 hover:text-white"
+                  />
+                </div>
               </div>
-              
-              <div className={styles.navControls}>
-                <button 
-                  className={styles.navBtn} 
-                  onClick={handlePrev} 
-                  disabled={currentStep === 0}
-                  aria-label="Previous feature"
-                >
-                  <FiChevronLeft />
-                </button>
-                <button 
-                  className={styles.navBtn} 
-                  onClick={handleNext} 
-                  disabled={currentStep === features.length - 1}
-                  aria-label="Next feature"
-                >
-                  <FiChevronRight />
-                </button>
-              </div>
-            </div>
+            </Carousel>
           </div>
         </div>
       </div>
