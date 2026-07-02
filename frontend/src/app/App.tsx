@@ -3,7 +3,6 @@ import AppShell from './layouts/AppShell';
 import AppProviders from './providers/AppProviders';
 import AppRoutes from './router/routes';
 
-import './styles/app.css';
 
 export default function App() {
   useVisualViewport();

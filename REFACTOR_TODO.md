@@ -67,17 +67,17 @@ Two independent root causes were identified and fixed. See `WALKTHROUGH.md` for 
 - [x] 0-E.10 Commit fix + update WALKTHROUGH.md
 
 ## Batch 1 — Audit, cn Fix, Globals + Design Tokens
-- [ ] 1.1 Read and archive files locally
-- [ ] 1.2 Extract table of root CSS variables
-- [ ] 1.3 Extract table of kebab-case classes
-- [ ] 1.4 Consolidate to globals.css
-- [ ] 1.5 Fix cn.ts
-- [ ] 1.6 Update main.tsx + remove from App.tsx
-- [ ] 1.7 Delete index.css + app.css
-- [ ] 1.8 Rebuild tailwind.config.ts
-- [ ] 1.9 Prove token map scratch check
-- [ ] 1.10 pnpm tsc --noEmit && pnpm build baseline
-- [ ] 1.11 Commit
+- [x] 1.1 Read and archive files locally
+- [x] 1.2 Extract table of root CSS variables
+- [x] 1.3 Extract table of kebab-case classes
+- [x] 1.4 Consolidate to globals.css
+- [x] 1.5 Fix cn.ts
+- [x] 1.6 Update main.tsx + remove from App.tsx
+- [x] 1.7 Delete index.css + app.css
+- [x] 1.8 Rebuild tailwind.config.ts (N/A — Tailwind v4 uses globals.css @theme)
+- [x] 1.9 Prove token map scratch check
+- [x] 1.10 pnpm tsc --noEmit && pnpm build baseline
+- [x] 1.11 Commit
 
 ## Batch 2 — Bootstrap shadcn/ui
 - [ ] 2.1 Install deps
