@@ -1,5 +1,7 @@
 import React, { ReactNode } from 'react';
 import { Bot, User } from 'lucide-react';
+import { Marker, MarkerContent, MarkerIcon } from '@/shared/components/ui/marker';
+import { Spinner } from '@/shared/components/ui/spinner';
 
 export interface AvatarProps {
   type: 'user' | 'assistant';
@@ -17,13 +19,16 @@ export const Avatar: React.FC<AvatarProps> = ({ type, size = 22, className = '',
   );
 };
 
-export const MessageStatus: React.FC = () => (
-  <>
-    <span className="typing-dot" />
-    <span className="typing-dot" />
-    <span className="typing-dot" />
-  </>
-);
+export function ThinkingMarker({ label = 'Thinking…' }: { label?: string }) {
+  return (
+    <Marker role="status" aria-live="polite">
+      <MarkerIcon><Spinner /></MarkerIcon>
+      <MarkerContent className="shimmer shimmer-duration-1800">{label}</MarkerContent>
+    </Marker>
+  );
+}
+
+export const MessageStatus: React.FC = () => <ThinkingMarker />;
 
 export interface ChatBubbleProps {
   role: 'user' | 'assistant';
@@ -65,7 +70,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             </div>
           )}
           
-          <div className={`message-bubble ${isUser ? (isInterim ? '' : 'user-bubble-content relative') : (isTyping ? 'typing-indicator' : 'bg-transparent shadow-none border-none flex flex-col gap-2 w-full')}`}>
+          <div className={`message-bubble ${isUser ? (isInterim ? '' : 'user-bubble-content relative') : 'bg-transparent shadow-none border-none flex flex-col gap-2 w-full'}`}>
             {children}
             
             {isUser && !isInterim && timeString && (

@@ -156,6 +156,13 @@ export default function VoiceModeButton({
         </div>
       )}
 
+      {/* Listening prompt when microphone is active but no speech is detected yet */}
+      {isListening && !isPaused && !interimText && (
+        <div className="absolute bottom-[calc(100%+0.5rem)] left-1/2 -translate-x-1/2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-1.5 z-[1001] shadow-[0_4px_20px_rgba(0,0,0,0.4)] animate-in slide-in-from-bottom-2" role="status" aria-live="polite">
+          <span className="shimmer shimmer-color-crimson-glow text-[0.8125rem] leading-relaxed italic block">Listening…</span>
+        </div>
+      )}
+
       {/* Paused indicator (Requirement 7.2, 8.4) */}
       {isPaused && (
         <div className="absolute bottom-[calc(100%+0.75rem)] -right-2 flex items-start gap-2 px-4 py-3 rounded-xl text-sm min-w-[240px] max-w-[380px] w-max leading-relaxed break-words shadow-[0_4px_20px_rgba(0,0,0,0.4)] animate-in slide-in-from-bottom-2 bg-orange-500/10 border border-orange-500/30 text-orange-500 z-[1000]" role="status" aria-live="polite">

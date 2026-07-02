@@ -102,7 +102,7 @@ export function ConnectionBadge({
           </>
         )}
       </div>
-      <span className={textClasses} title={statusText}>
+      <span className={`${textClasses} ${isConnecting ? 'shimmer shimmer-color-muted-foreground' : ''}`} title={statusText}>
         {statusText}
       </span>
       

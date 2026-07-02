@@ -682,51 +682,7 @@
   }
 }
 
-/* Typing indicator (3 bouncing dots) */
-.chat-message.typing-state {
-  align-items: center;
-}
 
-.typing-indicator {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 14px 18px;
-  min-height: auto;
-}
-
-.typing-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  animation: typing-dots-animation 1.4s ease-in-out infinite;
-}
-
-.typing-dot:nth-child(1) {
-  background: var(--color-gold, #b4ab8b);
-}
-
-.typing-dot:nth-child(2) {
-  background: var(--color-crimson-soft, #9b0827);
-  animation-delay: 0.15s;
-}
-
-.typing-dot:nth-child(3) {
-  background: var(--color-gold-soft, #c9c0a0);
-  animation-delay: 0.3s;
-}
-
-@keyframes typing-dots-animation {
-  0%,
-  60%,
-  100% {
-    opacity: 0.3;
-  }
-
-  30% {
-    opacity: 1;
-  }
-}
 
 /* Interim ASR transcript — grayed/italic user bubble */
 .interim-transcript .message-bubble {
@@ -1837,8 +1793,7 @@
   .toast-progress,
   .streaming-cursor,
   .md-streaming-cursor,
-  .avatar-skeleton-label,
-  .typing-dot {
+  .avatar-skeleton-label {
     animation: none !important;
   }
 

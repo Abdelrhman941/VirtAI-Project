@@ -247,7 +247,11 @@ export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) 
             onClick={handleUpload}
             disabled={!hasFiles || isProcessing || isLimitReached}
           >
-            {isProcessing ? 'Hashing & Analyzing...' : 'Upload Reference Materials'}
+            {isProcessing ? (
+              <span className="shimmer shimmer-once shimmer-duration-1100">Indexing document…</span>
+            ) : (
+              'Upload Reference Materials'
+            )}
           </button>
         </div>
       </div>

@@ -287,5 +287,20 @@ All three must exit with code 0 before any Batch 1 work begins.
 - **Transcript Outline**: Designed the `ChatOutlineBadge` component tracking the intersection of visible messages against the conversation turns, rendering a relative progress bar indicator.
 - **Cleanup**: Purged all manual scroll-tracking refs, layout edge calculations, variables (`shouldStickToBottom`, `scrollPositionsRef`, `getActiveRefs`), and `onScrollToBottom` prop-passing chains from `ClassroomShell.tsx`, `AssistantPanel.tsx`, `MessageList.tsx`, and `MessageBubble.tsx`.
 
+---
 
+## 14. Milestone: Batch 7 Complete (Unified Shimmer & Marker Components)
+
+- **UI Components**:
+  - Created `frontend/src/shared/components/ui/spinner.tsx` utilizing Lucide's `Loader2` for a modern, smooth SVG spinner indicator.
+  - Created `frontend/src/shared/components/ui/marker.tsx` containing compound elements (`Marker`, `MarkerIcon`, `MarkerContent`) for badges, banners, and status messages.
+- **Thinking Indicator**:
+  - Integrated `ThinkingMarker` in `frontend/src/shared/components/ChatPrimitives.tsx` to serve as the unified loading state for assistant responses.
+  - Removed legacy `.typing-indicator` and `.typing-dot` DOM nodes and associated CSS animations inside `Classroom.css` to clean the style scope.
+- **CSS Shimmer Animations**:
+  - Added modern keyframed text-clipping `@keyframes shimmer-animation` and helper utility classes (`.shimmer`, `.shimmer-duration-1800`, `.shimmer-color-muted-foreground`, etc.) to the tail of `frontend/src/app/styles/globals.css`.
+- **Cohesive Shimmer States**:
+  - Added shimmer gradient styling to the connecting status label in `ConnectionBadge.tsx`.
+  - Upgraded the RAG upload index button in `UploadTab.tsx` with a `shimmer-duration-1100` "Indexing document..." text state.
+  - Implemented a floating crimson-glow `Listening...` status badge inside `VoiceModeButton.tsx` which animates during active microphone input before interim speech is registered.
 
