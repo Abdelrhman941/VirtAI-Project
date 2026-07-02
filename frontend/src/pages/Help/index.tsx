@@ -1,16 +1,17 @@
-import React from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FeatureCard, Feature } from './FeatureCard';
+import Autoplay from 'embla-carousel-autoplay';
 import { FiArrowLeft } from 'react-icons/fi';
 import {
   Carousel,
+  CarouselApi,
   CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
 } from '@/shared/components/ui/carousel';
-import Autoplay from 'embla-carousel-autoplay';
-import styles from './Help.module.css';
+import { Button } from '@/shared/components/ui/button';
+import { FeatureCard, Feature } from './FeatureCard';
 
 const features: Feature[] = [
   { id: 'chat', title: 'Chat with your tutor', videoSrc: '/help/chat.mp4', desc: 'Realtime voice and text chat with VirtAI.' },
@@ -23,70 +24,60 @@ const features: Feature[] = [
 
 export default function HelpPage() {
   const navigate = useNavigate();
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+  const dir = typeof document !== 'undefined' && document.documentElement.dir === 'rtl' ? 'rtl' : 'ltr';
 
-  const autoplayPlugin = React.useMemo(() => {
-    return Autoplay({
-      delay: 5000,
-      stopOnInteraction: true,
-      stopOnMouseEnter: true,
-    });
+  useEffect(() => {
+    if (!api) return;
+    setCurrent(api.selectedScrollSnap());
+    api.on('select', () => setCurrent(api.selectedScrollSnap()));
+  }, [api]);
+
+  const autoplayPlugin = useMemo(() => {
+    return Autoplay({ delay: 5500, stopOnInteraction: true, stopOnMouseEnter: true });
   }, []);
 
   return (
-    <div className="classroom-shell w-full h-full flex bg-dark relative">
-      
-      <div className="relative flex-1 flex">
-        
-        <button 
-          className={styles.backBtn}
+    <div className="w-full h-full overflow-y-auto bg-dark flex flex-col justify-center">
+      <section className="mx-auto w-full max-w-6xl px-6 py-10">
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => navigate('/classroom')}
-          aria-label="Back to classroom"
+          className="mb-6 gap-2 text-muted-foreground hover:text-white"
         >
-          <FiArrowLeft /> Back to classroom
-        </button>
+          <FiArrowLeft className="rtl:rotate-180" /> Back to classroom
+        </Button>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 overflow-y-auto">
-          <div className={styles.helpContainer}>
-            <div className={styles.helpHeader}>
-              <h1 className={`${styles.helpTitle} font-display`}>
-                <span className="text-gold">Features</span> Tour
-              </h1>
-              <p className={styles.helpTagline}>Discover what you can do with VirtAI</p>
-            </div>
-            
-            <Carousel
-              plugins={[autoplayPlugin]}
-              opts={{
-                loop: true,
-              }}
-              className="w-full"
-            >
-              <div className={styles.contentRow}>
-                <div className="flex-1 overflow-hidden min-h-[460px] flex items-center">
-                  <CarouselContent className="w-full">
-                    {features.map((feature) => (
-                      <CarouselItem key={feature.id} className="w-full select-none">
-                        <div className={styles.featureCardWrapper}>
-                          <FeatureCard feature={feature} />
-                        </div>
-                      </CarouselItem>
-                    ))}
-                  </CarouselContent>
-                </div>
-                
-                <div className={styles.navControls}>
-                  <CarouselPrevious
-                    className="static translate-y-0 w-12 h-12 rounded-full border-gold text-gold-soft hover:bg-gold/10 hover:text-white"
-                  />
-                  <CarouselNext
-                    className="static translate-y-0 w-12 h-12 rounded-full border-gold text-gold-soft hover:bg-gold/10 hover:text-white"
-                  />
-                </div>
-              </div>
-            </Carousel>
-          </div>
-        </div>
-      </div>
+        <header className="mb-8 flex items-baseline justify-between border-b border-white/10 pb-4">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-white">
+            <span className="text-primary">Features</span> Tour
+          </h1>
+          <span className="text-sm text-muted-foreground">
+            {current + 1} / {features.length}
+          </span>
+        </header>
+
+        <Carousel
+          setApi={setApi}
+          dir={dir}
+          opts={{ align: 'start', loop: true, direction: dir }}
+          plugins={[autoplayPlugin]}
+          className="w-full"
+        >
+          <CarouselContent className="-ms-4">
+            {features.map((f) => (
+              <CarouselItem key={f.id} className="ps-4">
+                <FeatureCard feature={f} />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <CarouselPrevious className="hidden md:flex border-white/15 bg-white/[0.02] text-white hover:bg-white/10" />
+          <CarouselNext className="hidden md:flex border-white/15 bg-white/[0.02] text-white hover:bg-white/10" />
+        </Carousel>
+      </section>
     </div>
   );
 }
+

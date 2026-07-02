@@ -128,7 +128,8 @@ Two independent root causes were identified and fixed. See `WALKTHROUGH.md` for 
 
 
 ## Batch 10 — Carousel for Help page (with Autoplay plugin)
-- [ ] 10.1 rebuild Help page with shadcn Carousel + Autoplay plugin
+- [x] 10.1 rebuild Help page with shadcn Carousel + Autoplay plugin
+
 
 
 

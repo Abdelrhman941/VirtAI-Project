@@ -1,5 +1,4 @@
-import React, { useEffect, useRef } from 'react';
-import styles from './Help.module.css';
+import { useEffect, useRef } from 'react';
 
 export interface Feature {
   id: string;
@@ -8,42 +7,36 @@ export interface Feature {
   desc: string;
 }
 
-interface FeatureCardProps {
-  feature: Feature;
-}
-
-export function FeatureCard({ feature }: FeatureCardProps) {
+export function FeatureCard({ feature }: { feature: Feature }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.load();
-    }
+    videoRef.current?.load();
   }, [feature.videoSrc]);
 
   return (
-    <div className={styles.featureCard}>
-      <div className={styles.videoWrapper}>
-        <video 
+    <article className="grid gap-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:grid-cols-[1.35fr_1fr]">
+      <div className="overflow-hidden rounded-xl border border-white/10 bg-black/40">
+        <video
           ref={videoRef}
           key={feature.videoSrc}
-          className={styles.videoElement}
-          src={feature.videoSrc} 
-          controls 
-          preload="metadata"
+          src={feature.videoSrc}
+          className="aspect-video w-full object-cover"
+          controls
           muted
           autoPlay
           loop
+          preload="metadata"
         />
       </div>
-      <div className={styles.featureInfo}>
-        <h2 className={styles.featureTitle}>{feature.title}</h2>
-        <p className={styles.featureDesc}>{feature.desc}</p>
-        <div className={styles.featureCallout}>
-          <span className={styles.calloutLabel}>When to use it</span>
-          <span className={styles.calloutText}>Perfect for visual learning and interactive sessions.</span>
+      <div className="flex flex-col justify-center gap-4">
+        <h2 className="text-2xl font-semibold tracking-tight text-foreground">{feature.title}</h2>
+        <p className="text-muted-foreground leading-relaxed">{feature.desc}</p>
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+          <div className="text-xs uppercase tracking-wider text-primary">When to use it</div>
+          <p className="mt-1 text-sm text-foreground/90">Perfect for visual learning and interactive sessions.</p>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
+
