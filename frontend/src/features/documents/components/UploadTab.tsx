@@ -4,7 +4,6 @@ import { FiFileText, FiUploadCloud, FiX } from 'react-icons/fi';
 import { DangerAlert } from '@/shared/components/ui/alert-variants';
 import { notify } from '@/shared/utils/notify';
 import { Document } from '../types';
-import './UploadTab.css';
 
 const MAX_FILE_SIZE_MB = 25;
 const ACCEPTED_EXTENSIONS = new Set(['pdf', 'txt', 'md']);
@@ -161,11 +160,12 @@ export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) 
   }, [selectedFiles, hashWorker, enqueueUpload, removeFile, localErrors]);
 
   const hasFiles = selectedFiles.length > 0;
+  const isDisabled = isProcessing || isLimitReached;
 
   return (
-    <div className="tab-pane upload-tab fade-in">
-      <div className="upload-card modern-glass-card">
-        <div className="upload-header">
+    <div className="min-h-full flex items-center justify-center ltr fade-in">
+      <div className="w-full max-w-[620px] flex flex-col gap-5 p-6 rounded-[18px] border border-white/10 bg-gradient-to-b from-white/[0.055] to-white/[0.025] bg-[#121212]/56 shadow-[0_18px_44px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] sm:p-[18px] sm:gap-4 modern-glass-card">
+        <div className="flex flex-col items-center text-center">
           <h2 className="setup-section-title">Upload Curriculum Documents</h2>
           <p className="setup-section-subtitle">
             Provide syllabus, textbooks, or course notes to inform your virtual teaching assistant&apos;s curriculum awareness (Maximum 10 files per session).
@@ -179,10 +179,12 @@ export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) 
         )}
 
         <div
-          className={`upload-area ${hasFiles ? 'has-file' : ''} ${(isProcessing || isLimitReached) ? 'disabled' : ''}`}
+          className={`min-h-[210px] sm:min-h-[190px] sm:px-4 sm:py-[22px] flex flex-col items-center justify-center p-7 rounded-[18px] border-2 border-dashed transition-all duration-200 ease-out 
+            ${isDisabled ? 'cursor-progress opacity-80 border-primary/30 bg-black/15' : 'cursor-pointer border-primary/30 bg-black/15 hover:border-primary/70 hover:bg-primary/10 hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)] hover:-translate-y-px'}
+            ${hasFiles ? 'has-file' : ''}`}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
-          onClick={() => !isProcessing && !isLimitReached && fileInputRef.current?.click()}
+          onClick={() => !isDisabled && fileInputRef.current?.click()}
         >
           <input
             type="file"
@@ -195,15 +197,15 @@ export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) 
           />
 
           {!hasFiles ? (
-            <div className="upload-prompt">
-              <span className="upload-icon-wrap">
-                <FiUploadCloud />
+            <div className="w-full flex flex-col items-center justify-center gap-3 text-center">
+              <span className="w-[66px] h-[66px] grid place-items-center rounded-[20px] bg-primary/10 text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                <FiUploadCloud className="w-[34px] h-[34px]" />
               </span>
-              <p>Drag reference documents here, or click to browse files</p>
-              <span className="upload-formats">Supports PDF, TXT, or MD formats up to 25MB</span>
+              <p className="m-0 text-foreground text-[15px] font-[650]">Drag reference documents here, or click to browse files</p>
+              <span className="text-muted-foreground text-[13px]">Supports PDF, TXT, or MD formats up to 25MB</span>
             </div>
           ) : (
-            <div className="selected-files-list" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full flex flex-col gap-2 max-h-[250px] overflow-y-auto p-1 custom-scrollbar" onClick={(e) => e.stopPropagation()}>
               <AnimatePresence>
                 {selectedFiles.map((file) => {
                   const fileError = localErrors[file.name];
@@ -211,23 +213,24 @@ export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) 
                   return (
                     <motion.div
                       key={file.name}
-                      className={`file-list-item ${fileError ? 'error' : ''}`}
+                      className={`flex items-center gap-3 px-4 py-3 border rounded-xl relative transition-all duration-200 hover:bg-black/30
+                        ${fileError ? 'border-red-500/30 bg-red-500/5' : 'bg-black/20 border-white/10'}`}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                     >
-                      <FiFileText className="file-list-icon" />
-                      <div className="file-list-details min-w-0">
-                        <span className="file-list-name truncate block w-full overflow-hidden text-ellipsis" dir="auto" title={file.name}>{file.name}</span>
-                        <span className="file-list-size">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                      <FiFileText className={`w-6 h-6 shrink-0 ${fileError ? 'text-red-500' : 'text-primary'}`} />
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <span className="text-foreground text-[14px] font-semibold overflow-hidden text-ellipsis whitespace-nowrap block w-full" dir="auto" title={file.name}>{file.name}</span>
+                        <span className="text-muted-foreground text-[12px]">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
                         {fileError && (
-                          <span className="file-list-error-text">{fileError}</span>
+                          <span className="text-red-300 text-[12px] mt-0.5">{fileError}</span>
                         )}
                       </div>
 
                       {!isProcessing && (
                         <button
-                          className="icon-btn remove-btn-small"
+                          className="w-7 h-7 grid place-items-center border border-white/10 rounded-full bg-white/5 text-muted-foreground cursor-pointer transition-all duration-200 shrink-0 hover:bg-red-500/15 hover:border-red-500/40 hover:text-red-300 hover:scale-105"
                           onClick={() => removeFile(file.name)}
                           aria-label="Remove selected file"
                         >
@@ -242,17 +245,21 @@ export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) 
           )}
         </div>
 
-        <div className="tab-actions">
+        <div className="flex justify-center w-full gap-3.5 flex-wrap mt-5 sm:flex-col-reverse">
           {onSkip && (
-            <button className="btn secondary" onClick={onSkip} disabled={isProcessing}>
+            <button 
+              className="min-w-[150px] min-h-[44px] inline-flex items-center justify-center rounded-xl px-[18px] py-2 border text-[14px] font-bold font-sans cursor-pointer transition-all duration-200 text-muted-foreground bg-white/5 border-white/15 hover:not:disabled:text-foreground hover:not:disabled:border-white/25 hover:not:disabled:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed hover:not:disabled:-translate-y-px sm:w-full" 
+              onClick={onSkip} 
+              disabled={isProcessing}
+            >
               Skip Document Upload
             </button>
           )}
 
           <button
-            className="btn primary"
+            className="min-w-[150px] min-h-[44px] inline-flex items-center justify-center rounded-xl px-[18px] py-2 border text-[14px] font-bold font-sans cursor-pointer transition-all duration-200 text-[#121212] bg-primary border-primary/70 hover:not:disabled:bg-[#c9bf9c] hover:not:disabled:shadow-[0_14px_24px_rgba(255,255,255,0.08)] disabled:opacity-40 disabled:cursor-not-allowed hover:not:disabled:-translate-y-px sm:w-full"
             onClick={handleUpload}
-            disabled={!hasFiles || isProcessing || isLimitReached}
+            disabled={!hasFiles || isDisabled}
           >
             {isProcessing ? (
               <span className="shimmer shimmer-once shimmer-duration-1100">Indexing document…</span>
