@@ -14,10 +14,10 @@ Also split on comma (,) after a threshold length.
 from __future__ import annotations
 
 # Characters that definitively end a sentence (English only)
-HARD_SENTENCE_ENDINGS = frozenset({".", "!", "?", "\n"})
+HARD_SENTENCE_ENDINGS = frozenset({".", "!", "?", "\n", "؟"})
 
 # Characters that can end a sentence if the buffer is long enough
-SOFT_SENTENCE_ENDINGS = frozenset({",", ";", ":", "-"})
+SOFT_SENTENCE_ENDINGS = frozenset({",", ";", ":", "-", "،"})
 
 # Minimum chars before a soft ending triggers a split
 SOFT_SPLIT_MIN_LENGTH = 40
@@ -95,13 +95,20 @@ class SentenceSplitter:
     def __init__(self) -> None:
         self._buffer: str = ""
 
-    def feed(self, token: str) -> str | None:
+    def feed(self, token: str) -> list[str]:
         """
         Feeds a token into the buffer.
-        Returns a complete sentence if one is detected, else None.
+        Returns all complete sentences detected in the buffer.
         """
         self._buffer += token
-        return self._try_extract()
+        sentences = []
+        while True:
+            sentence = self._try_extract()
+            if sentence:
+                sentences.append(sentence)
+            else:
+                break
+        return sentences
 
     def flush(self) -> str | None:
         """

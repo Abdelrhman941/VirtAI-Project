@@ -11,13 +11,15 @@ interface ExplainWSProps {
   onStateChange: (state: PresentationState) => void;
   onSlideChange: (index: number, total: number) => void;
   onEnd: () => void;
+  onTtsReady?: (messageId: string | undefined, url: string, durationMs?: number) => void;
+  onVisemesReady?: (messageId: string, visemes: any[]) => void;
 }
 
-export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChange, onEnd }: ExplainWSProps) {
+export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChange, onEnd, onTtsReady, onVisemesReady }: ExplainWSProps) {
   // Use ref to hold mutable handlers without triggering effect re-runs
-  const callbacksRef = useRef({ onTokens, onStateChange, onSlideChange, onEnd });
+  const callbacksRef = useRef({ onTokens, onStateChange, onSlideChange, onEnd, onTtsReady, onVisemesReady });
   useEffect(() => {
-    callbacksRef.current = { onTokens, onStateChange, onSlideChange, onEnd };
+    callbacksRef.current = { onTokens, onStateChange, onSlideChange, onEnd, onTtsReady, onVisemesReady };
   });
 
   const token = useAuthStore(state => state.accessToken);
@@ -95,6 +97,23 @@ export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChang
           }
         } catch (e) {
           console.error('Error in Explain WS SlideEndEvent:', e);
+        }
+      }),
+      manager.on('tts.ready', (data: any) => {
+        try {
+          const payload = typeof data === 'string' ? JSON.parse(data) : data;
+          const url = payload.audio?.url || payload.audio_url;
+          callbacksRef.current.onTtsReady?.(payload.message_id, url, payload.audio?.duration_ms);
+        } catch (e) {
+          console.error('Error in Explain WS tts.ready:', e);
+        }
+      }),
+      manager.on('visemes.ready', (data: any) => {
+        try {
+          const payload = typeof data === 'string' ? JSON.parse(data) : data;
+          callbacksRef.current.onVisemesReady?.(payload.message_id, payload.visemes || []);
+        } catch (e) {
+          console.error('Error in Explain WS visemes.ready:', e);
         }
       }),
       manager.on('error', (data: any) => {

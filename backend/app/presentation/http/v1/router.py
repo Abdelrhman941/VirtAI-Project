@@ -306,11 +306,16 @@ async def explain_websocket(
     await websocket.send_json({"type": "ready", "session_id": document_id})
     logger.info(f"[WS] Explain connection accepted | document={document_id} | user={token_payload.user_id}")
     
+    from app.infrastructure.tts.openai_tts_provider import OpenAITTSProvider
+    tts_provider = OpenAITTSProvider()
+
     handler = ExplainHandler(
         websocket=websocket,
         document_id=document_id,
         db=db,
-        user_id=token_payload.user_id,
+        user_id=str(token_payload.user_id),
         chat_use_case=chat_use_case,
+        tts_provider=tts_provider,
+        voice_id=settings.TTS_VOICE,
     )
     await handler.run()

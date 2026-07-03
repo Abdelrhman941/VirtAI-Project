@@ -6,7 +6,7 @@ export function useClassroomAudio() {
   const chunksRef = useRef<Record<string, Record<string, { url?: string; cues?: Viseme[]; durationMs?: number }>>>({});
   const expectedChunkRef = useRef<Record<string, number>>({});
   const missingChunkTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
-  
+
   const mouthCuesRef = useRef<Viseme[]>([]);
   const playedAudioIdsRef = useRef<Set<string>>(new Set());
 
@@ -21,7 +21,7 @@ export function useClassroomAudio() {
       delete chunksRef.current[baseId];
       return;
     }
-    
+
     const sessionChunks = chunksRef.current[baseId];
     if (!sessionChunks) return;
 
@@ -42,7 +42,7 @@ export function useClassroomAudio() {
       if (nextChunk && nextChunk.url) {
         const ctx = getAudioContext();
         if (ctx.state === 'suspended') ctx.resume();
-        
+
         // Calculate the accurate start offset for this chunk's visemes
         let accumulatedOffset = 0;
         for (let i = 0; i < expected; i++) {
@@ -66,11 +66,11 @@ export function useClassroomAudio() {
 
         // Pass empty visemes array to enqueueAudioUrl so it doesn't double-process them
         enqueueAudioUrl(nextChunk.url, [], mouthCuesRef);
-        
+
         if (chunksRef.current[baseId]?.[expected.toString()]) {
           delete chunksRef.current[baseId][expected.toString()];
         }
-        
+
         expected++;
         playedAny = true;
       } else {
@@ -102,15 +102,17 @@ export function useClassroomAudio() {
 
   const handleTtsReady = useCallback((messageId: string | undefined, url: string, duration_ms?: number) => {
     if (!messageId) return;
-    const isChunked = messageId.includes('_');
-    const baseId = isChunked ? messageId.split('_')[0] : messageId;
-    const chunkIdx = isChunked ? messageId.split('_')[1] : '0';
+    const lastIdx = messageId.lastIndexOf('_');
+    const suffix = lastIdx > -1 ? messageId.slice(lastIdx + 1) : '';
+    const isChunked = lastIdx > -1 && (/^\d+$/.test(suffix) || suffix === 'filler');
+    const baseId = isChunked ? messageId.slice(0, lastIdx) : messageId;
+    const chunkIdx = isChunked ? suffix : '0';
 
     if (abortedMessageIdsRef.current.has(baseId)) return;
-    
+
     if (!chunksRef.current[baseId]) chunksRef.current[baseId] = {};
     if (!chunksRef.current[baseId][chunkIdx]) chunksRef.current[baseId][chunkIdx] = {};
-    
+
     chunksRef.current[baseId][chunkIdx].url = url;
     if (duration_ms) chunksRef.current[baseId][chunkIdx].durationMs = duration_ms;
 
@@ -118,22 +120,24 @@ export function useClassroomAudio() {
     if (chunkIdx === 'filler' && !chunksRef.current[baseId][chunkIdx].cues) {
       chunksRef.current[baseId][chunkIdx].cues = [];
     }
-    
+
     tryPlayChunk(baseId);
   }, [tryPlayChunk]);
 
   const handleVisemesReady = useCallback((messageId: string, cues: Viseme[]) => {
-    const isChunked = messageId.includes('_');
-    const baseId = isChunked ? messageId.split('_')[0] : messageId;
-    const chunkIdx = isChunked ? messageId.split('_')[1] : '0';
+    const lastIdx = messageId.lastIndexOf('_');
+    const suffix = lastIdx > -1 ? messageId.slice(lastIdx + 1) : '';
+    const isChunked = lastIdx > -1 && (/^\d+$/.test(suffix) || suffix === 'filler');
+    const baseId = isChunked ? messageId.slice(0, lastIdx) : messageId;
+    const chunkIdx = isChunked ? suffix : '0';
 
     if (abortedMessageIdsRef.current.has(baseId)) return;
-    
+
     if (!chunksRef.current[baseId]) chunksRef.current[baseId] = {};
     if (!chunksRef.current[baseId][chunkIdx]) chunksRef.current[baseId][chunkIdx] = {};
-    
+
     chunksRef.current[baseId][chunkIdx].cues = cues;
-    
+
     tryPlayChunk(baseId);
   }, [tryPlayChunk]);
 
@@ -142,7 +146,7 @@ export function useClassroomAudio() {
       if (abortedMessageIdsRef.current.has(baseId)) return;
       const sessionChunks = chunksRef.current[baseId];
       if (!sessionChunks) return;
-      
+
       const keys = Object.keys(sessionChunks)
         .map(k => parseInt(k, 10))
         .filter(k => !isNaN(k));
@@ -150,9 +154,9 @@ export function useClassroomAudio() {
       if (keys.length === 0) return;
 
       keys.sort((a, b) => a - b);
-      
+
       let maxIndex = expectedChunkRef.current[baseId] || 0;
-      
+
       keys.forEach(idx => {
         const chunk = sessionChunks[idx.toString()];
         if (chunk && chunk.url) {
@@ -160,7 +164,7 @@ export function useClassroomAudio() {
           if (ctx.state === 'suspended') ctx.resume();
           console.warn(`[AudioSequence] Eager reconciliation flush. Pushing out-of-order chunk ${idx}`);
           enqueueAudioUrl(chunk.url, chunk.cues || [], mouthCuesRef);
-          
+
           if (chunksRef.current[baseId]?.[idx.toString()]) {
             delete chunksRef.current[baseId][idx.toString()];
           }

@@ -104,10 +104,13 @@ export default function ClassroomShell() {
       setExplainSlide(index);
       setExplainTotalSlides(total);
       setExplainContent('');
+      resetAvatarAudio();
     },
     onEnd: () => {
       setIsExplainActive(false);
-    }
+    },
+    onTtsReady: handleTtsReady,
+    onVisemesReady: handleVisemesReady as any,
   });
 
   const handleStartExplain = useCallback(() => {
@@ -569,11 +572,10 @@ export default function ClassroomShell() {
                 setIsExplainActive(false);
                 setIsDiagramOpen(false);
               }}
-              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 ${
-                (!isExplainActive && !isDiagramOpen)
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 ${(!isExplainActive && !isDiagramOpen)
                   ? 'text-gold'
                   : 'text-gray-400 active:text-white'
-              }`}
+                }`}
             >
               <FiMessageSquare size={20} />
               <span className="text-[10px] font-semibold tracking-wide font-display">Chat</span>
@@ -583,11 +585,10 @@ export default function ClassroomShell() {
             <button
               onClick={handleStartExplain}
               disabled={!documents.length}
-              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${
-                isExplainActive
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${isExplainActive
                   ? 'text-gold font-bold'
                   : 'text-gray-400 active:text-white'
-              }`}
+                }`}
             >
               <FiMonitor size={20} />
               <span className="text-[10px] font-semibold tracking-wide font-display">Explain</span>
@@ -597,11 +598,10 @@ export default function ClassroomShell() {
             <button
               onClick={handleGenerateDiagram}
               disabled={!documents.length}
-              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${
-                isDiagramOpen
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${isDiagramOpen
                   ? 'text-gold font-bold'
                   : 'text-gray-400 active:text-white'
-              }`}
+                }`}
             >
               <FiShare2 size={20} />
               <span className="text-[10px] font-semibold tracking-wide font-display">Diagram</span>
@@ -611,11 +611,10 @@ export default function ClassroomShell() {
             <button
               onClick={handleGenerateSummary}
               disabled={!documents.length}
-              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${
-                isSummaryOpen
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${isSummaryOpen
                   ? 'text-gold font-bold'
                   : 'text-gray-400 active:text-white'
-              }`}
+                }`}
             >
               <FiFileText size={20} />
               <span className="text-[10px] font-semibold tracking-wide font-display">Summary</span>
@@ -625,11 +624,10 @@ export default function ClassroomShell() {
             <button
               onClick={handleGenerateQuiz}
               disabled={!documents.length}
-              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${
-                isQuizOpen
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${isQuizOpen
                   ? 'text-gold font-bold'
                   : 'text-gray-400 active:text-white'
-              }`}
+                }`}
             >
               <FiEdit3 size={20} />
               <span className="text-[10px] font-semibold tracking-wide font-display">Quiz</span>

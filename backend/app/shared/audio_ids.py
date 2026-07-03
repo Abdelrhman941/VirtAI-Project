@@ -36,6 +36,13 @@ def is_valid_audio_message_id(message_id: str) -> bool:
         return False
     if parts[0] == "filler":
         return len(parts) >= 2 and parts[1].isdigit()
+    if parts[0] == "explain":
+        # explain_{slide}_{chunk} or explain_qa_{hash}_{chunk}
+        if len(parts) == 3 and parts[1].isdigit() and parts[2].isdigit():
+            return True
+        if len(parts) == 4 and parts[1] == "qa" and parts[3].isdigit():
+            return True
+        return False
     if parse_uuid(parts[0]) is None:
         return False
     if len(parts) == 1:
