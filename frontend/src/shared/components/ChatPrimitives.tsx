@@ -1,7 +1,5 @@
 import React, { ReactNode } from 'react';
 import { Bot, User } from 'lucide-react';
-import { Marker, MarkerContent, MarkerIcon } from '@/shared/components/ui/marker';
-import { Spinner } from '@/shared/components/ui/spinner';
 
 export interface AvatarProps {
   type: 'user' | 'assistant';
@@ -21,10 +19,13 @@ export const Avatar: React.FC<AvatarProps> = ({ type, size = 22, className = '',
 
 export function ThinkingMarker({ label = 'Thinking…' }: { label?: string }) {
   return (
-    <Marker role="status" aria-live="polite">
-      <MarkerIcon><Spinner /></MarkerIcon>
-      <MarkerContent className="shimmer shimmer-duration-1800">{label}</MarkerContent>
-    </Marker>
+    <div
+      role="status"
+      aria-live="polite"
+      className="shimmer shimmer-duration-1800 text-sm font-mono tracking-wide text-gray-400 select-none"
+    >
+      {label}
+    </div>
   );
 }
 

@@ -289,33 +289,28 @@ All three must exit with code 0 before any Batch 1 work begins.
 
 ---
 
-## 14. Milestone: Batch 7 Complete (Unified Shimmer & Marker Components)
+## 14. Milestone: Batch 7 Complete (Unified Shimmer Text Thinking Indicator)
 
-- **UI Components**:
-  - Created `frontend/src/shared/components/ui/spinner.tsx` utilizing Lucide's `Loader2` for a modern, smooth SVG spinner indicator.
-  - Created `frontend/src/shared/components/ui/marker.tsx` containing compound elements (`Marker`, `MarkerIcon`, `MarkerContent`) for badges, banners, and status messages.
 - **Thinking Indicator**:
-  - Integrated `ThinkingMarker` in `frontend/src/shared/components/ChatPrimitives.tsx` to serve as the unified loading state for assistant responses.
-  - Removed legacy `.typing-indicator` and `.typing-dot` DOM nodes and associated CSS animations inside `Classroom.css` to clean the style scope.
+  - Simplified `ThinkingMarker` in `frontend/src/shared/components/ChatPrimitives.tsx` to serve as a clean, plain text loading state for assistant responses ("Thinking…").
+  - Removed rounded background pill containers, custom padding, and the spinning loading icon.
+  - Applied the `.shimmer` gradient text masking animation directly to the text itself for a skeleton text effect.
+  - Removed legacy `.typing-indicator` and `.typing-dot` DOM nodes and associated CSS animations inside `Classroom.css`.
 - **CSS Shimmer Animations**:
-  - Added modern keyframed text-clipping `@keyframes shimmer-animation` and helper utility classes (`.shimmer`, `.shimmer-duration-1800`, `.shimmer-color-muted-foreground`, etc.) to the tail of `frontend/src/app/styles/globals.css`.
+  - Retained the keyframed text-clipping `@keyframes shimmer-animation` and helper utility classes (`.shimmer`, `.shimmer-duration-1800`, etc.) in `frontend/src/app/styles/globals.css`.
 - **Cohesive Shimmer States**:
   - Added shimmer gradient styling to the connecting status label in `ConnectionBadge.tsx`.
   - Upgraded the RAG upload index button in `UploadTab.tsx` with a `shimmer-duration-1100` "Indexing document..." text state.
-  - Implemented a floating crimson-glow `Listening...` status badge inside `VoiceModeButton.tsx` which animates during active microphone input before interim speech is registered.
+  - Implemented a floating crimson-glow `Listening...` status badge inside `VoiceModeButton.tsx`.
 
 ---
 
-## 15. Milestone: Batch 8 Complete (Scroll-fade & Masking Utilities)
+## 15. Milestone: Batch 8 Complete (Scroll-fade & Masking Utilities — Removed by Request)
 
-- **CSS Masking Utilities**:
-  - Implemented modern CSS `mask-image` linear-gradients for vertical scroll-fades (`.scroll-fade` and `.scroll-fade-24`) and horizontal rails (`.scroll-fade-x`) in `frontend/src/app/styles/globals.css`.
-  - Added `.no-scrollbar` utility classes for hiding scrollbars.
-- **Scroll Container Upgrades**:
-  - Added scroll-fade masks and custom scrollbar hiding configurations to `SessionList.tsx` scrollable history container.
-  - Applied the scroll-fade mask and scrollbar hiding behavior to `DocumentsPanel.tsx` resource library list.
-  - Applied the scroll-fade mask and scrollbar hiding to `VoiceTab.tsx` speech profiles selector grid container.
-  - Wired `scroll-fade scroll-fade-24` styling directly onto the `MessageScrollerViewport` in `MessageList.tsx` to smooth transcripts.
+- **Status**:
+  - Removed all `.scroll-fade` and `.scroll-fade-24` classes from `SessionList.tsx`, `DocumentsPanel.tsx`, `VoiceTab.tsx`, and `MessageList.tsx` viewport containers by user request to preserve layout simplicity.
+  - Deleted the `.scroll-fade` CSS masking classes from `globals.css` to keep stylesheet styling clean.
+
 
 ---
 

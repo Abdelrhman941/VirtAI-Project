@@ -116,11 +116,11 @@ Two independent root causes were identified and fixed. See `WALKTHROUGH.md` for 
 
 
 ## Batch 7 — Shimmer for "Thinking…" states
-- [x] 7.1 replace typing dots with shimmer Marker across all "thinking" states
-
+- [x] 7.1 Replaced thinking dots and spinner with plain text shimmer effect
 
 ## Batch 8 — Scroll-fade on session / documents / history lists
-- [x] 8.1 apply scroll-fade-24 to all long lists + MessageScroller viewport
+- [x] 8.1 Removed scroll-fade classes and styles (by user request)
+
 
 
 ## Batch 9 — Context Menu (rename / delete) + Alert Dialog (delete confirm)

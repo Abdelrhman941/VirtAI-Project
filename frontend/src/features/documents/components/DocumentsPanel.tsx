@@ -107,7 +107,7 @@ export function DocumentsPanel({ sessionId = null, onEnsureSession, onClose }: D
             <p>No curricular documents have been uploaded to this session yet.</p>
           </div>
         ) : (
-          <ul className="document-list scroll-fade scroll-fade-24 no-scrollbar">
+          <ul className="document-list no-scrollbar">
             {documents.map((doc) => (
               <li key={doc.id || doc.temp_id} className={`document-item ${doc.current_stage?.toLowerCase()}`}>
                 <div className="doc-icon flex-shrink-0">

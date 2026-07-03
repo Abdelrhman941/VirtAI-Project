@@ -27,7 +27,7 @@ const VoiceTab = memo(function VoiceTab({ selected, onSelect, avatarGender, onPl
   };
 
   return (
-    <div className="voice-tab-scroll scroll-fade scroll-fade-24 overflow-y-auto no-scrollbar h-full">
+    <div className="voice-tab-scroll overflow-y-auto no-scrollbar h-full">
       <h2 className="setup-section-title">Select Speech Profile</h2>
       <p className="setup-section-subtitle">Choose the acoustic synthesis that best aligns with your instruction delivery.</p>
 
