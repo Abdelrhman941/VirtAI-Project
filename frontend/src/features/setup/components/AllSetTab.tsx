@@ -100,7 +100,7 @@ export default function AllSetTab({
       </motion.div>
 
       <motion.button
-        className="shiny-save-btn"
+        className="inline-flex items-center justify-center gap-2.5 px-7 py-3 text-[14px] font-semibold font-display text-[#121212] bg-primary border-none rounded-lg cursor-pointer transition-colors duration-200 tracking-[0.01em] hover:not:disabled:bg-[#c9bf9c] active:not:disabled:scale-[0.98]"
         onClick={handleSave}
         disabled={!isReady || isSaving || isInitializing || !isAuthenticated}
         initial={{ opacity: 0, scale: 0.9 }}

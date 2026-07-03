@@ -551,4 +551,125 @@ input[type="password"]::-webkit-contacts-auto-fill-button {
   display: none; /* Chrome, Safari and Opera */
 }
 
+/* ── Setup: Avatar float animation ── */
+@keyframes avatar-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* ── Setup: Sound wave bar equalizer ── */
+.sound-wave-bars {
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 60px;
+}
+
+.sound-bar {
+  display: block;
+  width: 3.5px;
+  border-radius: 2px;
+  background: var(--color-crimson, #6d001a);
+  opacity: 0.85;
+  animation: bar-pulse 0.6s ease-in-out infinite alternate;
+}
+
+.sound-bar:nth-child(1),  .sound-bar:nth-child(20) { height: 12%; animation-delay: 0s; }
+.sound-bar:nth-child(2),  .sound-bar:nth-child(19) { height: 18%; animation-delay: 0.08s; }
+.sound-bar:nth-child(3),  .sound-bar:nth-child(18) { height: 26%; animation-delay: 0.16s; }
+.sound-bar:nth-child(4),  .sound-bar:nth-child(17) { height: 35%; animation-delay: 0.24s; }
+.sound-bar:nth-child(5),  .sound-bar:nth-child(16) { height: 45%; animation-delay: 0.32s; }
+.sound-bar:nth-child(6),  .sound-bar:nth-child(15) { height: 55%; animation-delay: 0.12s; }
+.sound-bar:nth-child(7),  .sound-bar:nth-child(14) { height: 65%; animation-delay: 0.28s; }
+.sound-bar:nth-child(8),  .sound-bar:nth-child(13) { height: 75%; animation-delay: 0.04s; }
+.sound-bar:nth-child(9),  .sound-bar:nth-child(12) { height: 85%; animation-delay: 0.20s; }
+.sound-bar:nth-child(10), .sound-bar:nth-child(11) { height: 95%; animation-delay: 0.36s; }
+
+.sound-wave-bars.stopping .sound-bar {
+  animation: none;
+  opacity: 0;
+  transition: opacity 0.6s ease-out;
+}
+
+@keyframes bar-pulse {
+  0%   { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
+}
+
+/* Equalizer mini bars (voice card) */
+@keyframes equalizer {
+  0%   { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
+}
+
+/* ── Setup: Success animation ── */
+.success-animation {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.success-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid var(--success, #4caf50);
+  opacity: 0;
+  animation: success-ring-expand 1.2s ease-out 0.2s forwards;
+}
+
+@keyframes success-ring-expand {
+  0%   { transform: scale(0); opacity: 1; }
+  60%  { opacity: 0.6; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+.success-check {
+  position: absolute;
+  inset: 0;
+}
+
+.success-check-circle {
+  fill: none;
+  stroke: var(--success, #4caf50);
+  stroke-width: 3;
+  stroke-dasharray: 170;
+  stroke-dashoffset: 170;
+  animation: draw-circle 0.6s ease-out 0.1s forwards;
+}
+
+.success-check-path {
+  fill: none;
+  stroke: var(--success, #4caf50);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 50;
+  stroke-dashoffset: 50;
+  animation: draw-check 0.4s ease-out 0.6s forwards;
+}
+
+@keyframes draw-circle { to { stroke-dashoffset: 0; } }
+@keyframes draw-check  { to { stroke-dashoffset: 0; } }
+
+.success-particle {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--success, #4caf50);
+  top: 50%;
+  left: 50%;
+  opacity: 0;
+  animation: particle-burst 0.8s ease-out 0.5s forwards;
+}
+
+@keyframes particle-burst {
+  0%   { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+  50%  { opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0.5); opacity: 0; }
+}
 

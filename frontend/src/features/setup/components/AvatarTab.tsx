@@ -25,7 +25,7 @@ const AvatarTab = memo(function AvatarTab({ selected, onSelect }: AvatarTabProps
       <h2 className="setup-section-title">Select Teaching Assistant Profile</h2>
       <p className="setup-section-subtitle">Choose the visual representation of your virtual classroom teaching assistant.</p>
 
-      <div className="avatar-grid" role="radiogroup" aria-label="Avatars">
+      <div className="grid grid-cols-3 gap-5 mt-5 max-lg:grid-cols-2 max-lg:gap-4 max-md:grid-cols-2 max-md:gap-3 max-[480px]:grid-cols-1 max-[480px]:gap-2.5" role="radiogroup" aria-label="Avatars">
         {avatarList.map((avatar, idx) => {
           const isSelected = selected?.id === avatar.id;
           const isFocusable = isSelected || (!selected && idx === 0);
@@ -34,7 +34,11 @@ const AvatarTab = memo(function AvatarTab({ selected, onSelect }: AvatarTabProps
             <motion.button
               type="button"
               key={avatar.id}
-              className={`avatar-card${isSelected ? ' selected' : ''}`}
+              className={`relative flex flex-col items-center gap-3.5 px-3 py-4 border rounded-xl cursor-pointer transition-all duration-200 ease-out min-h-[160px] justify-center max-md:min-h-auto max-md:p-3
+                ${isSelected
+                  ? 'bg-[#b4ab8b]/12 border-[#b4ab8b] shadow-[inset_0_1px_0_rgba(180,171,139,0.15)]'
+                  : 'bg-transparent border-transparent hover:bg-white/[0.03] hover:border-[#333]'
+                }`}
               onClick={() => onSelect(avatar)}
               onKeyDown={(e) => {
                 let nextIdx = null;
@@ -62,7 +66,7 @@ const AvatarTab = memo(function AvatarTab({ selected, onSelect }: AvatarTabProps
               aria-label={avatar.name}
             >
               <img
-                className="avatar-card-img"
+                className={`w-[90px] h-[90px] rounded-full object-cover border-[3px] transition-all duration-300 max-[480px]:w-[70px] max-[480px]:h-[70px] ${isSelected ? 'border-[#c9c0a0] shadow-[0_0_15px_rgba(180,171,139,0.3)]' : 'border-white/10'}`}
                 src={avatar.image}
                 alt={avatar.name}
                 width={200}

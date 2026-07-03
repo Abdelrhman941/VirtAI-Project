@@ -27,11 +27,11 @@ const VoiceTab = memo(function VoiceTab({ selected, onSelect, avatarGender, onPl
   };
 
   return (
-    <div className="voice-tab-scroll overflow-y-auto no-scrollbar h-full">
+    <div className="overflow-y-auto no-scrollbar h-full">
       <h2 className="setup-section-title">Select Speech Profile</h2>
       <p className="setup-section-subtitle">Choose the acoustic synthesis that best aligns with your instruction delivery.</p>
 
-      <div className="voice-grid" role="radiogroup" aria-label="Voices">
+      <div className="flex flex-col gap-2 mt-5 max-w-[600px]" role="radiogroup" aria-label="Voices">
         {filteredVoices.map((voice: Voice, idx: number) => {
           const isSelected = selected?.id === voice.id;
           const isCurrentlyPlaying = playingVoiceId === voice.id && isPlaying;
@@ -52,7 +52,7 @@ const VoiceTab = memo(function VoiceTab({ selected, onSelect, avatarGender, onPl
                   e.preventDefault();
                   onSelect(filteredVoices[nextIdx]);
                   const grid = e.currentTarget.parentNode;
-                  const nextElem = grid.children[nextIdx] as HTMLElement;
+                  const nextElem = (grid as HTMLElement)?.children[nextIdx] as HTMLElement;
                   if (nextElem) nextElem.focus();
                 } else if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
@@ -60,7 +60,11 @@ const VoiceTab = memo(function VoiceTab({ selected, onSelect, avatarGender, onPl
                 }
               }}
               key={voice.id}
-              className={`voice-card${isSelected ? ' selected' : ''}`}
+              className={`relative flex items-center gap-3.5 px-4 py-3 border rounded-[10px] cursor-pointer transition-all duration-200 ease-out text-left
+                ${isSelected
+                  ? 'border-[#b4ab8b] bg-[#b4ab8b]/10 shadow-[0_4px_16px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(180,171,139,0.1)]'
+                  : 'bg-transparent border-[#333] hover:bg-white/[0.03] hover:border-white/15'
+                }`}
               onClick={() => onSelect(voice)}
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
@@ -69,26 +73,33 @@ const VoiceTab = memo(function VoiceTab({ selected, onSelect, avatarGender, onPl
               aria-checked={isSelected}
               aria-label={`${voice.name} — ${voice.desc}`}
             >
-              <div className="voice-card-info">
-                <div className="voice-card-name truncate block w-full text-ellipsis overflow-hidden" dir="auto" title={voice.name}>
+              <div className="flex-1 min-w-0">
+                <div className="font-display text-[17px] font-semibold text-white flex items-center gap-2 truncate block w-full text-ellipsis overflow-hidden" dir="auto" title={voice.name}>
                   {voice.name}
-                  <span className={`voice-gender-badge ${voice.gender}`}>{voice.gender}</span>
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-md uppercase tracking-[0.5px] bg-white/[0.08] text-[#b0b0b0]">{voice.gender}</span>
                   {isCurrentlyPlaying && (
-                    <div className="mini-equalizer">
-                      <span className="bar" />
-                      <span className="bar" />
-                      <span className="bar" />
-                      <span className="bar" />
+                    <div className="flex items-end gap-[2px] h-[18px] ml-2">
+                      {[0, 0.15, 0.3, 0.1].map((delay, i) => (
+                        <span
+                          key={i}
+                          className="w-[3px] rounded-[1px] bg-gradient-to-t from-[#6d001a] to-[#9b0827] animate-[equalizer_0.6s_ease-in-out_infinite_alternate]"
+                          style={{ height: ['40%', '70%', '50%', '80%'][i], animationDelay: `${delay}s` }}
+                        />
+                      ))}
                     </div>
                   )}
                 </div>
-                <div className="voice-card-desc truncate block w-full text-ellipsis overflow-hidden" dir="auto" title={voice.desc}>{voice.desc}</div>
-                <div className="voice-card-greeting truncate block w-full text-ellipsis overflow-hidden" dir="auto" title={voice.greeting}>&ldquo;{voice.greeting}&rdquo;</div>
+                <div className="text-[13px] text-muted-foreground mt-0.5 truncate block w-full text-ellipsis overflow-hidden" dir="auto" title={voice.desc}>{voice.desc}</div>
+                <div className="text-[12px] text-[#b0b0b0] mt-1 italic opacity-70 truncate block w-full text-ellipsis overflow-hidden" dir="auto" title={voice.greeting}>&ldquo;{voice.greeting}&rdquo;</div>
               </div>
 
               <button
                 type="button"
-                className={`voice-play-btn${isCurrentlyPlaying ? ' playing' : ''}`}
+                className={`w-9 h-9 rounded-full border flex items-center justify-center cursor-pointer transition-all duration-200 ease-out shrink-0 text-[14px]
+                  ${isCurrentlyPlaying
+                    ? 'bg-[#b4ab8b] border-[#b4ab8b] text-[#121212]'
+                    : 'bg-transparent border-white/15 text-white hover:bg-white/[0.05]'
+                  }`}
                 onClick={(e) => handlePlayToggle(e, voice)}
                 aria-label={
                   isCurrentlyPlaying ? `Stop ${voice.name} preview` : `Play ${voice.name} preview`
@@ -99,7 +110,7 @@ const VoiceTab = memo(function VoiceTab({ selected, onSelect, avatarGender, onPl
 
               <SelectionCheckmark
                 isSelected={isSelected}
-                className="voice-card-check"
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#b4ab8b] text-[#121212] flex items-center justify-center text-[12px]"
                 size={12}
               />
             </motion.div>
