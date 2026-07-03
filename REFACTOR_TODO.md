@@ -134,7 +134,7 @@ Two independent root causes were identified and fixed. See `WALKTHROUGH.md` for 
 
 
 ## Batch 11 — Alert (custom-colored variants) + Sonner standardization + notify wrapper
-- [ ] 11.1 custom-colored Alert set + canonical Sonner Toaster + notify wrapper
+- [x] 11.1 custom-colored Alert set + canonical Sonner Toaster + notify wrapper
 
 ## Batch 12 — Convert Remaining Feature CSS & CSS Modules → Tailwind
 - [ ] 12.1 SlideQuestionInput.css

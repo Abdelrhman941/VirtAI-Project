@@ -877,27 +877,7 @@ import {
 import { motion } from 'framer-motion';
 ```
 
-**Five docs behaviors — all must be wired:**
 
-1. **Following the Live Edge** — `autoScroll` on the provider; streamed deltas stay pinned.
-2. **Opening Saved Threads** — `defaultScrollPosition="last-anchor"` — restored threads open at the last user turn (matches ChatGPT).
-3. **Animating New Messages (slide-side)** — wrap `MessageScrollerItem` with Framer Motion:
-   ```tsx
-   const MotionMessageScrollerItem = motion.create(MessageScrollerItem);
-   // requires framer-motion >= 11 (checked in Batch 0)
-
-   <MotionMessageScrollerItem
-     initial={{ opacity: 0, x: role === 'user' ? 24 : -24 }}
-     animate={{ opacity: 1, x: 0 }}
-     transition={{ duration: 0.28, ease: 'easeOut' }}
-     messageId={m.id}
-     scrollAnchor={m.role === 'user'}
-   >
-     …
-   </MotionMessageScrollerItem>
-   ```
-4. **Transcript Outline** — `useMessageScrollerVisibility()` powers a right-rail outline. Create `shared/components/chat/ChatOutlineBadge.tsx` that reads `{ currentAnchorId, visibleMessageIds }` and shows the position; wire it in `ClassroomShell` right-rail (existing right-rail slot).
-5. **Reading Scroll State** — `useMessageScrollerScrollable()` gates the `MessageScrollerButton` (hide when `end`). Wrap in `AnimatePresence` with a `slide up + fade` transition.
 
 **Skip:** the "Group Chat" example from the docs — not applicable.
 
@@ -1540,8 +1520,7 @@ If any gate fails, **do not merge** — file a follow-up sub-batch to trim.
   - [ ] Delete AlertDialog fires + auto-focuses Cancel.
   - [ ] Carousel autoplays, pauses on hover, RTL flips arrows correctly.
   - [ ] Shimmer visible while "Thinking…" in chat + "Indexing…" in upload.
-  - [ ] `MessageScroller` pins to live edge during streaming; button appears when scrolled up.
-  - [ ] Scroll-fade visible on long lists.
+
   - [ ] Markdown rendering: code blocks have language badge + copy button; LaTeX renders inline + block; tables scroll horizontally on small screens; XSS attempt `![x](javascript:alert(1))` is neutralized.
   - [ ] Sonner toasts stack in bottom-right; close button works.
 

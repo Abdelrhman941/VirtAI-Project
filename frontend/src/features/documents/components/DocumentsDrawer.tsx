@@ -18,7 +18,7 @@ export function DocumentsDrawer({ isOpen, onClose, sessionId, onEnsureSession, w
       description="Manage reference syllabus, textbooks, and notes for this session"
       isOpen={isOpen}
       onClose={onClose}
-      contentClassName="documents-drawer-content"
+      contentClassName="absolute top-0 right-0 w-[420px] max-w-[92vw] h-full flex flex-col pt-3 px-4 pb-4 ltr overflow-visible bg-card border-l-0 shadow-[-4px_0_24px_rgba(0,0,0,0.4)] z-[1000] max-lg:inset-auto max-lg:bottom-0 max-lg:left-0 max-lg:w-full max-lg:max-w-[100vw] max-lg:h-[min(82vh,720px)] max-lg:border-t max-lg:border-white/10 max-lg:rounded-t-[20px]"
       zIndex={1000}
       width={width}
       onWidthChange={onWidthChange}

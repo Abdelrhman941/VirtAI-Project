@@ -24,9 +24,10 @@ interface UploadTabProps {
   onSkip?: () => void;
   enqueueUpload: (file: File, tempId: string, fileHash: string, confirmedDuplicate?: boolean) => Promise<{ isDuplicate: boolean } | void>;
   documents: Document[];
+  compact?: boolean;
 }
 
-export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) {
+export function UploadTab({ onSkip, enqueueUpload, documents, compact = false }: UploadTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
@@ -163,13 +164,15 @@ export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) 
   const isDisabled = isProcessing || isLimitReached;
 
   return (
-    <div className="min-h-full flex items-center justify-center ltr fade-in">
-      <div className="w-full max-w-[620px] flex flex-col gap-5 p-6 rounded-[18px] border border-white/10 bg-gradient-to-b from-white/[0.055] to-white/[0.025] bg-[#121212]/56 shadow-[0_18px_44px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] sm:p-[18px] sm:gap-4 modern-glass-card">
+    <div className={`${compact ? '' : 'min-h-full'} flex items-center justify-center ltr fade-in`}>
+      <div className={`w-full ${compact ? '' : 'max-w-[620px] p-6 rounded-[18px] border border-white/10 bg-gradient-to-b from-white/[0.055] to-white/[0.025] bg-[#121212]/56 shadow-[0_18px_44px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] sm:p-[18px] sm:gap-4'} flex flex-col gap-5 modern-glass-card`}>
         <div className="flex flex-col items-center text-center">
-          <h2 className="setup-section-title">Upload Curriculum Documents</h2>
-          <p className="setup-section-subtitle">
-            Provide syllabus, textbooks, or course notes to inform your virtual teaching assistant&apos;s curriculum awareness (Maximum 10 files per session).
-          </p>
+          <h2 className={`${compact ? 'text-[18px] font-bold' : 'setup-section-title'}`}>Upload Curriculum Documents</h2>
+          {!compact && (
+            <p className="setup-section-subtitle">
+              Provide syllabus, textbooks, or course notes to inform your virtual teaching assistant&apos;s curriculum awareness (Maximum 10 files per session).
+            </p>
+          )}
         </div>
 
         {isLimitReached && (
@@ -179,7 +182,7 @@ export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) 
         )}
 
         <div
-          className={`min-h-[210px] sm:min-h-[190px] sm:px-4 sm:py-[22px] flex flex-col items-center justify-center p-7 rounded-[18px] border-2 border-dashed transition-all duration-200 ease-out 
+          className={`${compact ? 'min-h-[140px] p-3' : 'min-h-[210px] sm:min-h-[190px] sm:px-4 sm:py-[22px] p-7'} flex flex-col items-center justify-center rounded-[18px] border-2 border-dashed transition-all duration-200 ease-out 
             ${isDisabled ? 'cursor-progress opacity-80 border-primary/30 bg-black/15' : 'cursor-pointer border-primary/30 bg-black/15 hover:border-primary/70 hover:bg-primary/10 hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)] hover:-translate-y-px'}
             ${hasFiles ? 'has-file' : ''}`}
           onDragOver={handleDragOver}
@@ -201,8 +204,8 @@ export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) 
               <span className="w-[66px] h-[66px] grid place-items-center rounded-[20px] bg-primary/10 text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
                 <FiUploadCloud className="w-[34px] h-[34px]" />
               </span>
-              <p className="m-0 text-foreground text-[15px] font-[650]">Drag reference documents here, or click to browse files</p>
-              <span className="text-muted-foreground text-[13px]">Supports PDF, TXT, or MD formats up to 25MB</span>
+              <p className={`m-0 text-foreground font-[650] ${compact ? 'text-[13px] mt-2 mb-1' : 'text-[15px]'}`}>Drag reference documents here, or click to browse files</p>
+              <span className={`text-muted-foreground ${compact ? 'text-[12px]' : 'text-[13px]'}`}>Supports PDF, TXT, or MD formats up to 25MB</span>
             </div>
           ) : (
             <div className="w-full flex flex-col gap-2 max-h-[250px] overflow-y-auto p-1 custom-scrollbar" onClick={(e) => e.stopPropagation()}>
@@ -220,7 +223,7 @@ export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) 
                       exit={{ opacity: 0, scale: 0.95 }}
                     >
                       <FiFileText className={`w-6 h-6 shrink-0 ${fileError ? 'text-red-500' : 'text-primary'}`} />
-                      <div className="flex flex-col flex-1 min-w-0">
+                      <div className="flex flex-col flex-1 min-w-0 text-left">
                         <span className="text-foreground text-[14px] font-semibold overflow-hidden text-ellipsis whitespace-nowrap block w-full" dir="auto" title={file.name}>{file.name}</span>
                         <span className="text-muted-foreground text-[12px]">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
                         {fileError && (
