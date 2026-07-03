@@ -215,6 +215,18 @@ export default function ClassroomShell() {
   const prevSessionIdRef = useRef<string | null>(currentSessionId);
   const isCreatingSessionRef = useRef<boolean>(false);
 
+  const [isGreetingActive, setIsGreetingActive] = useState(true);
+  const prevSessionIdForGreeting = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (currentSessionId && currentSessionId !== prevSessionIdForGreeting.current) {
+      prevSessionIdForGreeting.current = currentSessionId;
+      setIsGreetingActive(true);
+    }
+  }, [currentSessionId]);
+
+  const handleGreetingEnd = useCallback(() => setIsGreetingActive(false), []);
+
   useEffect(() => {
     const prevId = prevSessionIdRef.current;
     const nextId = currentSessionId;
@@ -460,6 +472,8 @@ export default function ClassroomShell() {
                   getIsAudioPlaying={getIsAudioPlaying}
                   getNextPlaybackTime={getNextPlaybackTime}
                   getAnalyserNode={getAnalyserNode}
+                  isGreetingActive={isGreetingActive}
+                  onGreetingEnd={handleGreetingEnd}
                 />
               </Suspense>
             </aside>
@@ -520,6 +534,8 @@ export default function ClassroomShell() {
                   getIsAudioPlaying={getIsAudioPlaying}
                   getNextPlaybackTime={getNextPlaybackTime}
                   getAnalyserNode={getAnalyserNode}
+                  isGreetingActive={isGreetingActive}
+                  onGreetingEnd={handleGreetingEnd}
                 />
               </Suspense>
             </aside>
@@ -573,8 +589,8 @@ export default function ClassroomShell() {
                 setIsDiagramOpen(false);
               }}
               className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 ${(!isExplainActive && !isDiagramOpen)
-                  ? 'text-gold'
-                  : 'text-gray-400 active:text-white'
+                ? 'text-gold'
+                : 'text-gray-400 active:text-white'
                 }`}
             >
               <FiMessageSquare size={20} />
@@ -586,8 +602,8 @@ export default function ClassroomShell() {
               onClick={handleStartExplain}
               disabled={!documents.length}
               className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${isExplainActive
-                  ? 'text-gold font-bold'
-                  : 'text-gray-400 active:text-white'
+                ? 'text-gold font-bold'
+                : 'text-gray-400 active:text-white'
                 }`}
             >
               <FiMonitor size={20} />
@@ -599,8 +615,8 @@ export default function ClassroomShell() {
               onClick={handleGenerateDiagram}
               disabled={!documents.length}
               className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${isDiagramOpen
-                  ? 'text-gold font-bold'
-                  : 'text-gray-400 active:text-white'
+                ? 'text-gold font-bold'
+                : 'text-gray-400 active:text-white'
                 }`}
             >
               <FiShare2 size={20} />
@@ -612,8 +628,8 @@ export default function ClassroomShell() {
               onClick={handleGenerateSummary}
               disabled={!documents.length}
               className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${isSummaryOpen
-                  ? 'text-gold font-bold'
-                  : 'text-gray-400 active:text-white'
+                ? 'text-gold font-bold'
+                : 'text-gray-400 active:text-white'
                 }`}
             >
               <FiFileText size={20} />
@@ -625,8 +641,8 @@ export default function ClassroomShell() {
               onClick={handleGenerateQuiz}
               disabled={!documents.length}
               className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${isQuizOpen
-                  ? 'text-gold font-bold'
-                  : 'text-gray-400 active:text-white'
+                ? 'text-gold font-bold'
+                : 'text-gray-400 active:text-white'
                 }`}
             >
               <FiEdit3 size={20} />

@@ -70,6 +70,7 @@ class ExplainHandler:
         # Use lists for mutability across the closure boundaries
         base_msg_id = [str(uuid.uuid4())]
         chunk_idx = [0]
+        socket_dead = [False]
         sentence_queue = asyncio.Queue()
 
         async def _tts_worker():
@@ -79,6 +80,10 @@ class ExplainHandler:
                     # End signal
                     sentence_queue.task_done()
                     break
+
+                if socket_dead[0]:
+                    sentence_queue.task_done()
+                    continue
 
                 sentence, current_base_msg_id = item
                 if not self.tts_provider or not self.voice_id or not sentence.strip():
@@ -120,22 +125,26 @@ class ExplainHandler:
                         audio_url=audio_url,
                         duration_ms=int(duration_ms),
                     )
-                    await self.websocket.send_json({
-                        "type": "tts.ready",
-                        "data": tts_ready.model_dump(exclude_none=True)
-                    })
-
-                    if visemes:
-                        visemes_dicts = visemes_to_dict_list(visemes)
-                        visemes_ready = make_visemes_ready(
-                            session_id=self.document_id,
-                            message_id=msg_id,
-                            mouth_cues=visemes_dicts
-                        )
+                    try:
                         await self.websocket.send_json({
-                            "type": "visemes.ready",
-                            "data": visemes_ready.model_dump(exclude_none=True)
+                            "type": "tts.ready",
+                            "data": tts_ready.model_dump(exclude_none=True)
                         })
+
+                        if visemes:
+                            visemes_dicts = visemes_to_dict_list(visemes)
+                            visemes_ready = make_visemes_ready(
+                                session_id=self.document_id,
+                                message_id=msg_id,
+                                mouth_cues=visemes_dicts
+                            )
+                            await self.websocket.send_json({
+                                "type": "visemes.ready",
+                                "data": visemes_ready.model_dump(exclude_none=True)
+                            })
+                    except (RuntimeError, asyncio.exceptions.IncompleteReadError) as e:
+                        logger.warning(f"[WS] Dead socket write attempt in TTS worker: {e}")
+                        socket_dead[0] = True
                 except Exception as e:
                     logger.error(f"ExplainHandler TTS generation error: {e}")
                 finally:
@@ -149,6 +158,7 @@ class ExplainHandler:
                     await self.websocket.send_json(event)
                 except (RuntimeError, asyncio.exceptions.IncompleteReadError) as e:
                     logger.warning(f"[WS] Dead socket write attempt: {e}")
+                    socket_dead[0] = True
                     return
 
                 event_type = event.get("type", "")
@@ -179,6 +189,9 @@ class ExplainHandler:
             # Wait for all queued sentences to be processed before finishing
             await sentence_queue.join()
 
+        except asyncio.CancelledError:
+            socket_dead[0] = True
+            raise
         finally:
             # Signal worker to exit and wait for it
             await sentence_queue.put(None)

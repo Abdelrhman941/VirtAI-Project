@@ -283,12 +283,13 @@ async def explain_websocket(
     websocket: WebSocket,
     document_id: str,
     token: str | None = Query(None),
+    voice: str = Query(default=""),
     db: AsyncSession = Depends(get_db),
     chat_use_case: ChatUseCase = Depends(get_chat_use_case),
 ):
     """
     WebSocket endpoint for explaining a specific document slide by slide.
-    URL: ws://localhost:8000/api/v1/rag/explain/{document_id}?token=...
+    URL: ws://localhost:8000/api/v1/rag/explain/{document_id}?token=...&voice=aria
     """
     if not token:
         logger.warning("[WS] Explain connection rejected: Missing token")
@@ -302,9 +303,11 @@ async def explain_websocket(
         await websocket.close(code=4003, reason="Invalid token")
         return
 
+    voice_id = voice or settings.TTS_VOICE
+
     await websocket.accept(subprotocol="access_token")
     await websocket.send_json({"type": "ready", "session_id": document_id})
-    logger.info(f"[WS] Explain connection accepted | document={document_id} | user={token_payload.user_id}")
+    logger.info(f"[WS] Explain connection accepted | document={document_id} | user={token_payload.user_id} | voice={voice_id}")
     
     from app.infrastructure.tts.openai_tts_provider import OpenAITTSProvider
     tts_provider = OpenAITTSProvider()
@@ -316,6 +319,6 @@ async def explain_websocket(
         user_id=str(token_payload.user_id),
         chat_use_case=chat_use_case,
         tts_provider=tts_provider,
-        voice_id=settings.TTS_VOICE,
+        voice_id=voice_id,
     )
     await handler.run()

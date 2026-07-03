@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { WSManager } from '@/services/wsManager';
 import { ConnectionState } from '@/core/realtime/wsConstants';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { loadSetup } from '@/features/setup/services/setupStorage';
 
 export type PresentationState = 'EXPLAINING' | 'AWAITING' | 'ANSWERING';
 
@@ -24,9 +25,11 @@ export function useExplainWS({ documentId, onTokens, onStateChange, onSlideChang
 
   const token = useAuthStore(state => state.accessToken);
   const wsUrl = useMemo(() => {
-    return documentId && token
-      ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/v1/rag/explain/${documentId}?token=${token}`
-      : null;
+    if (!documentId || !token) return null;
+    const setup = loadSetup();
+    const voiceId = setup?.voiceId || '';
+    const base = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/v1/rag/explain/${documentId}?token=${token}`;
+    return voiceId ? `${base}&voice=${encodeURIComponent(voiceId)}` : base;
   }, [documentId, token]);
 
   const managerRef = useRef<WSManager | null>(null);

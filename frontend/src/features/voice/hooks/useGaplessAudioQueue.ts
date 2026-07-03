@@ -36,7 +36,7 @@ export function useGaplessAudioQueue() {
   const activeSourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
   const isMountedRef = useRef(true);
   const playbackRateRef = useRef<number>(1.0);
-  
+
   // Streaming state: tracks whether at least one chunk decoded successfully.
   // Only set to true after a successful convertInt16ToFloat32 + createBuffer call.
   // Keeps the URL fallback path available when chunks arrive but decoding fails.
@@ -49,8 +49,8 @@ export function useGaplessAudioQueue() {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       audioContextRef.current = new AudioCtx();
       analyserNodeRef.current = audioContextRef.current.createAnalyser();
-      analyserNodeRef.current.fftSize = 256;
-      analyserNodeRef.current.smoothingTimeConstant = 0.8;
+      analyserNodeRef.current.fftSize = 512;
+      analyserNodeRef.current.smoothingTimeConstant = 0.65;
       analyserNodeRef.current.connect(audioContextRef.current.destination);
     }
     if (audioContextRef.current.state === 'suspended') {
@@ -184,7 +184,7 @@ export function useGaplessAudioQueue() {
               console.log(`[GaplessAudio Debug] 3. Decoding raw PCM Int16 to Float32...`);
               const float32Data = convertInt16ToFloat32(arrayBuffer);
               console.log(`[GaplessAudio Debug] 4. Decoded Float32 length: ${float32Data.length}`);
-              
+
               console.log(`[GaplessAudio Debug] 5. Creating AudioContext Buffer (Channels: ${PCM_NUM_CHANNELS}, SampleRate: ${PCM_SAMPLE_RATE})`);
               audioBuffer = ctx.createBuffer(PCM_NUM_CHANNELS, float32Data.length, PCM_SAMPLE_RATE);
               audioBuffer.copyToChannel(float32Data, 0);
@@ -292,12 +292,12 @@ export function useGaplessAudioQueue() {
         .then(async () => {
           if (currentToken !== flushTokenRef.current) return;
           if (!isMountedRef.current) return;
-          
+
           const ctx = getAudioContext();
-          
+
           // Decode ONLY this specific isolated chunk
           const chunkArrayBuffer = chunk instanceof Blob ? await chunk.arrayBuffer() : chunk;
-          
+
           let audioBuffer: AudioBuffer;
           try {
             const float32Data = convertInt16ToFloat32(chunkArrayBuffer);
@@ -335,7 +335,7 @@ export function useGaplessAudioQueue() {
           activeSourceNodeRef.current = source;
           source.buffer = audioBuffer;
           source.playbackRate.value = playbackRateRef.current;
-          
+
           if (analyserNodeRef.current) {
             source.connect(analyserNodeRef.current);
           } else {
@@ -359,7 +359,7 @@ export function useGaplessAudioQueue() {
 
           const startTime = Math.max(ctx.currentTime, nextPlaybackTimeRef.current);
           source.start(startTime);
-          
+
           nextPlaybackTimeRef.current = startTime + newDuration;
         })
         .catch((err) => {
@@ -393,7 +393,7 @@ export function useGaplessAudioQueue() {
         analyserNodeRef.current = null;
       }
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current.close().catch(() => { });
       }
     };
   }, [flushQueue]);
@@ -402,7 +402,7 @@ export function useGaplessAudioQueue() {
     const unlockAudio = () => {
       const ctx = getAudioContext();
       if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
+        ctx.resume().catch(() => { });
       }
       window.removeEventListener('pointerdown', unlockAudio);
       window.removeEventListener('keydown', unlockAudio);
@@ -422,9 +422,9 @@ export function useGaplessAudioQueue() {
     const watchdog = window.setInterval(() => {
       const ctx = audioContextRef.current;
       if (!ctx || scheduledNodesRef.current.length === 0) return;
-      
+
       if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
+        ctx.resume().catch(() => { });
       } else if (ctx.state === 'running' && ctx.currentTime > nextPlaybackTimeRef.current + (WATCHDOG_TIMEOUT_MS / 1000)) {
         console.warn('[GaplessAudio] Watchdog triggered: Audio context stalled. Flushing queue.');
         flushQueue();

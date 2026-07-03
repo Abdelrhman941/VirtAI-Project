@@ -22,6 +22,8 @@ export interface AvatarComponentProps {
   getAnalyserNode?: () => AnalyserNode | null;
   morphTargetValuesRef?: React.MutableRefObject<Record<string, number>>;
   currentTimeOverrideRef?: React.MutableRefObject<number | null>;
+  isGreetingActive?: boolean;
+  onGreetingEnd?: () => void;
 }
 
 interface GLTFResult {
@@ -40,7 +42,9 @@ export function AvatarComponent({
   getNextPlaybackTime,
   getAnalyserNode,
   morphTargetValuesRef,
-  currentTimeOverrideRef
+  currentTimeOverrideRef,
+  isGreetingActive,
+  onGreetingEnd
 }: AvatarComponentProps) {
   const groupRef = useRef<THREE.Group>(null);
   const avatarUrl = `/models/${avatarId}.glb`;
@@ -74,7 +78,7 @@ export function AvatarComponent({
   }, [clone]);
 
   // Hook 1: Animation Mixer, Tracks, and State Machine
-  useAvatarAnimations(avatarRoot as THREE.Group, pipelineState, movementEnabled, getAudioContext, playbackStartTimeRef, mouthCuesRef, getIsAudioPlaying, getNextPlaybackTime);
+  useAvatarAnimations(avatarRoot as THREE.Group, pipelineState, movementEnabled, getAudioContext, playbackStartTimeRef, mouthCuesRef, getIsAudioPlaying, getNextPlaybackTime, isGreetingActive, onGreetingEnd);
 
   const toastShownRef = useRef(false);
 

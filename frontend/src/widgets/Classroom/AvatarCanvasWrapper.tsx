@@ -32,6 +32,8 @@ interface AvatarCanvasWrapperProps {
   getAnalyserNode: () => AnalyserNode | null;
   morphTargetValuesRef?: React.MutableRefObject<Record<string, number>>;
   currentTimeOverrideRef?: React.MutableRefObject<number | null>;
+  isGreetingActive?: boolean;
+  onGreetingEnd?: () => void;
 }
 
 // DEFENSIVE: Synchronously dispose WebGL resources on unmount.
@@ -75,22 +77,22 @@ const CanvasDisposer = memo(function CanvasDisposer() {
 // DEFENSIVE: WebGL Context Watcher with strict cleanup
 const WebGLContextWatcher = memo(({ onLost, onRestored }: { onLost: () => void; onRestored: () => void }) => {
   const gl = useThree((state) => state.gl);
-  
+
   useEffect(() => {
     const handleLost = (e: Event) => {
       e.preventDefault();
       onLost();
     };
-    
+
     gl.domElement.addEventListener('webglcontextlost', handleLost);
     gl.domElement.addEventListener('webglcontextrestored', onRestored);
-    
+
     return () => {
       gl.domElement.removeEventListener('webglcontextlost', handleLost);
       gl.domElement.removeEventListener('webglcontextrestored', onRestored);
     };
   }, [gl, onLost, onRestored]);
-  
+
   return null;
 });
 
@@ -105,7 +107,9 @@ export const AvatarCanvasWrapper = memo(function AvatarCanvasWrapper({
   getNextPlaybackTime,
   getAnalyserNode,
   morphTargetValuesRef,
-  currentTimeOverrideRef
+  currentTimeOverrideRef,
+  isGreetingActive,
+  onGreetingEnd
 }: AvatarCanvasWrapperProps) {
   const [isContextLost, setIsContextLost] = useState(false);
 
@@ -166,9 +170,9 @@ export const AvatarCanvasWrapper = memo(function AvatarCanvasWrapper({
         <OrbitControls target={[TARGET_POS_X, TARGET_POS_Y, TARGET_POS_Z]} enablePan={false} enableZoom={false} enableRotate={false} />
         <ambientLight intensity={AMBIENT_INTENSITY} />
         <directionalLight position={[DIR_LIGHT_POS_X, DIR_LIGHT_POS_Y, DIR_LIGHT_POS_Z]} intensity={DIR_LIGHT_INTENSITY} />
-        <AvatarComponent 
+        <AvatarComponent
           avatarId={avatarId}
-          pipelineState={pipelineState} 
+          pipelineState={pipelineState}
           movementEnabled={movementEnabled}
           mouthCuesRef={mouthCuesRef}
           getAudioContext={getAudioContext}
@@ -178,6 +182,8 @@ export const AvatarCanvasWrapper = memo(function AvatarCanvasWrapper({
           getAnalyserNode={getAnalyserNode}
           morphTargetValuesRef={morphTargetValuesRef}
           currentTimeOverrideRef={currentTimeOverrideRef}
+          isGreetingActive={isGreetingActive}
+          onGreetingEnd={onGreetingEnd}
         />
       </Canvas>
     </div>
@@ -193,6 +199,8 @@ export const AvatarCanvasWrapper = memo(function AvatarCanvasWrapper({
     prevProps.playbackStartTimeRef === nextProps.playbackStartTimeRef &&
     prevProps.getIsAudioPlaying === nextProps.getIsAudioPlaying &&
     prevProps.getNextPlaybackTime === nextProps.getNextPlaybackTime &&
-    prevProps.getAnalyserNode === nextProps.getAnalyserNode
+    prevProps.getAnalyserNode === nextProps.getAnalyserNode &&
+    prevProps.isGreetingActive === nextProps.isGreetingActive &&
+    prevProps.onGreetingEnd === nextProps.onGreetingEnd
   );
 });

@@ -6,6 +6,7 @@ import { useAvatarLipSync } from './useAvatarLipSync';
 import { Viseme } from '@/features/voice/hooks/useGaplessAudioQueue';
 
 const IDLE_URL = '/models/animations/Idle/Idle.fbx';
+const GREETING_URL = '/models/animations/Greeting/Greeting .fbx';
 const TALK_MANIFEST = [
   '/models/animations/Talk/Talk_1.fbx'
 ];
@@ -23,7 +24,7 @@ const NO_INDEX = -1;
 const ARRAY_EMPTY_LENGTH = 0;
 
 interface TimelineState {
-  phase: 'idle' | 'thinking' | 'speaking' | 'talking' | 'idle_break';
+  phase: 'idle' | 'thinking' | 'speaking' | 'talking' | 'idle_break' | 'greeting';
   timeInPhase: number;
   targetBreakDuration: number;
   lastTalkIndex: number;
@@ -37,9 +38,12 @@ export function useAvatarAnimations(
   playbackStartTimeRef?: React.MutableRefObject<number | null>,
   mouthCuesRef?: React.MutableRefObject<Viseme[]>,
   getIsAudioPlaying?: () => boolean,
-  getNextPlaybackTime?: () => number
+  getNextPlaybackTime?: () => number,
+  isGreetingActive?: boolean,
+  onGreetingEnd?: () => void
 ) {
   const idleFbx = useFBX(IDLE_URL);
+  const greetingFbx = useFBX(GREETING_URL);
   const talkFbx1 = useFBX(TALK_MANIFEST[0]);
 
   const animations = useMemo(() => {
@@ -61,7 +65,7 @@ export function useAvatarAnimations(
 
       for (const track of clip.tracks) {
         if (!(track instanceof THREE.QuaternionKeyframeTrack)) continue;
-        
+
         let qOffset: THREE.Quaternion | null = null;
         if (track.name.startsWith('LeftArm') || track.name.startsWith('RightArm')) qOffset = qDropArm;
         if (track.name.startsWith('LeftShoulder') || track.name.startsWith('RightShoulder')) qOffset = qDropShoulder;
@@ -82,15 +86,15 @@ export function useAvatarAnimations(
         if (t.name.endsWith('.scale')) return false;
         if (t.name.endsWith('.position')) return false;
         if (t.name === 'Hips.quaternion') return false;
-        
+
         // STRIP SHARED BASELINE OFFENDERS:
         // Removing Spine fixes the "chest-forward and robotic" posture.
         if (t.name === 'Spine.quaternion') return false;
-        
+
         // Removing Shoulders fixes "clavicles are elevated / open and stiff".
         // They will fall back to the natural GLB rest pose permanently.
         if (t.name.startsWith('LeftShoulder') || t.name.startsWith('RightShoulder')) return false;
-        
+
         // Removing Arms from Idle forces the avatar to rest its arms in the pure GLB A-pose
         // completely eliminating the robotic T-pose width at the start and end of movement.
         if (isIdle && (t.name.startsWith('LeftArm') || t.name.startsWith('RightArm'))) return false;
@@ -115,7 +119,7 @@ export function useAvatarAnimations(
 
     const idleSrc = pickStack(idleFbx.animations, ['mixamo.com']);
     if (!idleSrc) return [];
-    
+
     const idle = idleSrc.clone();
     idle.name = 'Idle';
 
@@ -132,6 +136,22 @@ export function useAvatarAnimations(
 
     const clips = [idle];
     let talkIndex = 0;
+
+    const greetingSrc = pickStack(greetingFbx.animations, ['mixamo.com', 'Armature|Armature|Scene']);
+    if (greetingSrc) {
+      const greeting = greetingSrc.clone();
+      greeting.name = 'Greeting';
+      greeting.tracks = greeting.tracks
+        .map(t => {
+          const c = t.clone();
+          c.name = c.name.replace(/mixamorig:|Armature\|/gi, '');
+          return c;
+        })
+        .filter(t => !t.name.startsWith('Armature.'));
+      sanitizeClip(greeting, false);
+      relaxArmPosture(greeting);
+      clips.push(greeting);
+    }
 
     const talk1Src = pickStack(talkFbx1.animations, ['Armature|Armature|Scene', 'mixamo.com']);
     if (talk1Src) {
@@ -150,7 +170,7 @@ export function useAvatarAnimations(
     }
 
     return clips;
-  }, [scene, idleFbx, talkFbx1]);
+  }, [scene, idleFbx, greetingFbx, talkFbx1]);
 
   const { actions, mixer } = useAnimations(animations, scene);
   const currentActionNameRef = useRef<string | null>(null);
@@ -171,7 +191,7 @@ export function useAvatarAnimations(
 
     Object.keys(actions).forEach(key => {
       const action = actions[key];
-      if (key.startsWith('Talk_') && action) {
+      if ((key.startsWith('Talk_') || key === 'Greeting') && action) {
         action.setLoop(THREE.LoopOnce, ANIMATION_LOOP_ONCE_COUNT);
         action.clampWhenFinished = true;
       }
@@ -184,9 +204,9 @@ export function useAvatarAnimations(
     (name: string, customFadeTime?: number) => {
       let targetName = name;
 
-      // CRITICAL FIX: The 'Idle' animation is immune to movementEnabled.
+      // CRITICAL FIX: The 'Idle' and 'Greeting' animations are immune to movementEnabled.
       // If movement is disabled, we MUST fallback to 'Idle' to prevent bind-pose mesh collapse.
-      if (!movementEnabled && targetName !== 'Idle') {
+      if (!movementEnabled && targetName !== 'Idle' && targetName !== 'Greeting') {
         targetName = 'Idle';
       }
 
@@ -292,7 +312,7 @@ export function useAvatarAnimations(
 
       let isAudioPlaying = false;
       const audioContext = getAudioContext?.();
-      
+
       if (getIsAudioPlaying) {
         isAudioPlaying = getIsAudioPlaying();
       } else if (playbackStartTimeRef?.current != null && audioContext) {
@@ -311,10 +331,21 @@ export function useAvatarAnimations(
           }
         }
       }
-        
+
       const isEffectivelySpeaking = pipelineStateRef.current === 'speaking' || isAudioPlaying;
 
-      if (finishedName && typeof finishedName === 'string' && finishedName.startsWith('Talk_')) {
+      if (finishedName === 'Greeting') {
+        timelineStateRef.current = {
+          ...timelineStateRef.current,
+          phase: 'idle',
+          timeInPhase: INITIAL_TIME,
+          targetBreakDuration: INITIAL_TIME,
+        };
+        playAnimation('Idle');
+        if (onGreetingEnd) {
+          onGreetingEnd();
+        }
+      } else if (finishedName && typeof finishedName === 'string' && finishedName.startsWith('Talk_')) {
         if (isEffectivelySpeaking) {
           let remainingAudio = 0;
           if (getNextPlaybackTime && audioContext) {
@@ -326,7 +357,7 @@ export function useAvatarAnimations(
             const lastCue = mouthCuesRef.current[mouthCuesRef.current.length - 1];
             const validEnd = Number.isFinite(lastCue?.end) ? Number(lastCue.end) : 0;
             const audioEndTime = playbackStartTimeRef.current + validEnd;
-            
+
             if (Number.isFinite(audioEndTime)) {
               remainingAudio = Math.max(0, audioEndTime - audioContext.currentTime);
             }
@@ -361,7 +392,7 @@ export function useAvatarAnimations(
     return () => {
       mixer.removeEventListener('finished', onFinished);
     };
-  }, [mixer, playAnimation, getAudioContext, playbackStartTimeRef, mouthCuesRef, getIsAudioPlaying, getNextPlaybackTime]);
+  }, [mixer, playAnimation, getAudioContext, playbackStartTimeRef, mouthCuesRef, getIsAudioPlaying, getNextPlaybackTime, onGreetingEnd]);
 
   useEffect(() => {
     return () => {
@@ -375,8 +406,21 @@ export function useAvatarAnimations(
   }, [mixer, scene]);
 
   useEffect(() => {
+    if (isGreetingActive) {
+      if (timelineStateRef.current.phase !== 'greeting') {
+        timelineStateRef.current = {
+          phase: 'greeting',
+          timeInPhase: INITIAL_TIME,
+          targetBreakDuration: INITIAL_TIME,
+          lastTalkIndex: NO_INDEX,
+        };
+        playAnimation('Greeting');
+      }
+      return;
+    }
+
     if (!movementEnabled) {
-      if (timelineStateRef.current.phase === 'talking') {
+      if (timelineStateRef.current.phase === 'talking' || timelineStateRef.current.phase === 'greeting') {
         timelineStateRef.current.phase = 'idle';
       }
       playAnimation('Idle');
@@ -384,6 +428,7 @@ export function useAvatarAnimations(
     }
 
     if (pipelineState === 'thinking' || pipelineState === 'error' || pipelineState === 'idle') {
+      if (timelineStateRef.current.phase === 'greeting') return; // let greeting finish
       timelineStateRef.current = {
         phase: 'idle',
         timeInPhase: INITIAL_TIME,
@@ -392,12 +437,12 @@ export function useAvatarAnimations(
       };
       playAnimation('Idle');
     }
-  }, [pipelineState, movementEnabled, playAnimation]);
+  }, [pipelineState, movementEnabled, isGreetingActive, playAnimation]);
 
   useFrame((state, delta) => {
     const timeline = timelineStateRef.current;
     const currentState = pipelineStateRef.current;
-    
+
     let isAudioPlaying = false;
     if (getIsAudioPlaying) {
       isAudioPlaying = getIsAudioPlaying();
@@ -420,6 +465,11 @@ export function useAvatarAnimations(
     }
 
     const isEffectivelySpeaking = currentState === 'speaking' || isAudioPlaying;
+
+    if (timeline.phase === 'greeting') {
+      timeline.timeInPhase += delta;
+      return;
+    }
 
     if (isEffectivelySpeaking && isAudioPlaying) {
       if (timeline.phase === 'idle') {

@@ -42,14 +42,14 @@ export function useAvatarLipSync({
   currentTimeOverrideRef,
 }: UseAvatarLipSyncProps) {
   const visemeKeysList = useMemo(() => [
-    'viseme_sil', 'viseme_PP', 'viseme_FF', 'viseme_TH', 'viseme_DD', 
-    'viseme_kk', 'viseme_CH', 'viseme_SS', 'viseme_nn', 'viseme_RR', 
+    'viseme_sil', 'viseme_PP', 'viseme_FF', 'viseme_TH', 'viseme_DD',
+    'viseme_kk', 'viseme_CH', 'viseme_SS', 'viseme_nn', 'viseme_RR',
     'viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U'
   ], []);
-  
+
   const blinkStateRef = useRef({ nextBlinkTime: 0, duration: 0.15, isBlinking: false });
   const headBobTimeRef = useRef(ORIGIN_ZERO);
-  
+
   // Realtime Audio Analysis Refs
   const audioDataArrayRef = useRef<Uint8Array | null>(null);
 
@@ -94,7 +94,7 @@ export function useAvatarLipSync({
 
   useFrame((state, delta) => {
     const t = state.clock.elapsedTime;
-    
+
     // Determine speaking state
     const currentPipelineState = pipelineStateRef.current;
     let isAudioPlaying = false;
@@ -111,12 +111,13 @@ export function useAvatarLipSync({
     const isEffectivelySpeaking = currentPipelineState === 'speaking' || isAudioPlaying;
 
     const config = useLipSyncConfigStore.getState().params;
-    const { 
-      headBobFrequency, headBobAmplitude, fallbackDamping, 
-      blinkDuration, blinkBaseDelay, blinkRandomVariance, 
+    const {
+      headBobFrequency, headBobAmplitude, fallbackDamping,
+      blinkDuration, blinkBaseDelay, blinkRandomVariance,
       browThinking, frownThinking, smileSpeaking, defaultDampSpeed,
       visemeSSMultiplier, visemeAAMultiplier, visemeOMultiplier, jawOpenMultiplier,
-      consonantSpeedMultiplier, vowelSpeedMultiplier, fftSpeedMultiplier
+      consonantSpeedMultiplier, vowelSpeedMultiplier, fftSpeedMultiplier,
+      jawDampSpeed, vowelDampSpeed, consonantDampSpeed, microIdleAmplitude, coarticulationBlend, jawSensitivity, formantSensitivity
     } = config;
     const HEAD_BOB_PERIOD = headBobFrequency > 0 ? TWO_PI / headBobFrequency : 0;
 
@@ -150,56 +151,65 @@ export function useAvatarLipSync({
         targetSmile = smileSpeaking;
       }
 
-      // FFT Analysis
-      let targetVisemeSS = 0;
-      let targetVisemeAA = 0;
-      let targetVisemeO = 0;
-      let targetJawOpen = 0;
+      // FFT Analysis - 6 Bands
+      let targetVisemes: Record<string, number> = {};
       let activeRealViseme = '';
 
       if (isEffectivelySpeaking) {
         const analyser = getAnalyserNode?.();
         if (analyser) {
-          if (!audioDataArrayRef.current) {
-            audioDataArrayRef.current = new Uint8Array(analyser.frequencyBinCount); // usually 128 for fftSize 256
+          if (!audioDataArrayRef.current || audioDataArrayRef.current.length !== analyser.frequencyBinCount) {
+            audioDataArrayRef.current = new Uint8Array(analyser.frequencyBinCount);
           }
           const dataArray = audioDataArrayRef.current;
           analyser.getByteFrequencyData(dataArray);
 
-          // Calculate band averages
-          // Low: 0-3 (0 - ~680Hz)
-          // Mid: 4-15 (~680Hz - ~2700Hz)
-          // High: 16-45 (~2700Hz - ~8000Hz)
-          let lowSum = 0;
-          for (let i = 0; i < 4; i++) lowSum += dataArray[i];
-          const lowAvg = lowSum / 4;
-
-          let midSum = 0;
-          for (let i = 4; i < 16; i++) midSum += dataArray[i];
-          const midAvg = midSum / 12;
-
-          let highSum = 0;
-          for (let i = 16; i < 46; i++) highSum += dataArray[i];
-          const highAvg = highSum / 30;
-
-          // Normalize
-          const lowNorm = Math.min(lowAvg / 255.0, 1.0);
-          const midNorm = Math.min(midAvg / 255.0, 1.0);
-          const highNorm = Math.min(highAvg / 255.0, 1.0);
-
-          // Mapping logic
-          if (highNorm > 0.1) {
-            targetVisemeSS = highNorm * visemeSSMultiplier;
+          // Calculate RMS amplitude for total energy
+          let sumSquares = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            const val = dataArray[i] / 255.0;
+            sumSquares += val * val;
           }
-          if (midNorm > 0.1) {
-            targetVisemeAA = midNorm * visemeAAMultiplier;
+          const rms = Math.sqrt(sumSquares / dataArray.length);
+          const totalEnergy = Math.min(rms * jawSensitivity * 3.0, 1.0);
+
+          // Band averages for fftSize 512 (24000Hz -> nyquist 12000Hz, ~46.8Hz per bin)
+          const getBandAvgNorm = (startBin: number, endBin: number) => {
+            let sum = 0;
+            for (let i = startBin; i <= endBin; i++) sum += dataArray[i];
+            return (sum / (endBin - startBin + 1)) / 255.0;
+          };
+
+          const bandLow = getBandAvgNorm(7, 17); // 300-800Hz
+          const bandLowMid = getBandAvgNorm(18, 32); // 800-1500Hz
+          const bandMid = getBandAvgNorm(33, 53); // 1500-2500Hz
+          const bandHighMid = getBandAvgNorm(54, 85); // 2500-4000Hz
+          const bandHigh = getBandAvgNorm(86, 170); // 4000-8000Hz
+
+          targetVisemes['jawOpen'] = Math.min(totalEnergy * jawOpenMultiplier, 0.4);
+
+          // Hard cap vowels at 0.5 - 0.7 so the mouth never opens unrealistically wide
+          if (bandLow > 0.05) {
+            targetVisemes['viseme_aa'] = Math.min(bandLow * formantSensitivity * visemeAAMultiplier, 0.6);
+            targetVisemes['viseme_O'] = Math.min(bandLow * 0.8 * formantSensitivity * visemeOMultiplier, 0.5);
           }
-          if (lowNorm > 0.1) {
-            targetVisemeO = lowNorm * visemeOMultiplier;
-            targetJawOpen = lowNorm * jawOpenMultiplier;
+          if (bandLowMid > 0.05) {
+            targetVisemes['viseme_E'] = Math.min(bandLowMid * formantSensitivity * visemeAAMultiplier, 0.5);
+          }
+          if (bandMid > 0.05) {
+            targetVisemes['viseme_U'] = Math.min(bandMid * formantSensitivity * visemeOMultiplier, 0.5);
+            targetVisemes['viseme_FF'] = Math.min(bandMid * 0.6 * formantSensitivity, 0.6);
+          }
+          if (bandHighMid > 0.05) {
+            targetVisemes['viseme_SS'] = Math.min(bandHighMid * formantSensitivity * visemeSSMultiplier, 0.7);
+            targetVisemes['viseme_TH'] = Math.min(bandHighMid * 0.7 * formantSensitivity, 0.6);
+          }
+          if (bandHigh > 0.05) {
+            targetVisemes['viseme_PP'] = Math.min(bandHigh * formantSensitivity, 0.6);
+            targetVisemes['viseme_kk'] = Math.min(bandHigh * 0.8 * formantSensitivity, 0.7);
           }
         }
-        
+
         // CHECK REAL VISEMES
         if (mouthCuesRef?.current && mouthCuesRef.current.length > 0 && playbackStartTimeRef?.current != null) {
           const audioContext = getAudioContext?.();
@@ -209,7 +219,7 @@ export function useAvatarLipSync({
           } else if (audioContext && audioContext.state === 'running') {
             elapsed = audioContext.currentTime - playbackStartTimeRef.current;
           }
-          
+
           if (elapsed > 0 || currentTimeOverrideRef?.current != null) {
             const activeCue = mouthCuesRef.current.find((c: any) => elapsed >= c.start && elapsed <= c.end);
             if (activeCue) {
@@ -217,10 +227,12 @@ export function useAvatarLipSync({
             }
           }
         }
-
-        if (Math.random() < 0.05) { // log 5% of frames
-          console.log('[LipSync Debug] isSpeaking:', isEffectivelySpeaking, 'FFT Jaw:', targetJawOpen.toFixed(2), 'RealViseme:', activeRealViseme, 'cuesCount:', mouthCuesRef?.current?.length);
-        }
+      } else {
+        // Micro-idle movements
+        const slowTime = t * 0.5;
+        const fastTime = t * 1.5;
+        targetVisemes['jawOpen'] = (Math.sin(slowTime) * 0.5 + 0.5) * microIdleAmplitude;
+        targetSmile = targetSmile + (Math.sin(fastTime) * 0.5 + 0.5) * (microIdleAmplitude * 0.5);
       }
 
       // Apply calculated values safely
@@ -233,32 +245,26 @@ export function useAvatarLipSync({
           const idx = indices[key];
           if (idx !== undefined && idx < influences.length) {
             const currentValue = influences[idx] || TARGET_ZERO;
+            // Coarticulation blend gives momentum to previous frame
+            const blendedStart = THREE.MathUtils.lerp(currentValue, targetValue, coarticulationBlend);
             influences[idx] = speed === SPEED_IMMEDIATE
               ? targetValue
-              : THREE.MathUtils.lerp(currentValue, targetValue, Math.min(delta * speed, 1.0));
+              : THREE.MathUtils.lerp(blendedStart, targetValue, Math.min(delta * speed, 1.0));
           }
         };
 
-        // Blinking
+        // Blinking & Expressions
         safelySetInfluence('eyeBlinkLeft', blinkInfluence, SPEED_IMMEDIATE);
         safelySetInfluence('eyeBlinkRight', blinkInfluence, SPEED_IMMEDIATE);
-
-        // Expressions
         safelySetInfluence('browInnerUp', targetBrow);
         safelySetInfluence('mouthFrownLeft', targetFrown);
         safelySetInfluence('mouthFrownRight', targetFrown);
         safelySetInfluence('mouthSmileLeft', targetSmile);
         safelySetInfluence('mouthSmileRight', targetSmile);
 
-        // Reset all visemes to zero first (so un-triggered visemes fade out naturally)
-        for (let i = 0; i < visemeKeysList.length; i++) {
-          const key = visemeKeysList[i];
-          safelySetInfluence(key, INACTIVE_VISEME_INFLUENCE, defaultDampSpeed);
-        }
-
-        // Apply targets based on Real Visemes or fallback to FFT
-        let hasRealViseme = false;
-        if (activeRealViseme && activeRealViseme !== 'X') {
+        // Map Real Visemes to targets if active
+        let activeRealKeys: string[] = [];
+        if (isEffectivelySpeaking && activeRealViseme && activeRealViseme !== 'X') {
           const VISEME_MAP: Record<string, string[]> = {
             A: ['viseme_PP'],
             B: ['viseme_kk', 'viseme_SS'],
@@ -269,24 +275,33 @@ export function useAvatarLipSync({
             G: ['viseme_FF'],
             H: ['viseme_TH']
           };
-          const targetKeys = VISEME_MAP[activeRealViseme];
-          if (targetKeys) {
-            targetKeys.forEach(k => {
-              const speedMultiplier = (k === 'viseme_PP' || k === 'viseme_FF') ? consonantSpeedMultiplier : vowelSpeedMultiplier;
-              safelySetInfluence(k, 1.0, defaultDampSpeed * speedMultiplier);
-            });
-            hasRealViseme = true;
-          }
+          activeRealKeys = VISEME_MAP[activeRealViseme] || [];
         }
 
-        if (!hasRealViseme && isEffectivelySpeaking) {
-          // Apply FFT targets only if we don't have real visemes
-          safelySetInfluence('viseme_SS', Math.min(targetVisemeSS, 1.0), defaultDampSpeed * fftSpeedMultiplier);
-          safelySetInfluence('viseme_PP', Math.min(targetVisemeSS * 0.5, 1.0), defaultDampSpeed * fftSpeedMultiplier);
-          safelySetInfluence('viseme_aa', Math.min(targetVisemeAA, 1.0), defaultDampSpeed * fftSpeedMultiplier);
-          safelySetInfluence('viseme_E', Math.min(targetVisemeAA * 0.8, 1.0), defaultDampSpeed * fftSpeedMultiplier);
-          safelySetInfluence('viseme_O', Math.min(targetVisemeO, 1.0), defaultDampSpeed * fftSpeedMultiplier);
-          safelySetInfluence('jawOpen', Math.min(targetJawOpen, 1.0), defaultDampSpeed * fftSpeedMultiplier);
+        // Apply all viseme keys
+        for (let i = 0; i < visemeKeysList.length; i++) {
+          const key = visemeKeysList[i];
+          let tv = 0;
+          let speed = vowelDampSpeed;
+
+          if (key === 'jawOpen') speed = jawDampSpeed;
+          else if (['viseme_PP', 'viseme_kk', 'viseme_SS', 'viseme_TH', 'viseme_FF'].includes(key)) speed = consonantDampSpeed;
+
+          if (activeRealKeys.length > 0) {
+            if (activeRealKeys.includes(key)) {
+              tv = 1.0;
+              speed = (key === 'viseme_PP' || key === 'viseme_FF') ? defaultDampSpeed * consonantSpeedMultiplier : defaultDampSpeed * vowelSpeedMultiplier;
+            }
+            if (key === 'jawOpen') {
+              tv = Math.min(targetVisemes['jawOpen'] || 0, 1.0); // Jaw still driven by FFT
+            }
+          } else {
+            // Fallback to FFT targets
+            tv = targetVisemes[key] || 0;
+            speed = speed * fftSpeedMultiplier;
+          }
+
+          safelySetInfluence(key, tv, speed);
         }
 
         if (morphTargetValuesRef) {
