@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 interface SplashSessionOptions {
   isNavbarReady: boolean;
@@ -21,7 +21,7 @@ export function useSplashSession({ isNavbarReady, prefersReducedMotion }: Splash
     } catch {
       // ignore
     } finally {
-       
+
       setShowSplash(false);
     }
   };

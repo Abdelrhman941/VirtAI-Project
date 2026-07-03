@@ -130,9 +130,9 @@ const SessionListItem = memo(function SessionListItem({
 });
 
 /**
- * Scrollable list of chat sessions with new/rename/delete actions.
- * Right-click a chat item to open the floating context menu.
- */
+  * Scrollable list of chat sessions with new/rename/delete actions.
+  * Right-click a chat item to open the floating context menu.
+*/
 const SessionList = memo(function SessionList({
   sessions,
   currentSessionId,

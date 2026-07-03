@@ -1,4 +1,4 @@
-import { useEffect, useState, startTransition } from 'react';
+import { startTransition, useEffect, useState } from 'react';
 
 const INITIAL_PHASES = {
   navbar: false,
@@ -65,7 +65,7 @@ export function useProgressivePhases(prefersReducedMotion: boolean, isLowPerform
 
     const revealStep = (step: PhaseKey) => {
       startTransition(() => {
-         
+
         setPhase2((currentPhase) => {
           if (currentPhase[step]) {
             return currentPhase;
@@ -84,14 +84,14 @@ export function useProgressivePhases(prefersReducedMotion: boolean, isLowPerform
       const cleanup = scheduleIdleTask(
         () => {
           if (cancelled) return;
-          
+
           if (index === 0) {
             revealStep(PHASE_SEQUENCE[0]);
             queueStep(1);
           } else {
             // Batch all remaining steps to prevent scroll blocking
             startTransition(() => {
-               
+
               setPhase2((prev) => {
                 const next = { ...prev };
                 for (let i = index; i < PHASE_SEQUENCE.length; i++) {

@@ -14,16 +14,16 @@
 
   /* ------- Prose base tweaks ------------------------------------------- */
   .prose {
-    --tw-prose-body:        #f5f1ece6;
-    --tw-prose-headings:    #f5f1ec;
-    --tw-prose-links:       #d4af37;
-    --tw-prose-bold:        #f5f1ec;
-    --tw-prose-code:        #B4AB8B;
-    --tw-prose-quotes:      rgba(245, 241, 236, 0.7);
+    --tw-prose-body: #f5f1ece6;
+    --tw-prose-headings: #f5f1ec;
+    --tw-prose-links: #d4af37;
+    --tw-prose-bold: #f5f1ec;
+    --tw-prose-code: #B4AB8B;
+    --tw-prose-quotes: rgba(245, 241, 236, 0.7);
     --tw-prose-quote-borders: rgba(212, 175, 55, 0.4);
-    --tw-prose-hr:          rgba(245, 241, 236, 0.1);
-    --tw-prose-pre-bg:      #262626;
-    --tw-prose-pre-code:    #f5f1ec;
+    --tw-prose-hr: rgba(245, 241, 236, 0.1);
+    --tw-prose-pre-bg: #262626;
+    --tw-prose-pre-code: #f5f1ec;
   }
 
   .prose :where(code):not(:where([class~="not-prose"] *))::before,
@@ -37,18 +37,22 @@
   }
 
   /* ------- KaTeX overrides --------------------------------------------- */
-  .katex-display > .katex {
+  .katex-display>.katex {
     color: var(--color-offwhite);
   }
 
   /* ------- Mermaid ----------------------------------------------------- */
-  .mermaid svg { max-width: 100%; height: auto; }
+  .mermaid svg {
+    max-width: 100%;
+    height: auto;
+  }
 
   /* ------- Explain slide-mode (was ExplainSession.css) ----------------- */
   .slide-mode .prose {
     font-size: 1.05rem;
     line-height: 1.85;
   }
+
   .slide-mode .prose :where(h1, h2, h3) {
     letter-spacing: -0.01em;
   }

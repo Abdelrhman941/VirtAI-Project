@@ -1,6 +1,5 @@
-import React from 'react';
-import { FiShare2 } from 'react-icons/fi';
 import { Button } from '@/shared/components/ui/button';
+import { FiShare2 } from 'react-icons/fi';
 
 interface DiagramButtonProps {
   onClick: () => void;

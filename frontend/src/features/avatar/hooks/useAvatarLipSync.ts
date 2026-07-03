@@ -42,14 +42,14 @@ export function useAvatarLipSync({
   currentTimeOverrideRef,
 }: UseAvatarLipSyncProps) {
   const visemeKeysList = useMemo(() => [
-    'viseme_sil', 'viseme_PP', 'viseme_FF', 'viseme_TH', 'viseme_DD', 
-    'viseme_kk', 'viseme_CH', 'viseme_SS', 'viseme_nn', 'viseme_RR', 
+    'viseme_sil', 'viseme_PP', 'viseme_FF', 'viseme_TH', 'viseme_DD',
+    'viseme_kk', 'viseme_CH', 'viseme_SS', 'viseme_nn', 'viseme_RR',
     'viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U'
   ], []);
-  
+
   const blinkStateRef = useRef({ nextBlinkTime: 0, duration: 0.15, isBlinking: false });
   const headBobTimeRef = useRef(ORIGIN_ZERO);
-  
+
   // Realtime Audio Analysis Refs
   const audioDataArrayRef = useRef<Uint8Array | null>(null);
 
@@ -94,7 +94,7 @@ export function useAvatarLipSync({
 
   useFrame((state, delta) => {
     const t = state.clock.elapsedTime;
-    
+
     // Determine speaking state
     const currentPipelineState = pipelineStateRef.current;
     let isAudioPlaying = false;
@@ -111,9 +111,9 @@ export function useAvatarLipSync({
     const isEffectivelySpeaking = currentPipelineState === 'speaking' || isAudioPlaying;
 
     const config = useLipSyncConfigStore.getState().params;
-    const { 
-      headBobFrequency, headBobAmplitude, fallbackDamping, 
-      blinkDuration, blinkBaseDelay, blinkRandomVariance, 
+    const {
+      headBobFrequency, headBobAmplitude, fallbackDamping,
+      blinkDuration, blinkBaseDelay, blinkRandomVariance,
       browThinking, frownThinking, smileSpeaking, defaultDampSpeed,
       visemeSSMultiplier, visemeAAMultiplier, visemeOMultiplier, jawOpenMultiplier,
       consonantSpeedMultiplier, vowelSpeedMultiplier, fftSpeedMultiplier
@@ -199,7 +199,7 @@ export function useAvatarLipSync({
             targetJawOpen = lowNorm * jawOpenMultiplier;
           }
         }
-        
+
         // CHECK REAL VISEMES
         if (mouthCuesRef?.current && mouthCuesRef.current.length > 0 && playbackStartTimeRef?.current != null) {
           const audioContext = getAudioContext?.();
@@ -209,7 +209,7 @@ export function useAvatarLipSync({
           } else if (audioContext && audioContext.state === 'running') {
             elapsed = audioContext.currentTime - playbackStartTimeRef.current;
           }
-          
+
           if (elapsed > 0 || currentTimeOverrideRef?.current != null) {
             const activeCue = mouthCuesRef.current.find((c: any) => elapsed >= c.start && elapsed <= c.end);
             if (activeCue) {

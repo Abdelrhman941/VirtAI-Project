@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useClassroomAudio } from '@/widgets/Classroom/hooks/useClassroomAudio';
+import { LipSyncParams, useLipSyncConfigStore } from '@/features/avatar/store/useLipSyncConfigStore';
 import { AvatarCanvasWrapper } from '@/widgets/Classroom/components/AvatarCanvasWrapper';
-import { useLipSyncConfigStore, presets, LipSyncParams } from '@/features/avatar/store/useLipSyncConfigStore';
+import { useClassroomAudio } from '@/widgets/Classroom/hooks/useClassroomAudio';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 
 const PLAYBACK_SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5];
@@ -59,7 +59,7 @@ export default function AvatarPlayground() {
       ctx.resume();
     }
     const messageId = crypto.randomUUID();
-    
+
     handleVisemesReady(messageId, payload.visemes);
     handleTtsReady(messageId, payload.audio_url, payload.duration_ms);
   }, [getAudioContext, handleVisemesReady, handleTtsReady]);
@@ -95,17 +95,17 @@ export default function AvatarPlayground() {
     setIsGenerating(true);
     try {
       await unlockAudioContext();
-      resetAvatarAudio(); 
+      resetAvatarAudio();
       setIsFrozen(false);
       currentTimeOverrideRef.current = null;
-      
+
       const response = await fetch('/audio/previews/guy.json');
       const visemes = await response.json();
       setCurrentVisemes(visemes);
-      
+
       const duration = visemes.length > 0 ? visemes[visemes.length - 1].end * 1000 : 5000;
       const payload = { audio_url: window.location.origin + '/audio/previews/guy.mp3', duration_ms: duration, visemes };
-      
+
       lastFetchedTtsRef.current = payload;
       playPayload(payload);
     } catch (err) {
@@ -227,8 +227,8 @@ export default function AvatarPlayground() {
             <button onClick={handleResume} className="bg-white/5 py-2 rounded text-sm hover:bg-white/10">
               Resume
             </button>
-            <button 
-              onClick={() => setLoopEnabled(!loopEnabled)} 
+            <button
+              onClick={() => setLoopEnabled(!loopEnabled)}
               className={`col-span-2 py-2 rounded text-sm border ${loopEnabled ? 'bg-gold/20 text-gold border-gold/50' : 'bg-white/5 border-transparent hover:bg-white/10'}`}
             >
               Loop Playback: {loopEnabled ? 'ON' : 'OFF'}
@@ -302,16 +302,16 @@ export default function AvatarPlayground() {
           morphTargetValuesRef={morphTargetValuesRef}
           currentTimeOverrideRef={currentTimeOverrideRef}
         />
-        
+
         <div className="absolute bottom-8 left-4 right-4 bg-black/80 backdrop-blur border border-white/10 p-4 rounded-xl shadow-2xl flex flex-col gap-2">
           <div className="flex justify-between items-center text-xs font-mono text-gray-300">
             <div className="flex items-center gap-4">
-               <span>Viseme Timeline</span>
-               <div className="flex gap-2">
-                 <button onClick={() => handleFrameStep(-16)} className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded">{'<'} 16ms</button>
-                 <button onClick={handleFreezeToggle} className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded">{isFrozen ? 'UNFREEZE' : 'FREEZE'}</button>
-                 <button onClick={() => handleFrameStep(16)} className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded">16ms {'>'}</button>
-               </div>
+              <span>Viseme Timeline</span>
+              <div className="flex gap-2">
+                <button onClick={() => handleFrameStep(-16)} className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded">{'<'} 16ms</button>
+                <button onClick={handleFreezeToggle} className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded">{isFrozen ? 'UNFREEZE' : 'FREEZE'}</button>
+                <button onClick={() => handleFrameStep(16)} className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded">16ms {'>'}</button>
+              </div>
             </div>
             <div ref={debugOverlayRef} className="text-green-400 font-bold" />
           </div>
@@ -321,8 +321,8 @@ export default function AvatarPlayground() {
               const left = (v.start / totalDuration) * 100;
               const width = ((v.end - v.start) / totalDuration) * 100;
               return (
-                <div key={i} className="absolute h-full border-r border-black flex items-center justify-center text-[10px] text-black overflow-hidden font-bold" 
-                     style={{ left: `${left}%`, width: `${width}%`, backgroundColor: v.value === 'X' ? '#333' : '#D4B47A' }}>
+                <div key={i} className="absolute h-full border-r border-black flex items-center justify-center text-[10px] text-black overflow-hidden font-bold"
+                  style={{ left: `${left}%`, width: `${width}%`, backgroundColor: v.value === 'X' ? '#333' : '#D4B47A' }}>
                   {v.value}
                 </div>
               );
@@ -330,7 +330,7 @@ export default function AvatarPlayground() {
             <div ref={timelineCursorRef} className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10" style={{ left: '0%' }} />
           </div>
         </div>
-        
+
         {/* DEBUG OVERLAY - Read directly from DOM to avoid React renders where possible */}
         <div className="absolute top-4 right-4 bg-black/80 backdrop-blur border border-white/10 p-4 rounded-xl text-xs font-mono text-green-400 pointer-events-none min-w-[200px] shadow-2xl">
           <h3 className="text-white font-sans font-bold mb-2 uppercase tracking-widest text-[10px]">Playground Engine</h3>

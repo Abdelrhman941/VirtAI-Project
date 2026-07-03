@@ -1,5 +1,5 @@
 import { useScroll, useTransform } from 'framer-motion';
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 
 export function useScrollPipeline(stepCount: number) {
   const containerRef = useRef<HTMLDivElement>(null);

@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
-import { z } from 'zod';
-import { toast } from '@/shared/utils/toast';
 import apiClient from '@/core/api/apiClient';
+import { toast } from '@/shared/utils/toast';
+import { useCallback, useState } from 'react';
+import { z } from 'zod';
 
 export const QuizQuestionSchema = z.object({
   id: z.string().optional(),
@@ -57,7 +57,7 @@ export function useQuizSession() {
         } catch (e) {
           // Ignore 404s while polling
         }
-        
+
         attempts++;
         if (attempts >= maxAttempts) {
           throw new Error('Quiz generation timed out or failed to complete.');

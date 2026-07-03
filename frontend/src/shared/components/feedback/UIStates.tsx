@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 
 // Common wrapper for state displays
 interface StateWrapperProps {
@@ -8,10 +8,10 @@ interface StateWrapperProps {
 }
 
 export function StateWrapper({ children, className = '', isAbsolute = false }: StateWrapperProps) {
-  const baseClasses = isAbsolute 
+  const baseClasses = isAbsolute
     ? "absolute inset-0 flex flex-col items-center justify-center bg-dark z-10"
     : "flex-1 flex flex-col items-center justify-center w-full h-full p-4 sm:p-8 overflow-y-auto";
-    
+
   return (
     <div className={`${baseClasses} ${className}`}>
       {children}
@@ -26,10 +26,10 @@ interface LoadingStateProps {
   className?: string;
 }
 
-export function LoadingState({ 
-  message = "Loading...", 
+export function LoadingState({
+  message = "Loading...",
   isAbsolute = true,
-  className = "animate-fade-in text-center" 
+  className = "animate-fade-in text-center"
 }: LoadingStateProps) {
   return (
     <StateWrapper isAbsolute={isAbsolute} className={className}>
@@ -49,13 +49,13 @@ interface ErrorStateProps {
   className?: string;
 }
 
-export function ErrorState({ 
-  title = "An Error Occurred", 
-  message, 
-  details, 
+export function ErrorState({
+  title = "An Error Occurred",
+  message,
+  details,
   action,
   isAbsolute = true,
-  className = "text-center p-6" 
+  className = "text-center p-6"
 }: ErrorStateProps) {
   return (
     <StateWrapper isAbsolute={isAbsolute} className={className}>

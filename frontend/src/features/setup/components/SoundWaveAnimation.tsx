@@ -2,12 +2,12 @@ import { useEffect, useReducer, useRef } from 'react';
 
 const BAR_COUNT = 20;
 
-/**
+/*
  * Animation state machine:
  *  'hidden'   – not rendered
  *  'playing'  – visible + animated
  *  'stopping' – visible + CSS exit class; transitions to 'hidden' after the animation delay
- */
+*/
 function animReducer(state, action) {
   switch (action.type) {
     case 'PLAY':

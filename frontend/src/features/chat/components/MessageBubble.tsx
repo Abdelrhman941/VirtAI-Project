@@ -1,10 +1,10 @@
-import React, { memo } from 'react';
+import { ChatBubble } from '@/shared/components/chat/ChatPrimitives';
 import CopyButton from '@/shared/components/controls/CopyButton';
 import { MarkdownRenderer } from '@/shared/markdown';
-import { VisualizeButton } from './VisualizeButton';
-import { IMessage } from '../../session/types';
+import React, { memo } from 'react';
 import { formatTimeOnly } from '../../../shared/utils/date';
-import { ChatBubble } from '@/shared/components/chat/ChatPrimitives';
+import { IMessage } from '../../session/types';
+import { VisualizeButton } from './VisualizeButton';
 
 interface MessageBubbleProps {
   msg: IMessage;

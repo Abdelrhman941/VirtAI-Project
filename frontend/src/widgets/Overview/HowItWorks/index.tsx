@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { useMotionValueEvent, useMotionValue } from 'framer-motion';
 import steps from '@/features/overview/data/howItWorks';
+import useReducedMotionPreference from '@/features/overview/hooks/useReducedMotionPreference';
 import SectionHeader from '@/shared/components/layout/SectionHeader';
+import { useMotionValue, useMotionValueEvent } from 'framer-motion';
+import { useState } from 'react';
 import LeftPanel from './LeftPanel';
 import RightPipeline from './RightPipeline';
 import { useScrollPipeline } from './useScrollPipeline';
-import useReducedMotionPreference from '@/features/overview/hooks/useReducedMotionPreference';
 
 export default function HowItWorksSection() {
   const reduced = useReducedMotionPreference();

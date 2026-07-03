@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useDiagramSession } from '../hooks/useDiagramSession';
-import { DocumentPicker } from './DocumentPicker';
 import { DiagramViewer } from './DiagramViewer';
+import { DocumentPicker } from './DocumentPicker';
 
 interface DiagramContainerProps {
   isOpen: boolean;
@@ -31,15 +31,15 @@ export function DiagramContainer({ isOpen, onClose, sessionId }: DiagramContaine
       {!showViewer ? (
         <div className="w-full h-full overflow-y-auto p-6 flex flex-col items-center justify-center">
           <div className="w-full max-w-2xl w-[600px] max-w-[90vw]">
-            <DocumentPicker 
-              sessionId={sessionId} 
-              onSelect={handleSelectDocument} 
-              onCancel={handleClose} 
+            <DocumentPicker
+              sessionId={sessionId}
+              onSelect={handleSelectDocument}
+              onCancel={handleClose}
             />
           </div>
         </div>
       ) : (
-        <DiagramViewer 
+        <DiagramViewer
           diagramData={diagramData}
           isLoading={diagramState === 'generating'}
           onClose={handleClose}

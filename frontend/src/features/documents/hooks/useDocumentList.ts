@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { UploadService } from '../services/uploadService';
 
 const globalUploadService = new UploadService();
@@ -10,7 +10,7 @@ export function useDocumentList(sessionId: string | null = null, ensureSession?:
   useEffect(() => {
     uploadService.initSession(sessionId);
     const unsub = uploadService.subscribe(setState);
-    
+
     return () => {
       unsub();
     };

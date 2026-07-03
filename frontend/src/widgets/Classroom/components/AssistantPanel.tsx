@@ -1,9 +1,9 @@
-import React, { RefObject } from 'react';
-import { ExplainSession } from '@/features/explain/components/ExplainSession';
+import { ChatInput, MessageList } from '@/features/chat';
 import { DiagramContainer } from '@/features/diagrams/components/DiagramContainer';
 import { DocumentPicker } from '@/features/diagrams/components/DocumentPicker';
+import { ExplainSession } from '@/features/explain/components/ExplainSession';
 import { QuizContainer } from '@/features/quiz/components/QuizContainer';
-import { MessageList, ChatInput } from '@/features/chat';
+import React, { RefObject } from 'react';
 
 import { PresentationState } from '@/features/explain/hooks/useExplainWS';
 import { ISession } from '@/features/session/types';
@@ -16,7 +16,7 @@ export interface AssistantPanelProps {
   isDiagramOpen: boolean;
   isSummaryOpen: boolean;
   isQuizOpen?: boolean;
-  
+
   // Explain Props
   explainDocumentId?: string;
   explainState: PresentationState;
@@ -27,7 +27,7 @@ export interface AssistantPanelProps {
   onExplainContinue: () => void;
   onExplainPauseOrStop: () => void;
   onExplainClose: () => void;
-  
+
   // Diagram Props
   onDiagramClose: () => void;
 
@@ -40,13 +40,13 @@ export interface AssistantPanelProps {
   onStartQuizDocument?: (filename: string) => void;
 
   currentSessionId: string | null;
-  
+
   // Chat Props
   messages?: ISession['messages'];
   chatError: string | null;
   avatarName: string;
   pipelineState: PipelineState | string;
-  
+
   // Input Props
   onSendMessage: (text: string) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -121,16 +121,16 @@ export const AssistantPanel = React.memo(function AssistantPanel({
       <div className="w-full h-full flex flex-col relative bg-dark-tertiary overflow-hidden min-w-0">
         <div className="w-full h-full overflow-y-auto p-6 flex flex-col items-center justify-center">
           <div className="w-full max-w-2xl w-[600px] max-w-[90vw]">
-            <DocumentPicker 
+            <DocumentPicker
               title="Select Document to Summarize"
               buttonText="Summarize Document"
-              sessionId={currentSessionId} 
+              sessionId={currentSessionId}
               onSelect={(docId, filename) => {
                 if (onSummarizeDocument) {
                   onSummarizeDocument(filename);
                 }
-              }} 
-              onCancel={onSummaryClose} 
+              }}
+              onCancel={onSummaryClose}
             />
           </div>
         </div>
@@ -140,10 +140,10 @@ export const AssistantPanel = React.memo(function AssistantPanel({
 
   if (isQuizOpen) {
     return (
-      <QuizContainer 
-        isOpen={isQuizOpen} 
-        onClose={onQuizClose || (() => {})} 
-        sessionId={currentSessionId} 
+      <QuizContainer
+        isOpen={isQuizOpen}
+        onClose={onQuizClose || (() => { })}
+        sessionId={currentSessionId}
       />
     );
   }

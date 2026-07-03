@@ -1,9 +1,9 @@
-import React, { useRef, useEffect } from 'react';
-import { PiLightbulbFilament } from 'react-icons/pi';
-import MessageBubble from './MessageBubble';
 import { ChatBubble, MessageStatus } from '@/shared/components/chat/ChatPrimitives';
+import React, { useEffect, useRef } from 'react';
+import { PiLightbulbFilament } from 'react-icons/pi';
 import { IMessage } from '../../session/types';
 import { useChatUIStore } from '../store/useChatUIStore';
+import MessageBubble from './MessageBubble';
 
 function StreamingLayer({ avatarName }: { avatarName: string }) {
   const currentMessage = useChatUIStore((s) => s.currentMessage);

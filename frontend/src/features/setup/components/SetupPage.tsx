@@ -15,8 +15,8 @@ import { loadSetup } from '../services/setupStorage';
 import AllSetTab from './AllSetTab';
 import AvatarPreview from './AvatarPreview';
 import AvatarTab, { Avatar } from './AvatarTab';
-import VoiceTab from './VoiceTab';
 import LaunchOverlay from './LaunchOverlay';
+import VoiceTab from './VoiceTab';
 
 const TABS = [
   { key: 'avatar', label: 'Avatar', icon: HiOutlineUser },
@@ -162,13 +162,13 @@ export default function SetupPage() {
 
   const slideVariants = {
     enter: (d: number) => ({ x: shouldReduceMotion ? 0 : d > 0 ? 60 : -60, opacity: 0 }),
-    center: { 
-      x: 0, 
+    center: {
+      x: 0,
       opacity: 1,
       transition: { duration: shouldReduceMotion ? 0.01 : 0.35, ease: [0.16, 1, 0.3, 1] as const }
     },
-    exit: (d: number) => ({ 
-      x: shouldReduceMotion ? 0 : d > 0 ? -60 : 60, 
+    exit: (d: number) => ({
+      x: shouldReduceMotion ? 0 : d > 0 ? -60 : 60,
       opacity: 0,
       transition: { duration: shouldReduceMotion ? 0.01 : 0.25, ease: [0.16, 1, 0.3, 1] as const }
     }),

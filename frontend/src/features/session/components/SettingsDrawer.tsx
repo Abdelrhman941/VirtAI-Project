@@ -17,9 +17,9 @@ export interface SettingsDrawerProps {
   resizable?: boolean;
 }
 
-/**
- * Side drawer for settings, session list, current session info, and tutor status.
- */
+/*
+  * Side drawer for settings, session list, current session info, and tutor status.
+*/
 export default function SettingsDrawer({
   isOpen,
   onClose,

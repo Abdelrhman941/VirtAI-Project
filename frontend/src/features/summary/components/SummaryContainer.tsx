@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useSummarySession } from '../hooks/useSummarySession';
 import { DocumentPicker } from '@/features/diagrams/components/DocumentPicker';
+import { useState } from 'react';
+import { useSummarySession } from '../hooks/useSummarySession';
 import { SummaryViewer } from './SummaryViewer';
 
 interface SummaryContainerProps {
@@ -31,15 +31,15 @@ export function SummaryContainer({ isOpen, onClose, sessionId }: SummaryContaine
       {!showViewer ? (
         <div className="w-full h-full overflow-y-auto p-6 flex flex-col items-center justify-center">
           <div className="w-full max-w-2xl w-[600px] max-w-[90vw]">
-            <DocumentPicker 
-              sessionId={sessionId} 
-              onSelect={handleSelectDocument} 
-              onCancel={handleClose} 
+            <DocumentPicker
+              sessionId={sessionId}
+              onSelect={handleSelectDocument}
+              onCancel={handleClose}
             />
           </div>
         </div>
       ) : (
-        <SummaryViewer 
+        <SummaryViewer
           summaryData={summaryData}
           isLoading={summaryState === 'generating'}
           onClose={handleClose}

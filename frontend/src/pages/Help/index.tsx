@@ -1,7 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Autoplay from 'embla-carousel-autoplay';
-import { FiArrowLeft } from 'react-icons/fi';
+import { Button } from '@/shared/components/ui/button';
 import {
   Carousel,
   CarouselApi,
@@ -10,8 +7,11 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/shared/components/ui/carousel';
-import { Button } from '@/shared/components/ui/button';
-import { FeatureCard, Feature } from './FeatureCard';
+import Autoplay from 'embla-carousel-autoplay';
+import { useEffect, useMemo, useState } from 'react';
+import { FiArrowLeft } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import { Feature, FeatureCard } from './FeatureCard';
 
 const features: Feature[] = [
   { id: 'chat', title: 'Chat with your tutor', videoSrc: '/help/chat.mp4', desc: 'Realtime voice and text chat with VirtAI.' },
@@ -80,4 +80,3 @@ export default function HelpPage() {
     </div>
   );
 }
-

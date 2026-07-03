@@ -1,9 +1,9 @@
+import { ConnectionState } from '@/core/realtime/wsConstants';
+import { cn } from '@/shared/utils/cn';
 import React, { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FiSquare } from 'react-icons/fi';
 import { PiPaperclip, PiPaperPlaneTiltFill } from 'react-icons/pi';
 import VoiceModeButton from '../../voice/components/VoiceModeButton';
-import { ConnectionState } from '@/core/realtime/wsConstants';
-import { cn } from '@/shared/utils/cn';
 
 const MAX_CHARS = 2000;
 

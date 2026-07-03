@@ -1,7 +1,6 @@
-import React from 'react';
-import { PiList, PiUserCircleFill } from 'react-icons/pi';
 import { FiHelpCircle } from 'react-icons/fi';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { PiList, PiUserCircleFill } from 'react-icons/pi';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface ClassroomLeftRailProps {
   className?: string;
@@ -25,7 +24,7 @@ export function ClassroomLeftRail({ className }: ClassroomLeftRailProps) {
 
   return (
     <nav className={`hidden lg:flex w-16 min-w-[4rem] max-w-[4rem] flex-shrink-0 sticky top-0 h-screen flex-col items-center gap-6 pt-6 pb-6 bg-dark border-r border-gold/15 z-[100] ${className || ''}`}>
-      <button 
+      <button
         className={`p-3 flex items-center justify-center rounded-xl transition-[background-color,color,transform] duration-300 ${isClassroomActive ? 'bg-gold/10 text-gold' : 'bg-transparent text-white/50 hover:bg-gold/5 hover:text-gold-soft'}`}
         onClick={handleSessionsClick}
         aria-label="Open sessions drawer"
@@ -34,7 +33,7 @@ export function ClassroomLeftRail({ className }: ClassroomLeftRailProps) {
         <PiList size={28} />
       </button>
 
-      <button 
+      <button
         className={`p-3 flex items-center justify-center rounded-xl transition-[background-color,color,transform] duration-300 ${isSetupActive ? 'bg-gold/10 text-gold' : 'bg-transparent text-white/50 hover:bg-gold/5 hover:text-gold-soft'}`}
         onClick={() => navigate('/setup')}
         aria-label="Go to setup"

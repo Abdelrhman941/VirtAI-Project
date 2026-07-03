@@ -1,4 +1,4 @@
-import { useReducer, Dispatch } from 'react';
+import { Dispatch, useReducer } from 'react';
 
 export interface ConversationState {
   currentMessage: string;

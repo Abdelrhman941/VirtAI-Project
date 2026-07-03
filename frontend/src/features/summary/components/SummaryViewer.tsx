@@ -1,6 +1,6 @@
-import React, { useRef, useEffect } from 'react';
-import { FiX, FiFileText } from 'react-icons/fi';
 import { StreamingMarkdownRenderer } from '@/shared/markdown';
+import { useEffect, useRef } from 'react';
+import { FiFileText, FiX } from 'react-icons/fi';
 
 interface SummaryViewerProps {
   summaryData: string;
@@ -54,7 +54,7 @@ export function SummaryViewer({ summaryData, isLoading, onClose }: SummaryViewer
                 <span className="animate-pulse">Analyzing document structure...</span>
               </div>
             )}
-            
+
             {isLoading && summaryData && (
               <div className="mt-6 flex items-center gap-2 text-gold-soft text-sm font-medium animate-pulse">
                 <div className="w-2 h-2 rounded-full bg-gold" />

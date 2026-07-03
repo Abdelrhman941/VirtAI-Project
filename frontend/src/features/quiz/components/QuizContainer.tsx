@@ -1,9 +1,9 @@
-import React from 'react';
-import { useQuizSession } from '../hooks/useQuizSession';
-import { QuizViewer } from './QuizViewer';
-import { QuizDashboard } from './Dashboard/QuizDashboard';
 import { DocumentPicker } from '@/features/diagrams/components/DocumentPicker';
-import { FiLoader, FiAlertCircle } from 'react-icons/fi';
+import React from 'react';
+import { FiAlertCircle, FiLoader } from 'react-icons/fi';
+import { useQuizSession } from '../hooks/useQuizSession';
+import { QuizDashboard } from './Dashboard/QuizDashboard';
+import { QuizViewer } from './QuizViewer';
 
 interface QuizContainerProps {
   isOpen: boolean;
@@ -29,7 +29,7 @@ export function QuizContainer({ isOpen, onClose, sessionId }: QuizContainerProps
 
   return (
     <div className="w-full h-full flex flex-col relative overflow-hidden min-w-0">
-      
+
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-white/5 bg-dark-secondary/50 shrink-0">
         <h2 className="text-white/90 font-medium">Knowledge Check</h2>
@@ -43,16 +43,16 @@ export function QuizContainer({ isOpen, onClose, sessionId }: QuizContainerProps
 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto w-full flex flex-col relative">
-        
+
         {state === 'idle' && (
           <div className="w-full h-full p-6 flex flex-col items-center justify-center">
             <div className="w-full max-w-2xl w-[600px] max-w-[90vw]">
-              <DocumentPicker 
+              <DocumentPicker
                 title="Select Document for Quiz"
                 buttonText="Generate Quiz"
-                sessionId={sessionId} 
-                onSelect={handleSelectDocument} 
-                onCancel={handleClose} 
+                sessionId={sessionId}
+                onSelect={handleSelectDocument}
+                onCancel={handleClose}
               />
             </div>
           </div>
@@ -82,15 +82,15 @@ export function QuizContainer({ isOpen, onClose, sessionId }: QuizContainerProps
 
         {state === 'ready' && quizData && (
           dashboardAttemptId ? (
-            <QuizDashboard 
-              quizId={quizData.id} 
-              attemptId={dashboardAttemptId} 
-              onBack={() => setDashboardAttemptId(null)} 
+            <QuizDashboard
+              quizId={quizData.id}
+              attemptId={dashboardAttemptId}
+              onBack={() => setDashboardAttemptId(null)}
             />
           ) : (
-            <QuizViewer 
-              quiz={quizData} 
-              onRetake={reset} 
+            <QuizViewer
+              quiz={quizData}
+              onRetake={reset}
               onViewAnalytics={(attemptId) => setDashboardAttemptId(attemptId)}
             />
           )

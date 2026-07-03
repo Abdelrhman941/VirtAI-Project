@@ -1,3 +1,5 @@
+import steps from '@/features/overview/data/howItWorks';
+import useReducedMotionPreference from '@/features/overview/hooks/useReducedMotionPreference';
 import { motion, MotionValue } from 'framer-motion';
 import {
   PiBrainFill,
@@ -7,8 +9,6 @@ import {
   PiUserCircleFill,
   PiWaveformFill,
 } from 'react-icons/pi';
-import steps from '@/features/overview/data/howItWorks';
-import useReducedMotionPreference from '@/features/overview/hooks/useReducedMotionPreference';
 
 const STEP_ICONS = [
   PiMicrophoneFill,
@@ -65,18 +65,16 @@ function NodeComponent({ index, isActive, isDone, label }: NodeComponentProps) {
           />
         )}
         <Icon
-          className={`relative z-10 h-6 w-6 transition-colors duration-300 ${
-            isActive ? 'text-white' : isDone ? 'text-gold' : 'text-offwhite/30'
-          }`}
+          className={`relative z-10 h-6 w-6 transition-colors duration-300 ${isActive ? 'text-white' : isDone ? 'text-gold' : 'text-offwhite/30'
+            }`}
         />
       </motion.div>
 
       {/* Label */}
       <div className="absolute top-16 w-32 text-center">
         <span
-          className={`text-sm font-bold tracking-wide transition-colors duration-300 ${
-            isActive ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : isDone ? 'text-gold/80' : 'text-offwhite/30'
-          }`}
+          className={`text-sm font-bold tracking-wide transition-colors duration-300 ${isActive ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : isDone ? 'text-gold/80' : 'text-offwhite/30'
+            }`}
         >
           {label}
         </span>

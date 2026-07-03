@@ -9,11 +9,11 @@ interface WSClient {
   isConnected: boolean;
   // Reason: WebSocket client interface lacks generated type
   // bindings from the Python/FastAPI backend schema
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   send: (message: any) => void;
   // Reason: Pipeline state shape is defined by backend ASGI
   // messages without a shared TypeScript contract
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   onMessage: (type: string, handler: (data: any) => void) => () => void;
 }
 
@@ -113,7 +113,7 @@ export function useRealtimeASR(
         // Strict blocklist for ASR silence hallucinations
         const normalized = message.text.trim().toLowerCase().replace(/[.,!?;:]/g, '');
         const hallucinations = ['thank you', 'thanks for watching', '...', ''];
-        
+
         if (hallucinations.includes(normalized)) {
           setInterimText('');
           setIsProcessing(false);

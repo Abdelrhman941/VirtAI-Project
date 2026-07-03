@@ -2,7 +2,7 @@ import SelectionCheckmark from '@/shared/components/indicators/SelectionCheckmar
 import { motion } from 'framer-motion';
 import React, { memo } from 'react';
 import { HiPlay, HiStop } from 'react-icons/hi2';
-import { voices, Voice } from '../data/voices';
+import { Voice, voices } from '../data/voices';
 
 export interface VoiceTabProps {
   selected: Voice | null;

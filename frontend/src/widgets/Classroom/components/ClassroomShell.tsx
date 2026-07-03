@@ -1,31 +1,25 @@
-import { ChatInput, MessageList } from '@/features/chat';
-import { DiagramContainer } from '@/features/diagrams/components/DiagramContainer';
+import { useChatUIStore } from '@/features/chat/store/useChatUIStore';
 import { DocumentsDrawer } from '@/features/documents/components/DocumentsDrawer';
 import { useDocumentList } from '@/features/documents/hooks/useDocumentList';
-import { ExplainSession } from '@/features/explain/components/ExplainSession';
 import { PresentationState, useExplainWS } from '@/features/explain/hooks/useExplainWS';
 import { SettingsDrawer, useSessionManager } from '@/features/session';
 import { PCMRecorder } from '@/features/voice/audio/pcmRecorder';
 import { toast } from '@/shared/utils/toast';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, lazy, Suspense } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
-import { z } from 'zod';
-import { AssistantPanel } from './AssistantPanel';
-
-const AvatarCanvasWrapper = lazy(() => import('./AvatarCanvasWrapper').then(m => ({ default: m.AvatarCanvasWrapper })));
-import { AvatarTopBar } from './AvatarTopBar';
-import { SCROLL_STICK_THRESHOLD_PX } from '../constants';
 import { useClassroomAudio } from '../hooks/useClassroomAudio';
 import { useClassroomChat } from '../hooks/useClassroomChat';
 import { useClassroomState } from '../hooks/useClassroomState';
-import { useChatUIStore } from '@/features/chat/store/useChatUIStore';
+import { AssistantPanel } from './AssistantPanel';
+import { AvatarTopBar } from './AvatarTopBar';
+
+const AvatarCanvasWrapper = lazy(() => import('./AvatarCanvasWrapper').then(m => ({ default: m.AvatarCanvasWrapper })));
 
 
-import { FiMonitor, FiShare2, FiEdit3, FiMessageSquare, FiFileText } from 'react-icons/fi';
 import { ErrorState } from '@/shared/components/feedback/UIStates';
+import { FiEdit3, FiFileText, FiMessageSquare, FiMonitor, FiShare2 } from 'react-icons/fi';
 
-import { AudioVisemePacket, VisemeSchema, Viseme, PendingFirstMessage, WSPayloadSchema, WSPayload } from '../types';
 
 export default function ClassroomShell() {
   const { sessionId: urlSessionId } = useParams();
@@ -305,8 +299,8 @@ export default function ClassroomShell() {
       </Helmet>
 
 
-        {/* Root Layout: Handled by AppLayout, we just provide the full width/height container */}
-        <div className="flex w-full h-full relative text-white font-sans">
+      {/* Root Layout: Handled by AppLayout, we just provide the full width/height container */}
+      <div className="flex w-full h-full relative text-white font-sans">
 
         {/* Floating Sidebars/Drawers */}
         <SettingsDrawer
@@ -477,11 +471,10 @@ export default function ClassroomShell() {
                 setIsExplainActive(false);
                 setIsDiagramOpen(false);
               }}
-              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 ${
-                (!isExplainActive && !isDiagramOpen)
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 ${(!isExplainActive && !isDiagramOpen)
                   ? 'text-gold'
                   : 'text-gray-400 active:text-white'
-              }`}
+                }`}
             >
               <FiMessageSquare size={20} />
               <span className="text-[10px] font-semibold tracking-wide font-display">Chat</span>
@@ -491,11 +484,10 @@ export default function ClassroomShell() {
             <button
               onClick={handleStartExplain}
               disabled={!documents.length}
-              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${
-                isExplainActive
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${isExplainActive
                   ? 'text-gold font-bold'
                   : 'text-gray-400 active:text-white'
-              }`}
+                }`}
             >
               <FiMonitor size={20} />
               <span className="text-[10px] font-semibold tracking-wide font-display">Explain</span>
@@ -505,11 +497,10 @@ export default function ClassroomShell() {
             <button
               onClick={handleGenerateDiagram}
               disabled={!documents.length}
-              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${
-                isDiagramOpen
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${isDiagramOpen
                   ? 'text-gold font-bold'
                   : 'text-gray-400 active:text-white'
-              }`}
+                }`}
             >
               <FiShare2 size={20} />
               <span className="text-[10px] font-semibold tracking-wide font-display">Diagram</span>
@@ -519,11 +510,10 @@ export default function ClassroomShell() {
             <button
               onClick={handleGenerateSummary}
               disabled={!documents.length}
-              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${
-                isSummaryOpen
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${isSummaryOpen
                   ? 'text-gold font-bold'
                   : 'text-gray-400 active:text-white'
-              }`}
+                }`}
             >
               <FiFileText size={20} />
               <span className="text-[10px] font-semibold tracking-wide font-display">Summary</span>
@@ -533,11 +523,10 @@ export default function ClassroomShell() {
             <button
               onClick={handleGenerateQuiz}
               disabled={!documents.length}
-              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${
-                isQuizOpen
+              className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 cursor-pointer transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${isQuizOpen
                   ? 'text-gold font-bold'
                   : 'text-gray-400 active:text-white'
-              }`}
+                }`}
             >
               <FiEdit3 size={20} />
               <span className="text-[10px] font-semibold tracking-wide font-display">Quiz</span>

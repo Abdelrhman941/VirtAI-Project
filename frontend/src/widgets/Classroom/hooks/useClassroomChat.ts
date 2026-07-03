@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useMemo, useLayoutEffect, useState } from 'react';
-import useWSClient, { ConnectionState } from '@/core/realtime/useWSClient';
-import { useChatUIStore } from '@/features/chat/store/useChatUIStore';
-import useConversationReducer from '@/features/chat/hooks/useConversationReducer';
-import { toast } from '@/shared/utils/toast';
-import { WSPayloadSchema, WSPayload, Viseme } from '../types';
-import { PCMRecorder } from '@/features/voice/audio/pcmRecorder';
 import type { WSOutgoingMessage } from '@/core/realtime/types';
+import useWSClient, { ConnectionState } from '@/core/realtime/useWSClient';
+import useConversationReducer from '@/features/chat/hooks/useConversationReducer';
+import { useChatUIStore } from '@/features/chat/store/useChatUIStore';
+import { PCMRecorder } from '@/features/voice/audio/pcmRecorder';
+import { toast } from '@/shared/utils/toast';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Viseme, WSPayload, WSPayloadSchema } from '../types';
 
 const TOAST_DURATION_MS = 5000;
 
@@ -25,7 +25,7 @@ export function buildWsUrl(avatarId: string, voiceId: string, sessionId?: string
 interface UseClassroomChatProps {
   wsAvatarId: string;
   activeVoiceId: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   session: any; // Using the type from useSessionManager
   onTtsReady: (messageId: string | undefined, url: string, duration_ms?: number) => void;
   onVisemesReady: (messageId: string, cues: Viseme[]) => void;
@@ -50,7 +50,7 @@ export function useClassroomChat({
   const [conversationState, dispatch] = useConversationReducer();
   const currentSessionId = session.currentSessionId;
   const status = session.status;
-  
+
   // Decouple WS lifecycle from lazy session creation
   const [wsSessionId, setWsSessionId] = useState(currentSessionId);
   const previousSessionIdRef = useRef(currentSessionId);
@@ -67,13 +67,13 @@ export function useClassroomChat({
     }
   }, [currentSessionId]);
 
-  const WS_URL = status === 'success' 
-    ? buildWsUrl(wsAvatarId, activeVoiceId, wsSessionId || undefined) 
+  const WS_URL = status === 'success'
+    ? buildWsUrl(wsAvatarId, activeVoiceId, wsSessionId || undefined)
     : null;
 
   const { connectionState, isConnected, send, onMessage, reconnect, reconnectError, disconnect } =
     useWSClient(WS_URL);
-  
+
   const currentSessionIdRef = useRef<string | null>(currentSessionId);
   const sessionRef = useRef(session);
   const isCreatingSessionRef = useRef<boolean>(false);
@@ -201,7 +201,7 @@ export function useClassroomChat({
         const d = validatePayload(rawData);
         if (!d || !checkSession(d)) return;
         if (!d.message_id || !d.text) return;
-        
+
         const echoSessionId = d.session_id || currentSessionId;
         dispatch({ type: 'USER_MESSAGE', payload: { message_id: d.message_id, text: d.text } });
         sessionRef.current.addUserMessage(
@@ -217,15 +217,15 @@ export function useClassroomChat({
         if (!d || !checkSession(d)) return;
         const delta = d.delta ? d.delta.replace(/\[.*?\]/g, '') : '';
         if (!delta) return;
-        
+
         useChatUIStore.getState().pushDelta(delta);
       }),
       onMessage('chat.final', (rawData: unknown) => {
         const d = validatePayload(rawData);
         if (!d || !checkSession(d)) return;
-        
+
         const safePayload = { ...d, text: d.text ? d.text.replace(/\[.*?\]/g, '') : undefined };
-        
+
         useChatUIStore.getState().commitFinal();
         dispatch({ type: 'CHAT_FINAL', payload: safePayload });
         if (safePayload.text) {
@@ -244,22 +244,22 @@ export function useClassroomChat({
         const d = validatePayload(rawData);
         if (!d || !checkSession(d)) return;
         const state = (d.state as 'idle' | 'thinking' | 'speaking' | 'error') || 'idle';
-        
+
         if (state === 'idle' || state === 'thinking' || state === 'error') {
           useChatUIStore.getState().resetStream();
         }
 
         dispatch({ type: 'PIPELINE_STATE', payload: { state, message_id: d.message_id } });
-        
+
         // Guard against late events matching reducer logic
-        const isActiveMsg = !d.message_id || 
-          !conversationStateRef.current.activeMessageId || 
+        const isActiveMsg = !d.message_id ||
+          !conversationStateRef.current.activeMessageId ||
           d.message_id === conversationStateRef.current.activeMessageId;
-          
+
         if (isActiveMsg) {
           useChatUIStore.getState().setPipelineState(state);
         }
-        
+
         if (state === 'idle' && d.message_id) {
           forceAdvanceSequence(d.message_id);
         }
@@ -269,13 +269,13 @@ export function useClassroomChat({
         if (!d || !checkSession(d)) return;
         const url = d.audio?.url;
         if (!url) return;
-        
+
         onTtsReady(d.message_id, url, d.audio?.duration_ms);
       }),
       onMessage('visemes.ready', (rawData: unknown) => {
         const d = validatePayload(rawData);
         if (!d || !checkSession(d)) return;
-        
+
         if (d.message_id) {
           onVisemesReady(d.message_id, d.mouthCues || []);
         }
@@ -303,9 +303,9 @@ export function useClassroomChat({
         const d = validatePayload(rawData);
         if (!d || !checkSession(d)) return;
         const messageId = d.message_id;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         const timeline: unknown[] = (d as any).timeline ?? [];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         const meta: Record<string, unknown> = (d as any).meta ?? {};
         console.debug('[WS] animation.timeline.v2 received | message_id:', messageId, '| segments:', timeline.length);
         if (messageId && onAnimationTimeline) {
@@ -336,19 +336,19 @@ export function useClassroomChat({
     const uiStore = useChatUIStore.getState();
     const currentText = uiStore.currentMessage || uiStore._buffer;
     const safeText = currentText ? currentText.replace(/\[.*?\]/g, '') : undefined;
-    
+
     uiStore.commitFinal();
     uiStore.setPipelineState('idle');
-    
-    dispatch({ 
-      type: 'CHAT_FINAL', 
-      payload: { 
+
+    dispatch({
+      type: 'CHAT_FINAL',
+      payload: {
         message_id: conversationStateRef.current.activeMessageId,
-        text: safeText 
-      } 
+        text: safeText
+      }
     });
     dispatch({ type: 'PIPELINE_STATE', payload: { state: 'idle' } });
-    
+
     if (safeText && conversationStateRef.current.activeMessageId && currentSessionIdRef.current) {
       sessionRef.current.addAssistantMessage(
         `${conversationStateRef.current.activeMessageId}-assistant`,

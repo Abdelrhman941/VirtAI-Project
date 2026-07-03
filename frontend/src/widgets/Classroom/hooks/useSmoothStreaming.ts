@@ -1,9 +1,9 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function useSmoothStreaming() {
   const [displayText, setDisplayText] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
-  
+
   const bufferRef = useRef('');
   const frameRef = useRef<number | null>(null);
 
@@ -12,7 +12,7 @@ export function useSmoothStreaming() {
     if (!isStreaming) {
       setIsStreaming(true);
     }
-    
+
     if (frameRef.current === null) {
       frameRef.current = requestAnimationFrame(() => {
         setDisplayText(bufferRef.current);

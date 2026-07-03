@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Avatar } from './AvatarTab';
 import useReducedMotionPreference from '@/features/overview/hooks/useReducedMotionPreference';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { Avatar } from './AvatarTab';
 
 interface LaunchOverlayProps {
   avatar: Avatar | null;
@@ -77,7 +77,7 @@ export default function LaunchOverlay({ avatar, onComplete }: LaunchOverlayProps
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#1a1518_0%,#0A0908_100%)] opacity-95 z-[1]" />
 
-      
+
       <div className="relative z-[2] flex flex-col items-center gap-10 w-full max-w-[480px] p-6 box-border">
         {/* Visual Portal Container */}
         <div className="relative w-[240px] h-[240px] flex items-center justify-center">
@@ -134,11 +134,11 @@ export default function LaunchOverlay({ avatar, onComplete }: LaunchOverlayProps
                     filter: `grayscale(${Math.max(0, 1 - progress / 80)}) contrast(${1 + (progress / 100) * 0.15})`,
                   }}
                   initial={{ scale: 0.85, opacity: 0 }}
-                  animate={{ 
-                    scale: isDone && !shouldReduceMotion ? 1.15 : 1, 
-                    opacity: 0.3 + (progress / 100) * 0.7 
+                  animate={{
+                    scale: isDone && !shouldReduceMotion ? 1.15 : 1,
+                    opacity: 0.3 + (progress / 100) * 0.7
                   }}
-                  transition={{ 
+                  transition={{
                     scale: isDone ? { duration: 0.5, ease: 'easeOut' } : { duration: 0.3 },
                     opacity: { duration: 0.5 }
                   }}
@@ -174,4 +174,3 @@ export default function LaunchOverlay({ avatar, onComplete }: LaunchOverlayProps
     </motion.div>
   );
 }
-

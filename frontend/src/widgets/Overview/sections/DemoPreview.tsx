@@ -32,7 +32,7 @@ export default function DemoPreview() {
               <span className="h-3 w-3 rounded-full bg-[#FFBD2E] block shrink-0" />
               <span className="h-3 w-3 rounded-full bg-[#27C93F] block shrink-0" />
             </div>
-            
+
             {/* Centered URL Bar */}
             <div className="truncate text-center text-[11px] sm:text-xs font-medium text-offwhite/40 tracking-wide font-display max-w-[50%] sm:max-w-xs">
               virtai.app/classroom

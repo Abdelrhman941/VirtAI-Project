@@ -39,4 +39,3 @@ export function FeatureCard({ feature }: { feature: Feature }) {
     </article>
   );
 }
-

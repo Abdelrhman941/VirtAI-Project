@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -24,9 +24,9 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('Uncaught error caught by ErrorBoundary:', error, errorInfo);
 
     // Detect chunk loading errors (typical in lazy loaded routes/components)
-    const isChunkLoadError = 
-      error.name === 'ChunkLoadError' || 
-      /loading\s+chunk/i.test(error.message) || 
+    const isChunkLoadError =
+      error.name === 'ChunkLoadError' ||
+      /loading\s+chunk/i.test(error.message) ||
       /failed\s+to\s+fetch\s+dynamically\s+imported\s+module/i.test(error.message);
 
     if (isChunkLoadError) {

@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom';
 
 import { updateSetupStatus } from '@/features/auth/services/authApi';
 import { selectIsAuthenticated, useAuthStore } from '@/features/auth/store/authStore';
-import { notify } from '@/shared/utils/notify';
 import { SuccessAlert } from '@/shared/components/ui/alert-variants';
+import { notify } from '@/shared/utils/notify';
 import { saveSetup } from '../services/setupStorage';
 import SuccessAnimation from './SuccessAnimation';
 
@@ -34,12 +34,11 @@ export default function AllSetTab({
       return;
     }
 
-     
     setIsSaving(true);
 
     try {
       const updatedUser = await updateSetupStatus(true);
-       
+
       setUser(updatedUser);
 
       saveSetup({
@@ -56,7 +55,7 @@ export default function AllSetTab({
     } catch {
       notify.error('Unable to Save Configuration', 'We were unable to save your assistant configuration because of a temporary connection error. Please try clicking the button again.');
     } finally {
-       
+
       setIsSaving(false);
     }
   };

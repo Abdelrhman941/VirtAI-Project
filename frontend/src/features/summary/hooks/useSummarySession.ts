@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { generateSummaryStream } from '../api/summaryApi';
 
 type SummaryState = 'idle' | 'generating' | 'success' | 'error';

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FiArrowLeft } from 'react-icons/fi';
-import { LectureMultiSelect } from './LectureMultiSelect';
 import { toast } from '@/shared/utils/toast';
+import { useState } from 'react';
+import { FiArrowLeft } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import { LectureMultiSelect } from './LectureMultiSelect';
 
 export default function QuizPage() {
   const navigate = useNavigate();

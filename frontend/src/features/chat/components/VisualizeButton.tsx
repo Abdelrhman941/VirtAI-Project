@@ -1,3 +1,4 @@
+import { Button } from '@/shared/components/ui/button';
 import { notify } from '@/shared/utils/notify';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -12,7 +13,6 @@ import {
 } from 'react-icons/fi';
 import { getVisualization } from '../api/visualizationApi';
 import { getVisualizationTranslations, Locale } from '../i18n/visualizationI18n';
-import { Button } from '@/shared/components/ui/button';
 
 interface VisualizeButtonProps {
   messageId: string;
@@ -91,7 +91,7 @@ export function VisualizeButton({ messageId, locale = 'en', onExpand }: Visualiz
           try {
             const parsed = JSON.parse(finalUrl);
             finalUrl = parsed.url || parsed.image_url || parsed.src || finalUrl;
-          } catch (e) {}
+          } catch (e) { }
         }
         if (typeof finalUrl === 'object' && finalUrl !== null) {
           finalUrl = finalUrl.url || finalUrl.image_url || finalUrl.src || '';
@@ -105,7 +105,7 @@ export function VisualizeButton({ messageId, locale = 'en', onExpand }: Visualiz
             // Fetch with auth token
             const { default: apiClient } = await import('@/core/api/apiClient');
             const res = await apiClient.get(trimmed, { responseType: 'blob' });
-            
+
             // Check if the blob is actually an SVG by reading its text
             const text = await res.data.text();
             if (text.includes('<svg')) {

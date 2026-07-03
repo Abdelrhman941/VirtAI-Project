@@ -1,6 +1,5 @@
-import React from 'react';
-import { FiMonitor } from 'react-icons/fi';
 import { Button } from '@/shared/components/ui/button';
+import { FiMonitor } from 'react-icons/fi';
 
 interface ExplainButtonProps {
   onClick: () => void;

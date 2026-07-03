@@ -1,6 +1,6 @@
 import apiClient from '@/core/api/apiClient';
-import { z } from 'zod';
 import { formatDateOnly } from '@/shared/utils/date';
+import { z } from 'zod';
 import type { IMessage, ISession } from '../types';
 
 const timestampField = z.union([z.string(), z.number()]).nullable().optional();
@@ -26,9 +26,9 @@ const messageSchema = z.object({
 
 const messagesResponseSchema = z.array(messageSchema);
 
-/**
- * Fetch all chat sessions for the current user.
- */
+/*
+  * Fetch all chat sessions for the current user.
+*/
 export async function fetchSessions(): Promise<ISession[]> {
   const response = await apiClient.get('/chat/');
   const rawData = Array.isArray(response.data)
@@ -42,17 +42,17 @@ export async function fetchSessions(): Promise<ISession[]> {
   return parsed.data;
 }
 
-/**
- * Create a new chat session on the backend.
- */
+/*
+  * Create a new chat session on the backend.
+*/
 export async function createSession(): Promise<ISession> {
   const response = await apiClient.post('/chat/');
   return response.data;
 }
 
-/**
- * Fetch message history for a specific session.
- */
+/*
+  * Fetch message history for a specific session.
+*/
 export async function fetchSessionMessages(
   sessionId: string,
   options: Parameters<typeof apiClient.get>[1] = {}
@@ -69,25 +69,25 @@ export async function fetchSessionMessages(
   return parsed.data;
 }
 
-/**
- * Delete a specific chat session.
- */
+/*
+  * Delete a specific chat session.
+*/
 export async function deleteSession(sessionId: string): Promise<unknown> {
   const response = await apiClient.delete(`/chat/${sessionId}`);
   return response.data;
 }
 
-/**
- * Delete all chat sessions for the user.
- */
+/*
+  * Delete all chat sessions for the user.
+*/
 export async function deleteAllSessions(): Promise<unknown> {
   const response = await apiClient.delete('/chat/all');
   return response.data;
 }
 
-/**
- * Generate a smart title based on the first user message.
- */
+/*
+  * Generate a smart title based on the first user message.
+*/
 export async function generateSmartTitle(sessionId: string, firstUserMessage: string, options?: { signal?: AbortSignal }): Promise<string> {
   try {
     const response = await apiClient.post(`/chat/${sessionId}/title`, { message: firstUserMessage }, options);
@@ -101,9 +101,9 @@ export async function generateSmartTitle(sessionId: string, firstUserMessage: st
   }
 }
 
-/**
- * Rename a chat session manually.
- */
+/*
+  * Rename a chat session manually.
+*/
 export async function renameSession(sessionId: string, title: string): Promise<unknown> {
   const response = await apiClient.patch(`/chat/${sessionId}`, { title });
   return response.data;

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { FiChevronLeft, FiBarChart2, FiClock, FiTarget, FiAlertCircle } from 'react-icons/fi';
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import apiClient from '@/core/api/apiClient';
+import { useEffect, useState } from 'react';
+import { FiAlertCircle, FiBarChart2, FiChevronLeft, FiClock, FiTarget } from 'react-icons/fi';
+import { CartesianGrid, Cell, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts';
 
 interface QuizDashboardProps {
   quizId: string;
@@ -65,11 +65,11 @@ export function QuizDashboard({ quizId, attemptId, onBack }: QuizDashboardProps)
 
   return (
     <div className="w-full max-w-4xl mx-auto py-8 px-4 flex flex-col gap-8 text-white/90">
-      
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/10 pb-4">
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={onBack}
             className="p-2 hover:bg-white/10 rounded-full transition-colors"
           >
@@ -88,13 +88,13 @@ export function QuizDashboard({ quizId, attemptId, onBack }: QuizDashboardProps)
           <h3 className="text-gray-400 text-sm font-medium">Mastery Score</h3>
           <span className="text-4xl font-black mt-2 text-white">{analytics.mastery_score}</span>
         </div>
-        
+
         <div className="bg-[#1A1A1A] border border-white/5 p-6 rounded-2xl flex flex-col items-center justify-center text-center shadow-lg">
           <FiClock className="text-blue-400 mb-2" size={24} />
           <h3 className="text-gray-400 text-sm font-medium">Avg Time per Question</h3>
           <span className="text-3xl font-bold mt-2 text-white">{(analytics.avg_time_ms / 1000).toFixed(1)}s</span>
         </div>
-        
+
         <div className="bg-[#1A1A1A] border border-white/5 p-6 rounded-2xl flex flex-col items-center justify-center text-center shadow-lg">
           <FiAlertCircle className="text-orange-400 mb-2" size={24} />
           <h3 className="text-gray-400 text-sm font-medium">Total Hesitations</h3>
@@ -131,25 +131,25 @@ export function QuizDashboard({ quizId, attemptId, onBack }: QuizDashboardProps)
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-              <XAxis 
-                dataKey="x" 
-                type="number" 
-                name="Question" 
-                stroke="#ffffff50" 
-                tick={{ fill: '#ffffff50', fontSize: 12 }} 
+              <XAxis
+                dataKey="x"
+                type="number"
+                name="Question"
+                stroke="#ffffff50"
+                tick={{ fill: '#ffffff50', fontSize: 12 }}
                 domain={[0, 'dataMax + 1']}
                 tickCount={analytics.blind_spot_matrix?.length + 2 || 5}
               />
-              <YAxis 
-                dataKey="y" 
-                type="number" 
-                name="Time (s)" 
-                stroke="#ffffff50" 
+              <YAxis
+                dataKey="y"
+                type="number"
+                name="Time (s)"
+                stroke="#ffffff50"
                 tick={{ fill: '#ffffff50', fontSize: 12 }}
                 unit="s"
               />
-              <Tooltip 
-                cursor={{ strokeDasharray: '3 3', stroke: '#ffffff30' }} 
+              <Tooltip
+                cursor={{ strokeDasharray: '3 3', stroke: '#ffffff30' }}
                 content={({ active, payload }: any) => {
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
@@ -164,10 +164,10 @@ export function QuizDashboard({ quizId, attemptId, onBack }: QuizDashboardProps)
                     );
                   }
                   return null;
-                }} 
+                }}
               />
-              <Scatter 
-                name="Questions" 
+              <Scatter
+                name="Questions"
                 data={analytics.blind_spot_matrix?.map((d: any, i: number) => ({
                   x: i + 1,
                   y: d.time_spent_ms / 1000,

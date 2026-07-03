@@ -1,10 +1,9 @@
-import React from 'react';
-import { PiWifiSlashFill, PiList } from 'react-icons/pi';
-import { FiMonitor, FiShare2, FiEdit3, FiUser, FiFileText } from 'react-icons/fi';
-import { useNavigate } from 'react-router-dom';
 import { ConnectionState } from '@/core/realtime/useWSClient';
-import { ConnectionBadge } from '@/shared/components/feedback/ConnectionBadge';
 import { ToolbarButton } from '@/shared/components/controls/ToolbarButton';
+import { ConnectionBadge } from '@/shared/components/feedback/ConnectionBadge';
+import { FiEdit3, FiFileText, FiMonitor, FiShare2, FiUser } from 'react-icons/fi';
+import { PiList } from 'react-icons/pi';
+import { useNavigate } from 'react-router-dom';
 
 interface AvatarTopBarProps {
   avatarName: string;
@@ -58,7 +57,7 @@ export function AvatarTopBar({
             icon={<FiMonitor size={15} />}
             label="Explain Slide"
           />
-          
+
           <ToolbarButton
             onClick={onGenerateSummary}
             disabled={!hasDocuments}
@@ -66,7 +65,7 @@ export function AvatarTopBar({
             icon={<FiFileText size={15} />}
             label="Summarize"
           />
-          
+
           <ToolbarButton
             onClick={onGenerateDiagram}
             disabled={!hasDocuments}
@@ -74,7 +73,7 @@ export function AvatarTopBar({
             icon={<FiShare2 size={15} />}
             label="Synthesize Tree Map"
           />
-          
+
           <ToolbarButton
             onClick={onStartQuiz}
             disabled={!hasDocuments}

@@ -1,9 +1,9 @@
 const STORAGE_KEY = 'virtai-setup';
 
-/**
- * Load setup configuration from localStorage.
- * Returns null if nothing stored or data is corrupt.
- */
+/*
+  * Load setup configuration from localStorage.
+  * Returns null if nothing stored or data is corrupt.
+*/
 export function loadSetup() {
   if (typeof window === 'undefined') {
     return null;
@@ -33,10 +33,10 @@ export function loadSetup() {
   }
 }
 
-/**
- * Save setup configuration to localStorage.
- * @param {{ avatarId: string, voiceId: string, movementEnabled?: boolean, documentsSkipped?: boolean, documentsUploaded?: boolean }} config
- */
+/*
+  * Save setup configuration to localStorage.
+  * @param {{ avatarId: string, voiceId: string, movementEnabled?: boolean, documentsSkipped?: boolean, documentsUploaded?: boolean }} config
+*/
 export function saveSetup(config) {
   if (typeof window === 'undefined') {
     return;

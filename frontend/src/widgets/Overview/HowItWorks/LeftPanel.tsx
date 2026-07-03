@@ -1,6 +1,6 @@
-import { motion, AnimatePresence } from 'framer-motion';
 import steps from '@/features/overview/data/howItWorks';
 import useReducedMotionPreference from '@/features/overview/hooks/useReducedMotionPreference';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface LeftPanelProps {
   activeIndex: number;
@@ -37,7 +37,7 @@ export default function LeftPanel({ activeIndex }: LeftPanelProps) {
               </div>
               <h3 className="display-h3 text-offwhite m-0">{currentStep.label}</h3>
             </div>
-            
+
             <p className="text-lg text-offwhite/80 leading-relaxed max-w-[45ch] font-medium">
               {currentStep.description}
             </p>
@@ -47,16 +47,16 @@ export default function LeftPanel({ activeIndex }: LeftPanelProps) {
                 <span className="text-offwhite/40 font-semibold tracking-wider">IN</span>
                 <span className="text-gold/90">{currentStep.input}</span>
               </div>
-              
+
               <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent w-full" />
-              
+
               <div className="grid grid-cols-[80px_1fr] items-center gap-4 text-sm font-mono">
                 <span className="text-offwhite/40 font-semibold tracking-wider">PROC</span>
                 <span className="text-offwhite/90">{currentStep.processing}</span>
               </div>
-              
+
               <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent w-full" />
-              
+
               <div className="grid grid-cols-[80px_1fr] items-center gap-4 text-sm font-mono">
                 <span className="text-offwhite/40 font-semibold tracking-wider">OUT</span>
                 <span className="text-white font-bold bg-crimson px-3 py-1.5 rounded-md inline-block w-fit">{currentStep.output}</span>

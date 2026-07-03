@@ -54,22 +54,22 @@ export class PCMRecorder {
     if (this.cachedWorkletUrl || this.prewarmPromise) {
       return this.prewarmPromise || Promise.resolve();
     }
-    
+
     this.prewarmPromise = (async () => {
       try {
         const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
         const ctx = new AudioCtx({ sampleRate });
-        
+
         if (ctx.state === 'running') {
           await ctx.suspend();
         }
-        
+
         const workletUrlModule = await import('./pcmWorklet.ts?url');
         this.cachedWorkletUrl = workletUrlModule.default;
         await ctx.audioWorklet.addModule(this.cachedWorkletUrl);
-        
+
         this.cachedAudioContext = ctx;
-        
+
         if (import.meta.env.DEV) {
           logger.debug('[PCMRecorder] AudioWorklet pre-warmed and compiled');
         }
@@ -151,16 +151,16 @@ export class PCMRecorder {
       if (!PCMRecorder.cachedWorkletUrl) {
         await PCMRecorder.preWarmWorklet(this.sampleRate);
       }
-      
+
       if (!PCMRecorder.cachedWorkletUrl) {
         throw new Error('Failed to load AudioWorklet module');
       }
-      
+
       // If we didn't use the cached context, we still need to add the module
       if (!this.audioContext.audioWorklet) {
         throw new Error('AudioWorklet not supported');
       }
-      
+
       // We wrap in try/catch because if we used the cached context, it already has the module
       try {
         await this.audioContext.audioWorklet.addModule(PCMRecorder.cachedWorkletUrl);
@@ -305,7 +305,7 @@ export class PCMRecorder {
       if (this.workletNode) {
         // Send flush signal to capture remaining audio samples before destruction
         this.workletNode.port.postMessage({ type: 'flush' });
-        
+
         // Delay actual disconnection to allow the final chunk to be sent back
         const node = this.workletNode;
         setTimeout(() => {

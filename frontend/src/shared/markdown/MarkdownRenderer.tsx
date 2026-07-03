@@ -1,7 +1,7 @@
+import { cn } from '@/shared/utils/cn';
 import 'katex/dist/katex.min.css';
 import React, { memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { cn } from '@/shared/utils/cn';
 import { markdownComponents } from './components';
 import { REHYPE_PLUGINS } from './plugins/rehypePlugins';
 import { REMARK_PLUGINS } from './plugins/remarkPlugins';

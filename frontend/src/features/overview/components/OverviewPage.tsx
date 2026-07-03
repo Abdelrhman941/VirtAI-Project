@@ -1,13 +1,13 @@
-import { lazy, Suspense, useEffect } from 'react';
-import Lenis from 'lenis';
 import { selectIsAuthenticated, useAuthStore } from '@/features/auth/store/authStore';
-import HeroSection from '@/widgets/Overview/sections/HeroSection';
 import ErrorBoundary from '@/shared/components/feedback/ErrorBoundary';
-import OverviewSEO from './OverviewSEO';
-import useReducedMotionPreference from '../hooks/useReducedMotionPreference';
+import HeroSection from '@/widgets/Overview/sections/HeroSection';
+import Lenis from 'lenis';
+import { lazy, Suspense, useEffect } from 'react';
 import useDevicePerformance from '../hooks/useDevicePerformance';
-import useSplashSession from '../hooks/useSplashSession';
 import useProgressivePhases from '../hooks/useProgressivePhases';
+import useReducedMotionPreference from '../hooks/useReducedMotionPreference';
+import useSplashSession from '../hooks/useSplashSession';
+import OverviewSEO from './OverviewSEO';
 
 const Navbar = lazy(() => import('@/widgets/Overview/Navbar') as any);
 const SplashScreen = lazy(() => import('@/widgets/Overview/SplashScreen'));
@@ -134,4 +134,3 @@ export default function OverviewPage() {
     </>
   );
 }
-

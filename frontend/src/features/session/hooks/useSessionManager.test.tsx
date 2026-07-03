@@ -1,9 +1,9 @@
+import { useAuthStore } from '@/features/auth/store/authStore';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import useSessionManager from './useSessionManager';
 import * as sessionService from '../services/sessionService';
-import { useAuthStore } from '@/features/auth/store/authStore';
+import useSessionManager from './useSessionManager';
 
 vi.mock('../services/sessionService', () => ({
   fetchSessions: vi.fn(),

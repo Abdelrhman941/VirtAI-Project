@@ -1,4 +1,3 @@
-import apiClient from '@/core/api/apiClient';
 import { CSRF_HEADER_NAME, ensureCsrfToken } from '@/core/api/csrfService';
 
 export const generateSummaryStream = async (
@@ -42,13 +41,13 @@ export const generateSummaryStream = async (
         onChunk(chunk);
       }
     }
-    
+
     // Final flush
     const finalChunk = decoder.decode();
     if (finalChunk) {
       onChunk(finalChunk);
     }
-    
+
     onComplete();
   } catch (error) {
     if (error instanceof Error) {

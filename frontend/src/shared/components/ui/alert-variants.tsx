@@ -1,6 +1,6 @@
-import { CheckCircle2, Info, AlertTriangle, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import { cn } from '@/shared/utils/cn';
+import { AlertCircle, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface Props { title?: string; children: ReactNode; className?: string; }

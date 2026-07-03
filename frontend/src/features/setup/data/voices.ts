@@ -1,7 +1,7 @@
-/**
- * Voice configurations for the Setup page.
- * Each maps to a real Microsoft Edge TTS voice ID.
- */
+/*
+  * Voice configurations for the Setup page.
+  * Each maps to a real Microsoft Edge TTS voice ID.
+*/
 export interface Voice {
   id: string;
   name: string;

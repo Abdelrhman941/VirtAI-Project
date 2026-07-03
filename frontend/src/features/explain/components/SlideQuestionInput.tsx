@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FiSend, FiPlay } from 'react-icons/fi';
+import { FiPlay, FiSend } from 'react-icons/fi';
 
 interface SlideQuestionInputProps {
   onQuestion: (text: string) => void;
@@ -15,7 +15,7 @@ export function SlideQuestionInput({ onQuestion, onContinue }: SlideQuestionInpu
     e.preventDefault();
     const now = Date.now();
     if (now - lastSubmitTime.current < 500) return;
-    
+
     const cleanText = text.trim();
     if (cleanText) {
       lastSubmitTime.current = now;

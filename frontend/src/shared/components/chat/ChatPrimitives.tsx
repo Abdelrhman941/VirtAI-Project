@@ -1,5 +1,5 @@
-import React, { ReactNode } from 'react';
 import { Bot, User } from 'lucide-react';
+import React, { ReactNode } from 'react';
 
 export interface AvatarProps {
   type: 'user' | 'assistant';
@@ -51,7 +51,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   ariaLabel
 }) => {
   const isUser = role === 'user';
-  
+
   return (
     <div
       className={`chat-message-wrapper ${isUser ? 'user-message-wrapper' : 'ai-message-wrapper'} ${isInterim ? '' : 'message-enter'}`}
@@ -59,21 +59,21 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
       aria-label={ariaLabel}
       aria-live={isInterim ? 'polite' : undefined}
     >
-      <div 
+      <div
         className={`chat-message ${isUser ? 'user-message' : 'ai-message'} ${isTyping ? 'typing-state items-center' : 'items-start'} ${isInterim ? 'interim-transcript' : ''}`}
       >
         {!isUser && <Avatar type="assistant" isTyping={isTyping} />}
-        
+
         <div className={`message-bubble-container flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-none w-full`}>
           {!isUser && avatarName && !isTyping && (
             <div className="flex justify-start items-center w-full mt-1 mb-0.5 px-1 gap-1">
               <span className="font-extrabold text-[#D4B47A] text-[15px] tracking-wide">{avatarName}</span>
             </div>
           )}
-          
+
           <div className={`message-bubble ${isUser ? (isInterim ? '' : 'user-bubble-content relative') : 'bg-transparent shadow-none border-none flex flex-col gap-2 w-full'}`}>
             {children}
-            
+
             {isUser && !isInterim && timeString && (
               <>
                 <span className="inline-block w-[45px]"></span>

@@ -1,5 +1,5 @@
-import { documentApi } from '@/features/documents/api/documentApi';
 import wsManager from '@/core/realtime/wsManager';
+import { documentApi } from '@/features/documents/api/documentApi';
 import { Document } from '@/features/documents/types';
 import { isAxiosError } from 'axios';
 
@@ -27,7 +27,7 @@ export class UploadService {
     isLoading: true,
     error: null,
   };
-  
+
   private listeners: Set<Listener> = new Set();
   private uploadAbortControllers: Map<string, AbortController> = new Map();
   private wsPatchTimes: Map<string, number> = new Map();
@@ -50,21 +50,21 @@ export class UploadService {
   constructor() {
     this.unsubDocStatus = wsManager.on('doc_status', (activeDoc: any) => {
       this.pendingDocUpdates.set(activeDoc.document_id, activeDoc);
-      
+
       if (this.docStatusTimer) {
         clearTimeout(this.docStatusTimer);
       }
-      
+
       this.docStatusTimer = setTimeout(() => {
         this.docStatusTimer = null;
         let changed = false;
         let needsFetch = false;
-        
+
         let newDocs = this.state.documents;
-        
+
         this.pendingDocUpdates.forEach((doc, docId) => {
           this.wsPatchTimes.set(docId, Date.now());
-          
+
           let found = false;
           newDocs = newDocs.map(d => {
             if (d.id === docId) {
@@ -99,18 +99,18 @@ export class UploadService {
             }
             return d;
           });
-          
+
           if (!found) {
             needsFetch = true;
           }
         });
-        
+
         this.pendingDocUpdates.clear();
-        
+
         if (changed) {
           this.setState({ documents: newDocs });
         }
-        
+
         if (needsFetch) {
           this.fetchDocuments();
         }
@@ -145,7 +145,7 @@ export class UploadService {
       const activeDocs = await documentApi.listActive(this.currentSessionId);
       let changed = false;
       const fetchTime = Date.now();
-      
+
       const newDocs = this.state.documents.map(doc => {
         const updated = activeDocs.find(d => d.id === doc.id);
         if (updated) {
@@ -174,7 +174,7 @@ export class UploadService {
         }
         return doc;
       });
-      
+
       if (changed) {
         this.setState({ documents: newDocs });
       }
@@ -217,7 +217,7 @@ export class UploadService {
     const fetchStartTime = Date.now();
     try {
       const data = await documentApi.list(this.currentSessionId);
-      
+
       const newDocs = data.map(fetchedDoc => {
         if (fetchedDoc.status === 'COMPLETED') {
           fetchedDoc.current_stage = 'COMPLETE';
@@ -257,8 +257,8 @@ export class UploadService {
       return { isDuplicate: true };
     }
 
-    // INTENTIONAL OPTIMISTIC UPDATE: 
-    // We instantly add a 'QUEUED' document to the state here to provide immediate 
+    // INTENTIONAL OPTIMISTIC UPDATE:
+    // We instantly add a 'QUEUED' document to the state here to provide immediate
     // UX feedback in the DocumentsPanel while the actual file upload occurs in the background.
     const optimisticDoc: Document = {
       temp_id: tempId,
@@ -301,7 +301,7 @@ export class UploadService {
 
     try {
       const response = await documentApi.upload(nextItem.file, this.currentSessionId, abortController.signal, nextItem.fileHash);
-      
+
       this.setState({
         documents: this.state.documents.map(doc =>
           doc.temp_id === nextItem.tempId
@@ -313,7 +313,7 @@ export class UploadService {
       this.setState({
         documents: this.state.documents.filter(doc => doc.temp_id !== nextItem.tempId)
       });
-      
+
       if (isAxiosError(err) && (err.response?.status === 400 || err.response?.status === 403)) {
         this.setState({ error: 'Session document limit (10) reached or upload forbidden.' });
       } else if (isAxiosError(err) && err.response?.status === 404) {

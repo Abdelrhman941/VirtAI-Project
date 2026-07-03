@@ -9,7 +9,7 @@ export function safeParseDate(timestamp?: string | number | null): Date | null {
   }
 
   let ts = timestamp;
-  
+
   // If numeric and looks like seconds (e.g. 1718000000), convert to ms
   if (typeof ts === 'number' && ts < 1e12 && ts > 1e8) {
     ts = ts * 1000;
@@ -24,12 +24,12 @@ export function safeParseDate(timestamp?: string | number | null): Date | null {
   }
 
   const d = new Date(ts);
-  
+
   // NaN protection
   if (isNaN(d.getTime())) {
     return null;
   }
-  
+
   return d;
 }
 
@@ -47,13 +47,13 @@ export function formatRelativeTime(ts?: string | number | null): string {
 
   if (diffMin < 1) return 'Just now';
   if (diffMin < 60) return `${diffMin}m`;
-  
+
   const diffH = Math.floor(diffMin / 60);
   if (diffH < 24) return `${diffH}h`;
-  
+
   const diffD = Math.floor(diffH / 24);
   if (diffD < 7) return `${diffD}d`;
-  
+
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(d);
 }
 

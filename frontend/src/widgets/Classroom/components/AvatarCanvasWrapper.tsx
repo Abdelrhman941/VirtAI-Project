@@ -1,8 +1,8 @@
-import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
-import { PerspectiveCamera, OrbitControls } from '@react-three/drei';
 import { AvatarComponent } from '@/features/avatar/components/AvatarComponent';
 import { Viseme } from '@/features/voice/hooks/useGaplessAudioQueue';
+import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
+import { Canvas, useThree } from '@react-three/fiber';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 const CAMERA_POS_X = 0;

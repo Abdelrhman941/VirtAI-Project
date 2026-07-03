@@ -20,7 +20,7 @@ export function useDevicePerformance() {
 
     const nav = navigator as NavigatorWithExtras;
     const connection = nav.connection;
-    
+
     const saveDataEnabled = !!connection?.saveData;
     const slowNetwork = ['slow-2g', '2g'].includes(connection?.effectiveType || '');
     const lowMemoryDevice = typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 4;

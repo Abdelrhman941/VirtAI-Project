@@ -1,16 +1,13 @@
-import { useAnimations, useFBX } from '@react-three/drei';
-import React, { useEffect, useMemo, useRef, useCallback } from 'react';
-import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
-import { useAvatarLipSync } from './useAvatarLipSync';
 import { Viseme } from '@/features/voice/hooks/useGaplessAudioQueue';
+import { useAnimations, useFBX } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import * as THREE from 'three';
 
 const IDLE_URL = '/models/animations/Idle/Idle.fbx';
 const TALK_MANIFEST = [
   '/models/animations/Talk/Talk_1.fbx'
 ];
-
-const FADE_DURATION = 0.4;
 
 const ANIMATION_LOOP_ONCE_COUNT = 1;
 const NORMAL_TIME_SCALE = 1;
@@ -20,7 +17,6 @@ const SINGLE_ANIMATION_COUNT = 1;
 const FIRST_INDEX = 0;
 const INITIAL_TIME = 0;
 const NO_INDEX = -1;
-const ARRAY_EMPTY_LENGTH = 0;
 
 interface TimelineState {
   phase: 'idle' | 'thinking' | 'speaking' | 'talking' | 'idle_break';
@@ -61,7 +57,7 @@ export function useAvatarAnimations(
 
       for (const track of clip.tracks) {
         if (!(track instanceof THREE.QuaternionKeyframeTrack)) continue;
-        
+
         let qOffset: THREE.Quaternion | null = null;
         if (track.name.startsWith('LeftArm') || track.name.startsWith('RightArm')) qOffset = qDropArm;
         if (track.name.startsWith('LeftShoulder') || track.name.startsWith('RightShoulder')) qOffset = qDropShoulder;
@@ -82,15 +78,15 @@ export function useAvatarAnimations(
         if (t.name.endsWith('.scale')) return false;
         if (t.name.endsWith('.position')) return false;
         if (t.name === 'Hips.quaternion') return false;
-        
+
         // STRIP SHARED BASELINE OFFENDERS:
         // Removing Spine fixes the "chest-forward and robotic" posture.
         if (t.name === 'Spine.quaternion') return false;
-        
+
         // Removing Shoulders fixes "clavicles are elevated / open and stiff".
         // They will fall back to the natural GLB rest pose permanently.
         if (t.name.startsWith('LeftShoulder') || t.name.startsWith('RightShoulder')) return false;
-        
+
         // Removing Arms from Idle forces the avatar to rest its arms in the pure GLB A-pose
         // completely eliminating the robotic T-pose width at the start and end of movement.
         if (isIdle && (t.name.startsWith('LeftArm') || t.name.startsWith('RightArm'))) return false;
@@ -115,7 +111,7 @@ export function useAvatarAnimations(
 
     const idleSrc = pickStack(idleFbx.animations, ['mixamo.com']);
     if (!idleSrc) return [];
-    
+
     const idle = idleSrc.clone();
     idle.name = 'Idle';
 
@@ -292,7 +288,7 @@ export function useAvatarAnimations(
 
       let isAudioPlaying = false;
       const audioContext = getAudioContext?.();
-      
+
       if (getIsAudioPlaying) {
         isAudioPlaying = getIsAudioPlaying();
       } else if (playbackStartTimeRef?.current != null && audioContext) {
@@ -311,7 +307,7 @@ export function useAvatarAnimations(
           }
         }
       }
-        
+
       const isEffectivelySpeaking = pipelineStateRef.current === 'speaking' || isAudioPlaying;
 
       if (finishedName && typeof finishedName === 'string' && finishedName.startsWith('Talk_')) {
@@ -326,7 +322,7 @@ export function useAvatarAnimations(
             const lastCue = mouthCuesRef.current[mouthCuesRef.current.length - 1];
             const validEnd = Number.isFinite(lastCue?.end) ? Number(lastCue.end) : 0;
             const audioEndTime = playbackStartTimeRef.current + validEnd;
-            
+
             if (Number.isFinite(audioEndTime)) {
               remainingAudio = Math.max(0, audioEndTime - audioContext.currentTime);
             }
@@ -397,7 +393,7 @@ export function useAvatarAnimations(
   useFrame((state, delta) => {
     const timeline = timelineStateRef.current;
     const currentState = pipelineStateRef.current;
-    
+
     let isAudioPlaying = false;
     if (getIsAudioPlaying) {
       isAudioPlaying = getIsAudioPlaying();

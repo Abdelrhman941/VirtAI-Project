@@ -1,9 +1,9 @@
+import { Document } from '@/features/documents/types';
+import { DangerAlert } from '@/shared/components/ui/alert-variants';
+import { notify } from '@/shared/utils/notify';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FiFileText, FiUploadCloud, FiX } from 'react-icons/fi';
-import { DangerAlert } from '@/shared/components/ui/alert-variants';
-import { notify } from '@/shared/utils/notify';
-import { Document } from '@/features/documents/types';
 
 const MAX_FILE_SIZE_MB = 25;
 const ACCEPTED_EXTENSIONS = new Set(['pdf', 'txt', 'md']);
@@ -143,7 +143,7 @@ export function UploadTab({ onSkip, enqueueUpload, documents, compact = false }:
             continue;
           }
         }
-        
+
         removeFile(file.name);
 
       } catch (err: unknown) {
@@ -182,7 +182,7 @@ export function UploadTab({ onSkip, enqueueUpload, documents, compact = false }:
         )}
 
         <div
-          className={`${compact ? 'min-h-[140px] p-3' : 'min-h-[210px] sm:min-h-[190px] sm:px-4 sm:py-[22px] p-7'} flex flex-col items-center justify-center rounded-[18px] border-2 border-dashed transition-all duration-200 ease-out 
+          className={`${compact ? 'min-h-[140px] p-3' : 'min-h-[210px] sm:min-h-[190px] sm:px-4 sm:py-[22px] p-7'} flex flex-col items-center justify-center rounded-[18px] border-2 border-dashed transition-all duration-200 ease-out
             ${isDisabled ? 'cursor-progress opacity-80 border-primary/30 bg-black/15' : 'cursor-pointer border-primary/30 bg-black/15 hover:border-primary/70 hover:bg-primary/10 hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)] hover:-translate-y-px'}
             ${hasFiles ? 'has-file' : ''}`}
           onDragOver={handleDragOver}
@@ -250,9 +250,9 @@ export function UploadTab({ onSkip, enqueueUpload, documents, compact = false }:
 
         <div className="flex justify-center w-full gap-3.5 flex-wrap mt-5 sm:flex-col-reverse">
           {onSkip && (
-            <button 
-              className="min-w-[150px] min-h-[44px] inline-flex items-center justify-center rounded-xl px-[18px] py-2 border text-[14px] font-bold font-sans cursor-pointer transition-all duration-200 text-muted-foreground bg-white/5 border-white/15 hover:not:disabled:text-foreground hover:not:disabled:border-white/25 hover:not:disabled:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed hover:not:disabled:-translate-y-px sm:w-full" 
-              onClick={onSkip} 
+            <button
+              className="min-w-[150px] min-h-[44px] inline-flex items-center justify-center rounded-xl px-[18px] py-2 border text-[14px] font-bold font-sans cursor-pointer transition-all duration-200 text-muted-foreground bg-white/5 border-white/15 hover:not:disabled:text-foreground hover:not:disabled:border-white/25 hover:not:disabled:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed hover:not:disabled:-translate-y-px sm:w-full"
+              onClick={onSkip}
               disabled={isProcessing}
             >
               Skip Document Upload

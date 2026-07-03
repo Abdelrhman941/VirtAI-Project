@@ -48,7 +48,7 @@ export function resolveAvatarLifecycleTransition(currentStatus: AvatarStatus, ev
     ) {
       return { status: currentStatus, changed: false, stale: true, reason: 'Already mounted' };
     }
-    
+
     return { status: currentStatus, changed: false, rejected: true, reason: 'Cannot mount from current status' };
   }
 
@@ -63,7 +63,7 @@ export function resolveAvatarLifecycleTransition(currentStatus: AvatarStatus, ev
     if (currentStatus === AVATAR_STATUS.SCENE_READY || currentStatus === AVATAR_STATUS.VISIBLE) {
       return { status: currentStatus, changed: false, stale: true, reason: 'Already validated' };
     }
-    
+
     return { status: currentStatus, changed: false, rejected: true, reason: 'Cannot validate first frame from current status' };
   }
 
@@ -75,7 +75,7 @@ export function resolveAvatarLifecycleTransition(currentStatus: AvatarStatus, ev
     if (currentStatus === AVATAR_STATUS.VISIBLE) {
       return { status: currentStatus, changed: false, stale: true, reason: 'Already visible' };
     }
-    
+
     return { status: currentStatus, changed: false, rejected: true, reason: 'Cannot become visible unless scene is ready' };
   }
 

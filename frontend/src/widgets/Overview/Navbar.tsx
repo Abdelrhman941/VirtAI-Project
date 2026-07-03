@@ -26,7 +26,7 @@ export default function Navbar({ ctaLabel, ctaTo }: { ctaLabel: string; ctaTo: s
           const scrollTop = scrollContainer === window
             ? window.scrollY
             : (scrollContainer as HTMLElement).scrollTop;
-           
+
           setVisible(scrollTop > window.innerHeight * 0.6);
           ticking = false;
         });
@@ -68,13 +68,13 @@ export default function Navbar({ ctaLabel, ctaTo }: { ctaLabel: string; ctaTo: s
 
         if (hasChanges) {
           if (visibleSections.size === 0) {
-             
+
             setActiveId('');
           } else {
             const visibleArray = Array.from(visibleSections);
             const active = ids.find((id) => visibleArray.includes(id));
             if (active) {
-               
+
               setActiveId(active);
             }
           }
@@ -143,9 +143,9 @@ export default function Navbar({ ctaLabel, ctaTo }: { ctaLabel: string; ctaTo: s
     }
 
     isScrolling.current = true;
-     
+
     setActiveId(id);
-     
+
     setMobileMenuOpen(false);
 
     const offset = 80;
@@ -166,14 +166,14 @@ export default function Navbar({ ctaLabel, ctaTo }: { ctaLabel: string; ctaTo: s
     }
 
     // Release lock after smooth scroll completes
-     
+
     setTimeout(() => {
       isScrolling.current = false;
     }, 800);
   };
 
   const scrollToTop = () => {
-     
+
     setMobileMenuOpen(false);
     const lenis = (window as any).lenis;
     if (lenis) {

@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import useReducedMotionPreference from '@/features/overview/hooks/useReducedMotionPreference';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
 export default function HeroSection({ ctaLabel, ctaTo }) {
   const shouldReduceMotion = useReducedMotionPreference();
@@ -17,9 +17,9 @@ export default function HeroSection({ ctaLabel, ctaTo }) {
 
   // Eased sliding items (using easeOutExpo curve for modern feel)
   const itemVariants = {
-    hidden: { 
-      opacity: 0, 
-      y: shouldReduceMotion ? 0 : 15 
+    hidden: {
+      opacity: 0,
+      y: shouldReduceMotion ? 0 : 15
     },
     visible: {
       opacity: 1,
@@ -33,9 +33,9 @@ export default function HeroSection({ ctaLabel, ctaTo }) {
 
   // Right-side image zoom/fade entrance
   const imageVariants = {
-    hidden: { 
-      opacity: 0, 
-      scale: shouldReduceMotion ? 1 : 0.96 
+    hidden: {
+      opacity: 0,
+      scale: shouldReduceMotion ? 1 : 0.96
     },
     visible: {
       opacity: 1,
@@ -54,14 +54,14 @@ export default function HeroSection({ ctaLabel, ctaTo }) {
       <div className="absolute top-1/4 right-10 -z-10 h-96 w-96 rounded-full bg-crimson/5 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 left-10 -z-10 h-96 w-96 rounded-full bg-gold/5 blur-[120px] pointer-events-none" />
 
-      <motion.div 
+      <motion.div
         className="mx-auto grid w-full max-w-7xl gap-14 lg:grid-cols-12 lg:items-center"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
         <div className="lg:col-span-7 flex flex-col items-center text-center md:items-start md:text-left">
-          <motion.div 
+          <motion.div
             className="mb-8 inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/5 px-4 py-1.5 text-xs font-semibold text-gold-soft"
             variants={itemVariants}
           >
@@ -76,7 +76,7 @@ export default function HeroSection({ ctaLabel, ctaTo }) {
             The <span className="text-gold">AI Teaching Assistant</span> Built for Academic <span className="text-crimson-soft">Rigor</span>.
           </motion.h1>
 
-          <motion.p 
+          <motion.p
             className="mt-7 max-w-xl text-base leading-relaxed text-offwhite/80"
             variants={itemVariants}
           >
@@ -84,7 +84,7 @@ export default function HeroSection({ ctaLabel, ctaTo }) {
             real-time voice interaction, curriculum-aware reasoning, and lifelike AI avatars.
           </motion.p>
 
-          <motion.div 
+          <motion.div
             className="mt-10 flex flex-wrap justify-center md:justify-start items-center gap-4"
             variants={itemVariants}
           >
@@ -102,7 +102,7 @@ export default function HeroSection({ ctaLabel, ctaTo }) {
             </a>
           </motion.div>
 
-          <motion.ul 
+          <motion.ul
             className="mt-8 flex flex-wrap justify-center md:justify-start gap-x-6 gap-y-3 text-sm text-offwhite/65"
             variants={itemVariants}
           >

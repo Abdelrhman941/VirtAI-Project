@@ -1,8 +1,8 @@
-import { useLayoutEffect, useState, useRef } from 'react';
+import { useLayoutEffect, useState } from 'react';
 
 export function useActiveSection(sectionIds: string[], isScrollingRef: React.RefObject<boolean>) {
   const [activeId, setActiveId] = useState<string>('');
-  
+
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
 

@@ -1,9 +1,4 @@
-import { useState } from 'react';
-import { FiCheckCircle, FiClock, FiFileText, FiLoader, FiTrash2, FiXCircle } from 'react-icons/fi';
 import { useDocumentList } from '@/features/documents/hooks/useDocumentList';
-import { DangerAlert } from '@/shared/components/ui/alert-variants';
-import { UploadTab } from './UploadTab';
-import { formatDateOnly } from '@/shared/utils/date';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +9,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/shared/components/ui/alert-dialog';
+import { DangerAlert } from '@/shared/components/ui/alert-variants';
+import { formatDateOnly } from '@/shared/utils/date';
+import { useState } from 'react';
+import { FiCheckCircle, FiClock, FiFileText, FiLoader, FiTrash2, FiXCircle } from 'react-icons/fi';
+import { UploadTab } from './UploadTab';
 
 
 interface DocumentsPanelProps {

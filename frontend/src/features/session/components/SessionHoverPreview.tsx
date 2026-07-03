@@ -1,7 +1,7 @@
+import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FiCheckCircle, FiClock, FiFileText, FiXCircle } from 'react-icons/fi';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ISession } from '../types';
 
 export interface SessionHoverPreviewProps {
@@ -21,7 +21,7 @@ export default function SessionHoverPreview({
   useEffect(() => {
     if (isHovered) {
       timerRef.current = setTimeout(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+
         setShow(true);
       }, 2000); // 2s delay
     } else {

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
 import { useDocumentList } from '@/features/documents/hooks/useDocumentList';
-import { PiFilePdfDuotone } from 'react-icons/pi';
+import { EmptyState, LoadingState } from '@/shared/components/feedback/UIStates';
+import { useState } from 'react';
 import { FiCheck } from 'react-icons/fi';
-import { LoadingState, EmptyState } from '@/shared/components/feedback/UIStates';
+import { PiFilePdfDuotone } from 'react-icons/pi';
 
 interface DocumentPickerProps {
   sessionId: string | null;
@@ -12,9 +12,9 @@ interface DocumentPickerProps {
   buttonText?: string;
 }
 
-export function DocumentPicker({ 
-  sessionId, 
-  onSelect, 
+export function DocumentPicker({
+  sessionId,
+  onSelect,
   onCancel,
   title = "Select Document for Tree Map",
   buttonText = "Generate Tree Map"
@@ -32,10 +32,10 @@ export function DocumentPicker({
   if (isLoading && documents.length === 0) {
     return (
       <div className="p-8 flex flex-col min-h-[300px]">
-        <LoadingState 
-          isAbsolute={false} 
-          message="Loading documents..." 
-          className="flex-1 justify-center items-center" 
+        <LoadingState
+          isAbsolute={false}
+          message="Loading documents..."
+          className="flex-1 justify-center items-center"
         />
       </div>
     );
@@ -65,13 +65,12 @@ export function DocumentPicker({
             return (
               <label
                 key={doc.id || doc.temp_id}
-                className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-colors duration-300 group ${
-                  isSelected
+                className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-colors duration-300 group ${isSelected
                     ? 'bg-white/10 border-white/30 shadow-[0_0_15px_rgba(255,255,255,0.05)]'
                     : isProcessing
-                    ? 'bg-white/5 border-white/5 opacity-50 cursor-not-allowed'
-                    : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10 hover:shadow-lg hover:-translate-y-0.5'
-                }`}
+                      ? 'bg-white/5 border-white/5 opacity-50 cursor-not-allowed'
+                      : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10 hover:shadow-lg hover:-translate-y-0.5'
+                  }`}
               >
                 <input
                   type="radio"
@@ -82,11 +81,11 @@ export function DocumentPicker({
                   disabled={isProcessing}
                   className="sr-only"
                 />
-                
+
                 <div className="flex-shrink-0">
                   <PiFilePdfDuotone className={`w-6 h-6 transition-colors ${isSelected ? 'text-white' : 'text-gray-400 group-hover:text-white'}`} />
                 </div>
-                
+
                 <div className="flex-1 min-w-0 flex flex-col">
                   <span className={`text-sm font-medium truncate block w-full overflow-hidden text-ellipsis ${isSelected ? 'text-white' : 'text-white/80'}`} dir="auto" title={doc.filename}>
                     {doc.filename}

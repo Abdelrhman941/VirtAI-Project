@@ -1,7 +1,7 @@
 import { selectIsAuthenticated, useAuthStore } from '@/features/auth/store/authStore';
-import { isAxiosError } from 'axios';
 import { toast } from '@/shared/utils/toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as sessionService from '../services/sessionService';
 import { IMessage, ISession } from '../types';
@@ -66,7 +66,7 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
       const fetched = await sessionService.fetchSessionMessages(currentSessionId, { signal });
       const current = queryClient.getQueryData<IMessage[]>(['sessionMessages', currentSessionId]) || [];
       const optimistic = current.filter(m => m.status === 'pending');
-      
+
       const merged = [...fetched];
       optimistic.forEach(opt => {
         if (!merged.some(m => m.id === opt.id)) {
@@ -91,7 +91,7 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
       const customEvent = e as CustomEvent;
       const invalidId = customEvent.detail?.sessionId;
       if (invalidId && invalidId === currentSessionId) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+
         setCurrentSessionId(null);
         if (navigate) navigate('/classroom', { replace: true });
         queryClient.invalidateQueries({ queryKey: ['sessions'] });
@@ -110,8 +110,8 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
 
   const switchSession = useCallback(
     (id: string | null) => {
-       
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
+
       setCurrentSessionId(id);
       if (navigate) {
         navigate(id ? `/classroom/${id}` : `/classroom`);
@@ -137,7 +137,7 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
 
   const createNewSession = useCallback(async () => {
     const cachedSessions = queryClient.getQueryData<ISession[]>(['sessions']) || [];
-    
+
     // Find the latest empty draft session using actual data
     const emptySession = cachedSessions.find((s) => {
       if (typeof s.message_count === 'number') {
@@ -148,10 +148,10 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
       }
       return false;
     });
-    
+
     if (emptySession) {
-       
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
+
       setCurrentSessionId(emptySession.id);
       if (navigate) navigate(`/classroom/${emptySession.id}`, { replace: true });
       return emptySession.id;
@@ -161,8 +161,8 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
     isCreatingRef.current = true;
     try {
       const newSession = await createMutation.mutateAsync();
-       
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
+
       setCurrentSessionId(newSession.id);
       if (navigate) navigate(`/classroom/${newSession.id}`, { replace: true });
       return newSession.id;
@@ -212,8 +212,8 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
   const deleteSession = useCallback((sessionId: string) => {
     const wasActive = sessionId === currentSessionId;
     if (wasActive) {
-       
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
+
       setCurrentSessionId(null);
       if (navigate) navigate('/classroom', { replace: true });
     }
@@ -228,8 +228,8 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
     mutationFn: sessionService.deleteAllSessions,
     onSuccess: () => {
       queryClient.setQueryData(['sessions'], []);
-       
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
+
       setCurrentSessionId(null);
       if (navigate) navigate('/classroom', { replace: true });
       void createNewSession();
@@ -260,7 +260,7 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
     if (renameTimeoutsRef.current[sessionId]) {
       clearTimeout(renameTimeoutsRef.current[sessionId]);
     }
-    
+
     renameTimeoutsRef.current[sessionId] = setTimeout(() => {
       delete renameTimeoutsRef.current[sessionId];
 
@@ -301,7 +301,7 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
       return [...old, nextMessage];
     });
     if (added || reconciled) {
-      queryClient.setQueryData(['sessions'], (old: ISession[] = []) => 
+      queryClient.setQueryData(['sessions'], (old: ISession[] = []) =>
         old.map(s => {
           if (s.id !== id) return s;
           return {
@@ -339,7 +339,7 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
       }];
     });
     if (added) {
-      queryClient.setQueryData(['sessions'], (old: ISession[] = []) => 
+      queryClient.setQueryData(['sessions'], (old: ISession[] = []) =>
         old.map(s => s.id === id ? {
           ...s,
           message_count: (s.message_count || 0) + 1,
@@ -353,7 +353,7 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
   // We already defined titleGenAbortControllersRef above
 
   const generateTitleMutation = useMutation({
-    mutationFn: ({ id, text, signal }: { id: string; text: string; signal: AbortSignal }) => 
+    mutationFn: ({ id, text, signal }: { id: string; text: string; signal: AbortSignal }) =>
       sessionService.generateSmartTitle(id, text, { signal }),
     onSuccess: (generatedTitle, { id }) => {
       queryClient.setQueryData(['sessions'], (old: ISession[] = []) =>
@@ -393,8 +393,8 @@ export default function useSessionManager(urlSessionId?: string, navigate?: any)
 
     try {
       const newSession = await createMutation.mutateAsync();
-       
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
+
       setCurrentSessionId(newSession.id);
       if (navigate) navigate(`/classroom/${newSession.id}`, { replace: true });
 

@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
-import { PiMicrophone, PiPauseFill, PiWarningCircleFill, PiArrowCounterClockwise } from 'react-icons/pi';
-import { useRealtimeASR } from '../hooks/useRealtimeASR';
-import { WarningAlert } from '@/shared/components/ui/alert-variants';
 import { VoiceIndicator } from '@/shared/components/indicators/VoiceIndicator';
+import { WarningAlert } from '@/shared/components/ui/alert-variants';
 import { Button } from '@/shared/components/ui/button';
+import { useMemo } from 'react';
+import { PiArrowCounterClockwise, PiMicrophone, PiPauseFill, PiWarningCircleFill } from 'react-icons/pi';
+import { useRealtimeASR } from '../hooks/useRealtimeASR';
 
 /**
  * Props for VoiceModeButton component
@@ -139,7 +139,7 @@ export default function VoiceModeButton({
         type="button"
       >
         <ButtonIcon className="shrink-0 size-[22px] relative z-10" />
-          
+
         {/* Custom Hover Tooltip */}
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-800 text-gray-100 text-xs font-medium rounded-md shadow-lg opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-50 border border-gray-700">
           {error && canRetry ? 'Try again' : buttonTitle}

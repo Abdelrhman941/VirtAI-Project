@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import { FiPauseCircle, FiStopCircle } from 'react-icons/fi';
 import { StreamingMarkdownRenderer } from '@/shared/markdown';
+import { useEffect, useRef } from 'react';
+import { FiPauseCircle, FiStopCircle } from 'react-icons/fi';
 import type { PresentationState } from '../hooks/useExplainWS';
 import { SlideQuestionInput } from './SlideQuestionInput';
 

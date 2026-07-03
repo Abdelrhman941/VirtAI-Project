@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
-import { loadSetup } from '@/features/setup';
 import { getAvatarById } from '@/features/avatar/data/avatars';
+import { loadSetup } from '@/features/setup';
+import { useCallback, useState } from 'react';
 
 export interface SetupConfig {
   avatarId?: string;
@@ -63,7 +63,7 @@ export function getDefaultVoiceId() {
 
 export function useClassroomState() {
   const [setupConfig] = useState<SetupConfig>(loadClassroomSetup);
-  
+
   const activeAvatarId = setupConfig.avatarId || 'avatar1';
   const activeVoiceId = setupConfig.voiceId || getDefaultVoiceId();
   const movementEnabled = setupConfig.movementEnabled ?? true;
