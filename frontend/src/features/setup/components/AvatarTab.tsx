@@ -1,5 +1,5 @@
 import { avatarImages } from '@/features/avatar/data/avatars';
-import SelectionCheckmark from '@/shared/components/SelectionCheckmark';
+import SelectionCheckmark from '@/shared/components/indicators/SelectionCheckmark';
 import { motion } from 'framer-motion';
 import React, { memo } from 'react';
 

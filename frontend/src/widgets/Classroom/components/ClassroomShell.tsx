@@ -1,7 +1,7 @@
 import { ChatInput, MessageList } from '@/features/chat';
 import { DiagramContainer } from '@/features/diagrams/components/DiagramContainer';
 import { DocumentsDrawer } from '@/features/documents/components/DocumentsDrawer';
-import { useDocumentList } from '@/features/documents/useDocumentList';
+import { useDocumentList } from '@/features/documents/hooks/useDocumentList';
 import { ExplainSession } from '@/features/explain/components/ExplainSession';
 import { PresentationState, useExplainWS } from '@/features/explain/hooks/useExplainWS';
 import { SettingsDrawer, useSessionManager } from '@/features/session';
@@ -15,17 +15,17 @@ import { AssistantPanel } from './AssistantPanel';
 
 const AvatarCanvasWrapper = lazy(() => import('./AvatarCanvasWrapper').then(m => ({ default: m.AvatarCanvasWrapper })));
 import { AvatarTopBar } from './AvatarTopBar';
-import { SCROLL_STICK_THRESHOLD_PX } from './constants';
-import { useClassroomAudio } from './hooks/useClassroomAudio';
-import { useClassroomChat } from './hooks/useClassroomChat';
-import { useClassroomState } from './hooks/useClassroomState';
+import { SCROLL_STICK_THRESHOLD_PX } from '../constants';
+import { useClassroomAudio } from '../hooks/useClassroomAudio';
+import { useClassroomChat } from '../hooks/useClassroomChat';
+import { useClassroomState } from '../hooks/useClassroomState';
 import { useChatUIStore } from '@/features/chat/store/useChatUIStore';
 
 
 import { FiMonitor, FiShare2, FiEdit3, FiMessageSquare, FiFileText } from 'react-icons/fi';
-import { ErrorState } from '@/shared/components/UIStates';
+import { ErrorState } from '@/shared/components/feedback/UIStates';
 
-import { AudioVisemePacket, VisemeSchema, Viseme, PendingFirstMessage, WSPayloadSchema, WSPayload } from './types';
+import { AudioVisemePacket, VisemeSchema, Viseme, PendingFirstMessage, WSPayloadSchema, WSPayload } from '../types';
 
 export default function ClassroomShell() {
   const { sessionId: urlSessionId } = useParams();

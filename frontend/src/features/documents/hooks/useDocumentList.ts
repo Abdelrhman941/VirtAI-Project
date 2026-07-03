@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { UploadService } from '../../services/uploadService';
+import { UploadService } from '../services/uploadService';
 
 const globalUploadService = new UploadService();
 

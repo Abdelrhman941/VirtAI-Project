@@ -1,7 +1,7 @@
-import { cn } from '@/shared/utils/cn';
 import 'katex/dist/katex.min.css';
 import React, { memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { cn } from '@/shared/utils/cn';
 import { markdownComponents } from './components';
 import { REHYPE_PLUGINS } from './plugins/rehypePlugins';
 import { REMARK_PLUGINS } from './plugins/remarkPlugins';
@@ -41,8 +41,7 @@ MarkdownRendererImpl.displayName = 'MarkdownRendererImpl';
 /**
  * Memoized on `content` + `variant`. Re-renders on every streamed delta,
  * but child MDX elements are shallow-equal-stable, so React reconciles cheaply.
- * For per-delta amortization we split the string in StreamingMarkdownRenderer.
  */
 export const MarkdownRenderer = memo(MarkdownRendererImpl, (a, b) =>
-  a.content === b.content && a.variant === b.variant && a.className === b.className
+  a.content === b.content && a.variant === b.variant && a.className === b.className,
 );

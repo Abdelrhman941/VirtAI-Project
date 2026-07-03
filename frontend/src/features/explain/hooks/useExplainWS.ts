@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { WSManager } from '@/services/wsManager';
+import { WSManager } from '@/core/realtime/wsManager';
 import { ConnectionState } from '@/core/realtime/wsConstants';
 import { useAuthStore } from '@/features/auth/store/authStore';
 

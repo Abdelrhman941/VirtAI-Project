@@ -1,18 +1,15 @@
 import { useLogout } from '@/features/auth/hooks/useAuth';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { FiLogOut } from 'react-icons/fi';
 import {
   PiChatCircleTextFill,
-  PiChatsFill,
   PiPencilSimpleFill,
   PiPlusFill,
-  PiTrashSimpleFill,
+  PiTrashSimpleFill
 } from 'react-icons/pi';
 import { ISession } from '../types';
 import SessionHoverPreview from './SessionHoverPreview';
 
-import { formatRelativeTime, safeParseDate } from '@/shared/utils/date';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +27,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
+import { formatRelativeTime, safeParseDate } from '@/shared/utils/date';
 
 export interface SessionListProps {
   sessions: ISession[];
@@ -183,7 +181,7 @@ const SessionList = memo(function SessionList({
         const isNewChat = !s.title || s.title === 'New chat';
         const hasNoMessages =
           (s.messages && s.messages.length === 0) || s.message_count === 0 || (!s.messages && typeof s.message_count !== 'number');
-        
+
         // Ghost session filter
         if (isNewChat && hasNoMessages && s.id !== currentSessionId) {
           return false;
@@ -247,7 +245,7 @@ const SessionList = memo(function SessionList({
   }, []);
 
   return (
-    <div className="sidebar-inner" style={{ width: '100%', position: 'relative' }}>
+    <div className="sidebar-inner w-full relative">
 
       <div className="sidebar-chats-section">
         <div className="flex items-center justify-between w-full mb-4 px-4 pt-4 border-b border-white/5 pb-4">
@@ -255,9 +253,9 @@ const SessionList = memo(function SessionList({
             Discussion History
           </h2>
           <div className="flex items-center gap-2">
-            <button 
-              className="text-xs font-medium px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 transition-all flex items-center gap-1.5 text-white" 
-              onClick={onNewSession} 
+            <button
+              className="text-xs font-medium px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 transition-all flex items-center gap-1.5 text-white"
+              onClick={onNewSession}
               aria-label="Start new session"
             >
               <PiPlusFill size={14} /> New Session

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useDocumentList } from '@/features/documents/useDocumentList';
+import { useDocumentList } from '@/features/documents/hooks/useDocumentList';
 import { PiFilePdfDuotone } from 'react-icons/pi';
 import { FiCheck } from 'react-icons/fi';
-import { LoadingState, EmptyState } from '@/shared/components/UIStates';
+import { LoadingState, EmptyState } from '@/shared/components/feedback/UIStates';
 
 interface DocumentPickerProps {
   sessionId: string | null;

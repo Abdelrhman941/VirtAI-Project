@@ -1,5 +1,5 @@
 import { useGoogleCallback } from '@/features/auth/hooks/useAuth';
-import PageLoader from '@/shared/components/PageLoader';
+import PageLoader from '@/shared/components/feedback/PageLoader';
 import { useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useSearchParams } from 'react-router-dom';

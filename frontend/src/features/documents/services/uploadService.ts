@@ -1,5 +1,5 @@
-import { documentApi } from '@/features/documents/documentApi';
-import wsManager from '@/services/wsManager';
+import { documentApi } from '@/features/documents/api/documentApi';
+import wsManager from '@/core/realtime/wsManager';
 import { Document } from '@/features/documents/types';
 import { isAxiosError } from 'axios';
 

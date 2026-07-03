@@ -1,11 +1,11 @@
-import { ConnectionState, WS_CLOSE_NORMAL, WS_CLOSE_SESSION_INVALID, WS_CLOSE_TOKEN_EXPIRED, WS_CLOSE_UNAUTHORIZED, RECONNECT_PAUSE_MESSAGE } from '@/core/realtime/wsConstants';
+import { EventRouterPayload, WSOutgoingMessage } from '@/core/realtime/types';
+import { ConnectionState, RECONNECT_PAUSE_MESSAGE, WS_CLOSE_NORMAL, WS_CLOSE_SESSION_INVALID, WS_CLOSE_TOKEN_EXPIRED, WS_CLOSE_UNAUTHORIZED } from '@/core/realtime/wsConstants';
 import { createEventRouter, EventRouter } from '@/core/realtime/wsEventRouter';
+import { createReconnectPolicy, ReconnectPolicy } from '@/core/realtime/wsReconnectPolicy';
 import { buildResumeUrl, createSessionResumeState, flushAckBatch, flushMessageQueue, pushToMessageQueue, resetSessionState, SessionResumeState } from '@/core/realtime/wsSessionResume';
-import { WSOutgoingMessage, EventRouterPayload } from '@/core/realtime/types';
-import { useAuthStore } from '@/features/auth/store/authStore';
 import { clearBrowserAuthState } from '@/features/auth/services/authStateCleanup';
 import { refreshAccessTokenSingleFlight } from '@/features/auth/services/refreshService';
-import { createReconnectPolicy, ReconnectPolicy } from '@/core/realtime/wsReconnectPolicy';
+import { useAuthStore } from '@/features/auth/store/authStore';
 
 export type StatusCallback = (state: ConnectionState, error: string | null, retryCount?: number, nextRetryIn?: number | null) => void;
 
@@ -14,19 +14,19 @@ class WSManager {
   private url: string | null = null;
   private connectionState: ConnectionState = ConnectionState.DISCONNECTED;
   private reconnectError: string | null = null;
-  
+
   private eventRouter: EventRouter;
   private sessionState: SessionResumeState;
   private reconnectPolicy: ReconnectPolicy;
-  
+
   private statusListeners: Set<StatusCallback> = new Set();
-  
+
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private ackTimer: ReturnType<typeof setTimeout> | null = null;
   private isIntentionalClose: boolean = false;
   private isConnecting: boolean = false;
   private authRefreshAttempts: number = 0;
-  
+
   private messageUnsubs: Map<string, Map<(data: EventRouterPayload) => void, () => void>> = new Map();
 
   private pingIntervalTimer: ReturnType<typeof setInterval> | null = null;
@@ -61,7 +61,7 @@ class WSManager {
       });
     }
   }
-  
+
   public onStatusChange(callback: StatusCallback) {
     this.statusListeners.add(callback);
     callback(this.connectionState, this.reconnectError);
@@ -69,13 +69,13 @@ class WSManager {
       this.statusListeners.delete(callback);
     };
   }
-  
+
   private updateStatus(state: ConnectionState, error: string | null = null, nextRetryIn: number | null = null) {
     this.connectionState = state;
     this.reconnectError = error;
     this.statusListeners.forEach(cb => cb(state, error, this.reconnectPolicy.attempt, nextRetryIn));
   }
-  
+
   public getStatus() {
     return {
       connectionState: this.connectionState,
@@ -87,7 +87,7 @@ class WSManager {
 
   public connect(url: string | null = this.url, tokenOverride: string | null = null) {
     if (!url) return;
-    
+
     // If connecting to a new URL (e.g. new session), disconnect old and reset state
     const isUrlUpgrade = () => {
       if (!this.url || !url) return false;
@@ -125,9 +125,9 @@ class WSManager {
       // Reset session state ONLY (not auth state)
       resetSessionState(this.sessionState, this.useLocalStorage);
     }
-    
+
     this.url = url;
-    
+
     // Don't connect if already connecting or open
     if (this.ws && this.ws.readyState === WebSocket.CONNECTING) return;
     if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
@@ -152,19 +152,19 @@ class WSManager {
 
     if (this.ws && this.ws.readyState === WebSocket.CONNECTING) return;
     if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
-    
+
     if (this.isConnecting) return;
     this.isConnecting = true;
-    
+
     this.updateStatus(ConnectionState.RECONNECTING);
     this.isIntentionalClose = false;
-    
+
     try {
       const socketUrl = buildResumeUrl(url, this.sessionState) || url;
       const socket = new WebSocket(socketUrl, ["access_token", token]);
       socket.binaryType = 'arraybuffer';
       this.ws = socket;
-      
+
       socket.onopen = () => {
         if (this.ws !== socket) return;
 
@@ -181,14 +181,14 @@ class WSManager {
 
         this.isConnecting = false;
         this.updateStatus(ConnectionState.CONNECTING);
-        
+
         this.reconnectPolicy.reset();
         this.authRefreshAttempts = 0;
 
         // ONLY the auth message - session_id already in URL
         socket.send(JSON.stringify({ type: 'auth', token: currentToken }));
       };
-      
+
       socket.onmessage = (event: MessageEvent) => {
         if (this.ws !== socket) return;
         this.clearPongTimeout();
@@ -221,23 +221,23 @@ class WSManager {
           }
         });
       };
-      
+
       socket.onerror = () => {
         if (this.isIntentionalClose) return;
         if (import.meta.env.DEV) console.warn('[WS] Backend offline/error');
       };
-      
+
       socket.onclose = (event: CloseEvent) => {
         if (this.ws !== socket) return;
         this.isConnecting = false;
         this.clearHeartbeat();
         this.ws = null;
-        
+
         if (this.isIntentionalClose) {
           this.updateStatus(ConnectionState.DISCONNECTED);
           return;
         }
-        
+
         if (event.code === WS_CLOSE_TOKEN_EXPIRED) {
           this.clearReconnectTimer();
           if (this.authRefreshAttempts >= 1) {
@@ -248,7 +248,7 @@ class WSManager {
           }
           this.authRefreshAttempts++;
           this.updateStatus(ConnectionState.RECONNECTING);
-          
+
           refreshAccessTokenSingleFlight()
             .then((data) => {
               if (this.isIntentionalClose) return;
@@ -262,24 +262,24 @@ class WSManager {
             });
           return;
         }
-        
+
         if (event.code === WS_CLOSE_UNAUTHORIZED) {
           this.clearReconnectTimer();
           this.updateStatus(ConnectionState.DISCONNECTED, 'Session authorization failed. Please log in again.');
           return;
         }
-        
+
         if (event.code === WS_CLOSE_SESSION_INVALID) {
           resetSessionState(this.sessionState, this.useLocalStorage);
         }
-        
+
         if (event.code === WS_CLOSE_NORMAL || event.code === 1001 || event.code === 1012) {
           this.clearReconnectTimer();
           this.reconnectPolicy.reset();
           this.updateStatus(ConnectionState.DISCONNECTED, event.code === 1012 ? 'Session connected in another tab.' : null);
           return;
         }
-        
+
         this.scheduleReconnect(`Socket closed with code ${event.code}`);
       };
     } catch (err: unknown) {
@@ -319,7 +319,7 @@ class WSManager {
       this.reconnectPolicy.reset();
     }
     this.clearTimers();
-    
+
     if (this.ws) {
       this.ws.onopen = null;
       this.ws.onmessage = null;
@@ -328,35 +328,35 @@ class WSManager {
       this.ws.close(WS_CLOSE_NORMAL);
       this.ws = null;
     }
-    
+
     this.updateStatus(ConnectionState.DISCONNECTED);
     if (intentional) {
       resetSessionState(this.sessionState, this.useLocalStorage);
     }
     this.authRefreshAttempts = 0;
   }
-  
+
   public reconnectTo(url: string) {
     this.isIntentionalClose = false;
     this.isConnecting = false;
     this.reconnectPolicy.reset();
     this.connect(url);
   }
-  
+
   public reconnect() {
     if (this.connectionState === ConnectionState.RECONNECTING || this.connectionState === ConnectionState.CONNECTING) return;
     this.updateStatus(ConnectionState.RECONNECTING);
     this.reconnectPolicy.reset();
     this.authRefreshAttempts = 0;
     this.clearReconnectTimer();
-    
+
     this.disconnect(false);
     this.connect();
   }
 
   public send(message: WSOutgoingMessage | ArrayBuffer | Blob | ArrayBufferView) {
     const isBinary = message instanceof ArrayBuffer || message instanceof Blob || ArrayBuffer.isView(message);
-    
+
     if (this.ws && this.ws.readyState === WebSocket.OPEN && this.connectionState === ConnectionState.CONNECTED) {
       try {
         this.ws.send(isBinary ? message as any : JSON.stringify(message));
@@ -367,18 +367,18 @@ class WSManager {
       pushToMessageQueue(this.sessionState, message as WSOutgoingMessage);
     }
   }
-  
+
   public on(type: string, handler: (data: EventRouterPayload) => void) {
     const unsub = this.eventRouter.onMessage(type, handler);
-    
+
     if (!this.messageUnsubs.has(type)) {
       this.messageUnsubs.set(type, new Map());
     }
     this.messageUnsubs.get(type)!.set(handler, unsub);
-    
+
     return () => this.off(type, handler);
   }
-  
+
   public off(type: string, handler: (data: EventRouterPayload) => void) {
     const typeMap = this.messageUnsubs.get(type);
     if (typeMap) {
@@ -430,7 +430,7 @@ class WSManager {
     this.pingIntervalTimer = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       this.send({ type: 'ping' } as any);
-      
+
       this.clearPongTimeout();
       this.pongTimeoutTimer = setTimeout(() => {
         if (import.meta.env.DEV) console.error('[WS] Pong timeout, disconnecting');
@@ -463,14 +463,14 @@ class WSManager {
       this.pauseReconnect();
       return;
     }
-    
+
     const rawDelay = this.reconnectPolicy.nextDelay();
     const jitterFactor = 0.85 + Math.random() * 0.3;
     const delay = Math.max(1000, Math.floor(rawDelay * jitterFactor));
-    
+
     this.updateStatus(ConnectionState.RECONNECTING, undefined, delay);
     this.clearReconnectTimer();
-    
+
     this.reconnectTimeout = setTimeout(() => {
       this.reconnectTimeout = null;
       this.connect();

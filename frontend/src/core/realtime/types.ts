@@ -1,10 +1,9 @@
-/**
- * Shared WebSocket type definitions.
- * All realtime-layer files import from here — no `any` anywhere.
- */
+/*
+  * Shared WebSocket type definitions.
+  * All realtime-layer files import from here — no `any` anywhere.
+*/
 
 // ─── Outgoing (client → server) ──────────────────────────────────────────────
-
 export interface WSOutgoingMessage {
   type: string;
   data?: unknown;
@@ -20,7 +19,6 @@ export interface WSAckPayload extends WSOutgoingMessage {
 }
 
 // ─── Incoming (server → client) ──────────────────────────────────────────────
-
 export interface WSIncomingMessage {
   type: string;
   seq_id?: number;
@@ -38,7 +36,6 @@ export interface WSIncomingMessageData {
 export type WSMessage = WSIncomingMessage | WSOutgoingMessage;
 
 // ─── Session resume ───────────────────────────────────────────────────────────
-
 export interface SessionResumePayload {
   resume: 'true';
   session_id: string;
@@ -46,7 +43,6 @@ export interface SessionResumePayload {
 }
 
 // ─── Event router ─────────────────────────────────────────────────────────────
-
 /** The payload delivered to registered `onMessage` handlers. */
 export type EventRouterPayload = WSIncomingMessageData;
 

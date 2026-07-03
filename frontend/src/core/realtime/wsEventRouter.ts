@@ -80,7 +80,7 @@ export function createEventRouter(): EventRouter {
 
         if (typeHandlers && typeHandlers.size > 0) {
           const payloadData: EventRouterPayload = (message.data !== undefined && message.data !== null)
-            ? message.data 
+            ? message.data
             : ('data' in message && message.data === null ? {} : message) as unknown as EventRouterPayload;
           typeHandlers.forEach((handler) => handler(payloadData));
         } else if (import.meta.env.DEV && !ignoredTypes.includes(message.type)) {

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { PiMicrophone, PiPauseFill, PiWarningCircleFill, PiArrowCounterClockwise } from 'react-icons/pi';
 import { useRealtimeASR } from '../hooks/useRealtimeASR';
 import { WarningAlert } from '@/shared/components/ui/alert-variants';
-import { VoiceIndicator } from '@/shared/components/VoiceIndicator';
+import { VoiceIndicator } from '@/shared/components/indicators/VoiceIndicator';
 import { Button } from '@/shared/components/ui/button';
 
 /**

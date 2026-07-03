@@ -3,8 +3,8 @@ import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei';
 import { useGraph } from '@react-three/fiber';
 import { SkeletonUtils } from 'three-stdlib';
-import { useAvatarAnimations } from './useAvatarAnimations';
-import { useAvatarLipSync } from './useAvatarLipSync';
+import { useAvatarAnimations } from '@/features/avatar/hooks/useAvatarAnimations';
+import { useAvatarLipSync } from '@/features/avatar/hooks/useAvatarLipSync';
 import { Viseme } from '@/features/voice/hooks/useGaplessAudioQueue';
 import { notify } from '@/shared/utils/notify';
 

@@ -1,6 +1,6 @@
 import useAuthBootstrap from '@/app/bootstrap/useAuthBootstrap';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import PageLoader from '@/shared/components/PageLoader';
+import PageLoader from '@/shared/components/feedback/PageLoader';
 
 export default function AuthProvider({ children }: React.PropsWithChildren) {
   useAuthBootstrap();

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useDocumentList } from '@/features/documents/useDocumentList';
+import { useDocumentList } from '@/features/documents/hooks/useDocumentList';
 import { formatDateOnly } from '@/shared/utils/date';
 
 interface LectureMultiSelectProps {

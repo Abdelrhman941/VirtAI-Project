@@ -1,5 +1,5 @@
 import api from '@/core/api/apiClient';
-import { Document, UploadResponse } from './types';
+import { Document, UploadResponse } from '../types';
 
 export const documentApi = {
   /**

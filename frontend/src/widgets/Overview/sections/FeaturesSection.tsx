@@ -1,6 +1,6 @@
 import features from '@/features/overview/data/features';
 import { motion } from 'framer-motion';
-import SectionHeader from '@/shared/components/SectionHeader';
+import SectionHeader from '@/shared/components/layout/SectionHeader';
 
 export default function FeaturesSection() {
   return (

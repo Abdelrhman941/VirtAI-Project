@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { FiFileText, FiUploadCloud, FiX } from 'react-icons/fi';
 import { DangerAlert } from '@/shared/components/ui/alert-variants';
 import { notify } from '@/shared/utils/notify';
-import { Document } from '../types';
+import { Document } from '@/features/documents/types';
 
 const MAX_FILE_SIZE_MB = 25;
 const ACCEPTED_EXTENSIONS = new Set(['pdf', 'txt', 'md']);

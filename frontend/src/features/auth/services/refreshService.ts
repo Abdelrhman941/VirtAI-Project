@@ -8,13 +8,11 @@ import {
 
 let refreshPromise = null;
 
-// Removed duplicated CSRF token logic
-
-/**
- * Single-flight refresh token queue.
- * Ensures concurrent requests or double-mounts merge into a single `/auth/refresh` API request
- * to prevent revoking the refresh token for parallel calls.
- */
+/*
+  * Single-flight refresh token queue.
+  * Ensures concurrent requests or double-mounts merge into a single `/auth/refresh` API request
+  * to prevent revoking the refresh token for parallel calls.
+*/
 export function refreshAccessTokenSingleFlight() {
   if (refreshPromise) {
     return refreshPromise;

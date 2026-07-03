@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useClassroomAudio } from '@/widgets/Classroom/hooks/useClassroomAudio';
-import { AvatarCanvasWrapper } from '@/widgets/Classroom/AvatarCanvasWrapper';
+import { AvatarCanvasWrapper } from '@/widgets/Classroom/components/AvatarCanvasWrapper';
 import { useLipSyncConfigStore, presets, LipSyncParams } from '@/features/avatar/store/useLipSyncConfigStore';
 
 

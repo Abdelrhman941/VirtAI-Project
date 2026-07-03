@@ -22,7 +22,7 @@ export function buildResumeUrl(url: string | null, state: SessionResumeState): s
   try {
     const parsed = new URL(url);
     const requestedSessionId = parsed.searchParams.get('session_id');
-    
+
     // If the URL explicitly requests a different session, DO NOT resume the old one
     if (requestedSessionId && requestedSessionId !== state.sessionId) {
       resetSessionState(state);

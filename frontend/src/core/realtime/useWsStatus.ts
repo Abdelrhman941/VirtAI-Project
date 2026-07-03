@@ -1,6 +1,6 @@
+import wsManager from '@/core/realtime/wsManager';
 import { useEffect, useState } from 'react';
 import { ConnectionState } from './wsConstants';
-import wsManager from '@/services/wsManager';
 
 export interface WsStatus {
   status: ConnectionState;

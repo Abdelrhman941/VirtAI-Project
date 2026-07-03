@@ -1,49 +1,47 @@
-# **VirtAI**
+# 📦 VirtAI Frontend Refactor — Delivery Bundle
 
-Welcome to VirtAI! This is the central repository for the VirtAI project. We utilize a strict Clean Architecture pattern to ensure maintainability, testability, and stability across our real-time generation features.
+هذا الأرشيف يحتوي على **الملفات المعدّلة فقط** حسب طلبك. اللي مالوش تعديل
+مش موجود في الأرشيف — سيبه في مشروعك زي ما هو.
 
-<div style="width: 100%; height: 15px; background: linear-gradient(to right, rgb(235, 238, 212), rgb(235, 238, 212));"></div>
+## 🎯 المحتويات
 
-## **📚 Developer Documentation Network**
+| القسم | إيه فيه |
+|-------|---------|
+| `frontend/src/…` | نسخة نهائية من الملفات اللي فيها تعديل فعلي |
+| `MIGRATION.md`   | **دليل يدوي** بالخطوات اللي محتاج تعملها بنفسك (git mv, grep-replace, patches جزئية) |
+| `README.md`      | الملف ده |
 
-To understand how VirtAI is built and operated, please refer to our world-class documentation network:
+## 📋 اقرأ أولاً
 
-- **[Visual Architecture](backend/docs/ARCHITECTURE.md)**: Explore the Database ERD, WebSocket Flows, and RAG Task pipelines via Mermaid diagrams.
-- **[The Developer Code Tour](backend/docs/CODE_TOUR.md)**: A narrative guide to onboarding, explaining our Clean Architecture layers and request flows.
-- **[The DevOps Runbook](backend/docs/RUNBOOK.md)**: Operational guides, Environment Variables, Alembic DB Commands, and Troubleshooting.
-- **[Historical Refactor Decisions](backend/docs/refactor/README.md)**: Architecture Decision Records (ADRs) that guided our development.
+1. **`MIGRATION.md`** ← ابدأ منه. فيه كل الأوامر بالتفصيل.
+2. **الملفات في `frontend/src/`** ← انسخها فوق مشروعك.
+3. **الـpatch files** (`*.patch.md`) ← الملفات دي فيها diff صغير عشان
+   ما تنسخش ملفات كبيرة كاملة لتغيير سطر واحد.
 
-<div style="width: 100%; height: 15px; background: linear-gradient(to right, rgb(235, 238, 212), rgb(235, 238, 212));"></div>
+## ⚠️ ما مش هيتعمل تلقائياً
 
-## **🚀 Quickstart Guide**
+الحاجات دي محتاجة إيدك أنت:
+- **git mv** لكل عمليات النقل (السكريبت جاهز في MIGRATION.md §2).
+- **grep-replace** بالجملة لتحديث الـimports (سكريبت في §3).
+- الـinline-style patches للملفات الكبيرة (تفاصيل في §4).
+- تنظيف التعليقات (grep queries في §6).
 
-### 1. Prerequisites
-- Docker & Docker Compose
-- Python 3.11+
-- PostgreSQL & Redis (if running locally without Docker)
+## 🧪 sanity check قبل الـcommit
 
-### 2. Setup
-Clone the repository and set up your environment variables:
 ```bash
-cp .env.example .env
-# Edit .env with your specific OPENAI_API_KEY and connection strings
+pnpm tsc --noEmit && pnpm lint && pnpm build && pnpm test -- --run
 ```
 
-### 3. Running the Application
-Using Docker Compose is the easiest way to get started:
-```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-```
-This will spin up the database, Redis, the backend FastAPI server, and the frontend.
+لو الأربعة عدّوا → آمن تعمل commit + PR.
 
-### 4. Running Tests
-To ensure the system is healthy and everything is working, run the test suite using our provided script:
-```bash
-./backend/scripts/run_tests.sh
-```
-*Note: You may safely ignore `locust` module errors during standard test runs, as they are designated for specific load testing environments.*
+## 🌳 شجرة الـgit
 
-To run the tests, you need to install locust. You can do this by running the following command:
-```bash
-pip install locust
-```
+**زي ما طلبت — سيبها زي ما هي.** كل التغييرات دي تدخل تحت الـbatches الموجودة
+في `REFACTOR_TODO.md`:
+
+- Batch **12.8, 12.9** → إزالة `Classroom.css` + `ExplainSession.css`
+- Batch **13.2** → تحويل الـstatic inline styles
+- Batch **15.5 (جديد)** → إعادة تنظيم `shared/components/` والـmoves
+- Batch **16** → verification نهائي
+
+ما تعملش rebase ولا squash قبل الـmerge — احتفظ بالـhistory.

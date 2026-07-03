@@ -1,4 +1,4 @@
-import PageLoader from '@/shared/components/PageLoader';
+import PageLoader from '@/shared/components/feedback/PageLoader';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';

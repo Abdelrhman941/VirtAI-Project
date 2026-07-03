@@ -1,8 +1,7 @@
+import defaultWsManager, { WSManager } from '@/core/realtime/wsManager';
 import { useCallback, useEffect, useState } from 'react';
-import type { WSOutgoingMessage, EventRouterPayload } from './types';
-import defaultWsManager, { WSManager } from '@/services/wsManager';
+import type { EventRouterPayload, WSOutgoingMessage } from './types';
 import { ConnectionState } from './wsConstants';
-import { useAuthStore } from '@/features/auth/store/authStore';
 
 export { ConnectionState } from './wsConstants';
 
@@ -10,7 +9,6 @@ export default function useWSClient(url: string | null, customManager?: WSManage
   const manager = customManager || defaultWsManager;
   const [connectionState, setConnectionState] = useState<ConnectionState>(manager.getStatus().connectionState);
   const [reconnectError, setReconnectError] = useState<string | null>(manager.getStatus().reconnectError);
-  const accessToken = useAuthStore((state) => state.accessToken);
 
   useEffect(() => {
     const unsubscribe = manager.onStatusChange((state, error) => {
@@ -29,8 +27,6 @@ export default function useWSClient(url: string | null, customManager?: WSManage
       };
     }
   }, [url, manager]);
-
-
 
   const send = useCallback((message: WSOutgoingMessage) => {
     manager.send(message);

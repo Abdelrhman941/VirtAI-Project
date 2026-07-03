@@ -1,4 +1,4 @@
-import SlideDrawer from '../../../shared/components/SlideDrawer';
+import SlideDrawer from '@/shared/components/layout/SlideDrawer';
 import { DocumentsPanel } from './DocumentsPanel';
 
 interface DocumentsDrawerProps {

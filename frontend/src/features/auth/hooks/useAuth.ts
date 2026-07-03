@@ -6,9 +6,9 @@ import {
   signupUser,
 } from '@/features/auth/services/authApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { notify } from '@/shared/utils/notify';
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { notify } from '@/shared/utils/notify';
 
 export function useLogin() {
   const [isLoading, setIsLoading] = useState(false);

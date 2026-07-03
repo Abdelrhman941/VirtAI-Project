@@ -3,7 +3,7 @@ import { useMermaidRender } from '../hooks/useMermaidRender';
 import { DiagramData } from '../api/diagramApi';
 import { FiDownload, FiX, FiZoomIn, FiZoomOut, FiMaximize } from 'react-icons/fi';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { LoadingState, ErrorState } from '@/shared/components/UIStates';
+import { LoadingState, ErrorState } from '@/shared/components/feedback/UIStates';
 
 interface DiagramViewerProps {
   diagramData: DiagramData | null;

@@ -1,5 +1,5 @@
 import { useAuthStore } from '@/features/auth/store/authStore';
-import PageLoader from '@/shared/components/PageLoader';
+import PageLoader from '@/shared/components/feedback/PageLoader';
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';

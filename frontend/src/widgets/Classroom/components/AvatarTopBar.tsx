@@ -3,8 +3,8 @@ import { PiWifiSlashFill, PiList } from 'react-icons/pi';
 import { FiMonitor, FiShare2, FiEdit3, FiUser, FiFileText } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { ConnectionState } from '@/core/realtime/useWSClient';
-import { ConnectionBadge } from '@/shared/components/ConnectionBadge';
-import { ToolbarButton } from '@/shared/components/ToolbarButton';
+import { ConnectionBadge } from '@/shared/components/feedback/ConnectionBadge';
+import { ToolbarButton } from '@/shared/components/controls/ToolbarButton';
 
 interface AvatarTopBarProps {
   avatarName: string;

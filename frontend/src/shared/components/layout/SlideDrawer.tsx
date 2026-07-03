@@ -48,7 +48,6 @@ export default function SlideDrawer({
   const descId = useId();
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Track mobile breakpoint
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 1023px)');
     const handleChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
@@ -56,7 +55,6 @@ export default function SlideDrawer({
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  // Resizing logic (desktop only)
   useEffect(() => {
     if (!isResizing) return;
 
@@ -67,7 +65,6 @@ export default function SlideDrawer({
       if (newWidth > dynamicMaxWidth) newWidth = dynamicMaxWidth;
       onWidthChange?.(newWidth);
     };
-
     const handleMouseUp = () => setIsResizing(false);
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -81,9 +78,9 @@ export default function SlideDrawer({
     };
   }, [isResizing, minWidth, maxWidth, onWidthChange]);
 
-  // Focus trap (Tab cycling) — Radix Dialog handles ESC and focus-lock natively,
-  // but we preserve the custom Tab handler for backward-compat with any inner
-  // content that bypasses Radix's focus scope.
+  // Focus trap (Tab cycling). Radix Dialog already handles ESC + focus-lock,
+  // but this custom handler is preserved for inner content that bypasses
+  // Radix's focus scope.
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key !== 'Tab') return;
     const container = contentRef.current;
@@ -108,80 +105,46 @@ export default function SlideDrawer({
   return (
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <SheetContent
-        // Radix Dialog handles focus-trap, ESC, scroll-lock, and portal rendering.
-        // We override the default Sheet styles and preserve the existing class hooks
-        // so that feature-level CSS (documents-drawer-content, sidebar-minimal) keeps working.
         side={isMobile ? 'bottom' : 'right'}
         showCloseButton={false}
+        // zIndex + width are DYNAMIC → stay inline (documented exception).
         style={{ zIndex, ...((!isMobile && width) ? { width } : {}) }}
         className={cn(
-          // Reset shadcn visual defaults — our feature CSS provides all layout/visual styles.
-          // We do NOT reset inset/position — the `side` prop handles those correctly.
           '!bg-transparent !border-0 !shadow-none !gap-0 !p-0 [&]:w-auto [&]:max-w-none',
-          // Preserve the existing drawer-content class hook so feature CSS (documents-drawer-content,
-          // sidebar-minimal) continues to apply its full layout and visual styles
           `drawer-content ${contentClassName}`,
           isResizing ? 'resizing' : '',
-          className
+          className,
         )}
         aria-labelledby={title ? `${titleId}-title` : undefined}
         aria-describedby={description ? `${descId}-desc` : undefined}
         onKeyDown={handleKeyDown}
       >
-        <div ref={contentRef} style={{ display: 'contents' }}>
-        {/* Accessible title and description — visually hidden, preserved for AT */}
-        {title && (
-          <SheetTitle id={`${titleId}-title`} className="sr-only">
-            {title}
-          </SheetTitle>
-        )}
-        {description && (
-          <SheetDescription id={`${descId}-desc`} className="sr-only">
-            {description}
-          </SheetDescription>
-        )}
+        <div ref={contentRef} className="contents">
+          {title && (
+            <SheetTitle id={`${titleId}-title`} className="sr-only">{title}</SheetTitle>
+          )}
+          {description && (
+            <SheetDescription id={`${descId}-desc`} className="sr-only">{description}</SheetDescription>
+          )}
 
-        {/* Resizable handle (desktop only) */}
-        {!isMobile && resizable && (
-          <div
-            className="drawer-resize-handle"
-            onMouseDown={() => setIsResizing(true)}
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: '6px',
-              cursor: 'col-resize',
-              zIndex: 10,
-              backgroundColor: isResizing ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-              transition: 'background-color 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              if (!isResizing) (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-            }}
-            onMouseLeave={(e) => {
-              if (!isResizing) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
-            }}
-          />
-        )}
+          {/* Resize handle — desktop-only. bg color still inline because it depends on live `isResizing` state. */}
+          {!isMobile && resizable && (
+            <div
+              className="drawer-resize-handle absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 transition-colors duration-200 hover:bg-white/5"
+              onMouseDown={() => setIsResizing(true)}
+              style={{ backgroundColor: isResizing ? 'rgba(255, 255, 255, 0.1)' : undefined }}
+            />
+          )}
 
-        {/* Mobile drag handle pill */}
-        {isMobile && enableDrag && (
-          <div
-            className="drawer-drag-handle"
-            style={{
-              width: '40px',
-              height: '5px',
-              background: 'var(--border-color)',
-              margin: '12px auto 0',
-              borderRadius: '4px',
-              flexShrink: 0,
-            }}
-          />
-        )}
+          {/* Mobile drag handle pill — fully static → Tailwind. */}
+          {isMobile && enableDrag && (
+            <div
+              className="drawer-drag-handle w-10 h-[5px] mx-auto mt-3 rounded flex-shrink-0"
+              style={{ background: 'var(--border-color)' }}
+            />
+          )}
 
-        {children ?? null}
+          {children ?? null}
         </div>
       </SheetContent>
     </Sheet>

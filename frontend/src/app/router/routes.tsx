@@ -1,8 +1,8 @@
 import { Component, lazy, ReactNode } from 'react';
 import { Route, Routes } from 'react-router-dom';
+import AppLayout from '../layouts/AppLayout';
 import RequireAuth from './guards/RequireAuth';
 import RequireSetupComplete from './guards/RequireSetupComplete';
-import AppLayout from '../layouts/AppLayout';
 
 const Overview = lazy(() => import('@/pages/Overview'));
 const Classroom = lazy(() => import('@/pages/Classroom'));
@@ -12,7 +12,7 @@ const AuthPage = lazy(() => import('@/pages/Auth'));
 const AuthCallbackHandler = lazy(() => import('@/pages/AuthCallback'));
 
 const Help = lazy(() => import('@/pages/Help'));
-const AvatarPlayground = lazy(() => import('@/pages/AvatarPlayground'));
+const AvatarPlayground = lazy(() => import("@/pages/AvatarPlayground/index") as any);
 
 interface RouteErrorBoundaryProps {
   children: ReactNode;

@@ -1,6 +1,6 @@
 /**
- * Pure functions for authentication routing and bootstrap decisions.
- */
+  * Pure functions for authentication routing and bootstrap decisions.
+*/
 
 export function shouldSkipAuthRefresh(pathname: string): boolean {
   return pathname.startsWith('/auth/callback');

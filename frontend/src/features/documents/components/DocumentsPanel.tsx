@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FiCheckCircle, FiClock, FiFileText, FiLoader, FiTrash2, FiXCircle } from 'react-icons/fi';
-import { useDocumentList } from '../useDocumentList';
+import { useDocumentList } from '@/features/documents/hooks/useDocumentList';
 import { DangerAlert } from '@/shared/components/ui/alert-variants';
 import { UploadTab } from './UploadTab';
 import { formatDateOnly } from '@/shared/utils/date';

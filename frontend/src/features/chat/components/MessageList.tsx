@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { PiLightbulbFilament } from 'react-icons/pi';
 import MessageBubble from './MessageBubble';
-import { ChatBubble, MessageStatus } from '../../../shared/components/ChatPrimitives';
+import { ChatBubble, MessageStatus } from '@/shared/components/chat/ChatPrimitives';
 import { IMessage } from '../../session/types';
 import { useChatUIStore } from '../store/useChatUIStore';
 

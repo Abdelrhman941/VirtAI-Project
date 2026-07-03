@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMotionValueEvent, useMotionValue } from 'framer-motion';
 import steps from '@/features/overview/data/howItWorks';
-import SectionHeader from '@/shared/components/SectionHeader';
+import SectionHeader from '@/shared/components/layout/SectionHeader';
 import LeftPanel from './LeftPanel';
 import RightPipeline from './RightPipeline';
 import { useScrollPipeline } from './useScrollPipeline';

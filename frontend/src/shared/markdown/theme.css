@@ -1,15 +1,55 @@
-/* KaTeX overrides */
-.katex {
-  font-size: 1.02em;
-  color: hsl(var(--foreground));
-}
+/* ============================================================================
+ * VirtAI · shared/markdown/theme.css
+ * ----------------------------------------------------------------------------
+ * Imported ONLY from MarkdownRenderer.tsx.
+ * Overrides for @tailwindcss/typography (`prose` classes), KaTeX and Mermaid
+ * so streamed markdown looks native inside the app shell.
+ *
+ * Slide-mode Explain overrides used to live in `ExplainSession.css`; they are
+ * consolidated here under `.slide-mode .prose` and the standalone CSS file
+ * was deleted.
+ * ============================================================================ */
 
-.katex-display {
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 0.75rem 1rem;
-  margin: 1.25rem 0;
-  background: hsl(var(--foreground) / 0.03);
-  border: 1px solid hsl(var(--border) / 0.1);
-  border-radius: var(--radius);
+@layer components {
+
+  /* ------- Prose base tweaks ------------------------------------------- */
+  .prose {
+    --tw-prose-body:        #f5f1ece6;
+    --tw-prose-headings:    #f5f1ec;
+    --tw-prose-links:       #d4af37;
+    --tw-prose-bold:        #f5f1ec;
+    --tw-prose-code:        #B4AB8B;
+    --tw-prose-quotes:      rgba(245, 241, 236, 0.7);
+    --tw-prose-quote-borders: rgba(212, 175, 55, 0.4);
+    --tw-prose-hr:          rgba(245, 241, 236, 0.1);
+    --tw-prose-pre-bg:      #262626;
+    --tw-prose-pre-code:    #f5f1ec;
+  }
+
+  .prose :where(code):not(:where([class~="not-prose"] *))::before,
+  .prose :where(code):not(:where([class~="not-prose"] *))::after {
+    content: none;
+  }
+
+  .prose pre {
+    border: 1px solid rgba(245, 241, 236, 0.08);
+    border-radius: 0.75rem;
+  }
+
+  /* ------- KaTeX overrides --------------------------------------------- */
+  .katex-display > .katex {
+    color: var(--color-offwhite);
+  }
+
+  /* ------- Mermaid ----------------------------------------------------- */
+  .mermaid svg { max-width: 100%; height: auto; }
+
+  /* ------- Explain slide-mode (was ExplainSession.css) ----------------- */
+  .slide-mode .prose {
+    font-size: 1.05rem;
+    line-height: 1.85;
+  }
+  .slide-mode .prose :where(h1, h2, h3) {
+    letter-spacing: -0.01em;
+  }
 }

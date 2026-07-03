@@ -4,7 +4,7 @@ import { FiRefreshCw } from 'react-icons/fi';
 import { useWsStatus } from '@/core/realtime/useWsStatus';
 import { ConnectionState } from '@/core/realtime/wsConstants';
 import { WarningAlert } from '@/shared/components/ui/alert-variants';
-import wsManager from '@/services/wsManager';
+import wsManager from '@/core/realtime/wsManager';
 
 export interface ConnectionBadgeProps {
   currentSessionId: string | null;

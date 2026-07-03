@@ -1,6 +1,6 @@
-import PageLoader from '@/shared/components/PageLoader';
+import PageLoader from '@/shared/components/feedback/PageLoader';
 import { Toaster } from '@/shared/components/ui/sonner';
-import { Component, Suspense, ReactNode } from 'react';
+import { Component, ReactNode, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
 
 interface ErrorBoundaryProps {

@@ -1,4 +1,4 @@
-import SlideDrawer from '../../../shared/components/SlideDrawer';
+import SlideDrawer from '@/shared/components/layout/SlideDrawer';
 import { ISession } from '../types';
 import SessionList from './SessionList';
 
@@ -46,16 +46,7 @@ export default function SettingsDrawer({
       onWidthChange={onWidthChange}
       resizable={resizable}
     >
-      <div
-        className="drawer-body"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          padding: '1rem 0',
-          minHeight: 0,
-        }}
-      >
+      <div className="drawer-body flex flex-col h-full py-4 min-h-0">
         <SessionList
           sessions={sessions}
           currentSessionId={currentSessionId}

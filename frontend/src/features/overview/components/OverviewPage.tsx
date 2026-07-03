@@ -1,23 +1,23 @@
 import { lazy, Suspense, useEffect } from 'react';
 import Lenis from 'lenis';
 import { selectIsAuthenticated, useAuthStore } from '@/features/auth/store/authStore';
-import HeroSection from '@/widgets/Overview/HeroSection';
-import ErrorBoundary from '@/shared/components/ErrorBoundary';
+import HeroSection from '@/widgets/Overview/sections/HeroSection';
+import ErrorBoundary from '@/shared/components/feedback/ErrorBoundary';
 import OverviewSEO from './OverviewSEO';
 import useReducedMotionPreference from '../hooks/useReducedMotionPreference';
 import useDevicePerformance from '../hooks/useDevicePerformance';
 import useSplashSession from '../hooks/useSplashSession';
 import useProgressivePhases from '../hooks/useProgressivePhases';
 
-const Navbar = lazy(() => import('@/widgets/Overview/Navbar'));
+const Navbar = lazy(() => import('@/widgets/Overview/Navbar') as any);
 const SplashScreen = lazy(() => import('@/widgets/Overview/SplashScreen'));
-const CircuitBoardBackground = lazy(() => import('@/widgets/Overview/CircuitBoardBackground'));
-const FeaturesSection = lazy(() => import('@/widgets/Overview/FeaturesSection'));
+const CircuitBoardBackground = lazy(() => import('@/widgets/Overview/CircuitBoardBackground') as any);
+const FeaturesSection = lazy(() => import('@/widgets/Overview/sections/FeaturesSection'));
 const HowItWorksSection = lazy(() => import('@/widgets/Overview/HowItWorks'));
-const TechStackSection = lazy(() => import('@/widgets/Overview/TechStackSection'));
-const DemoPreview = lazy(() => import('@/widgets/Overview/DemoPreview'));
-const FAQSection = lazy(() => import('@/widgets/Overview/FAQSection'));
-const Footer = lazy(() => import('@/widgets/Overview/Footer'));
+const TechStackSection = lazy(() => import('@/widgets/Overview/sections/TechStackSection'));
+const DemoPreview = lazy(() => import('@/widgets/Overview/sections/DemoPreview'));
+const FAQSection = lazy(() => import('@/widgets/Overview/sections/FAQSection'));
+const Footer = lazy(() => import('@/widgets/Overview/sections/Footer'));
 
 interface DeferredProps {
   shouldRender: boolean;
