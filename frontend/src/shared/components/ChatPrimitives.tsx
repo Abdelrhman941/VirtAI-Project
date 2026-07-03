@@ -60,7 +60,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
       aria-live={isInterim ? 'polite' : undefined}
     >
       <div 
-        className={`chat-message ${isUser ? 'user-message' : 'ai-message'} ${isTyping ? 'typing-state' : 'items-start'} ${isInterim ? 'interim-transcript' : ''}`}
+        className={`chat-message ${isUser ? 'user-message' : 'ai-message'} ${isTyping ? 'typing-state items-center' : 'items-start'} ${isInterim ? 'interim-transcript' : ''}`}
       >
         {!isUser && <Avatar type="assistant" isTyping={isTyping} />}
         

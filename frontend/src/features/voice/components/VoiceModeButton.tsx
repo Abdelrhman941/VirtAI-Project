@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { PiMicrophone, PiPauseFill, PiWarningCircleFill, PiArrowCounterClockwise } from 'react-icons/pi';
 import { useRealtimeASR } from '../hooks/useRealtimeASR';
-
+import { WarningAlert } from '@/shared/components/ui/alert-variants';
 import { VoiceIndicator } from '@/shared/components/VoiceIndicator';
 import { Button } from '@/shared/components/ui/button';
 
@@ -148,6 +148,13 @@ export default function VoiceModeButton({
         {/* Listening animation (Requirement 8.3) */}
         <VoiceIndicator isListening={isListening} isPaused={isPaused} />
       </Button>
+
+      {/* Voice permission missing alert */}
+      {error && (error.toLowerCase().includes('permission') || error.toLowerCase().includes('access denied') || error.toLowerCase().includes('notallowed')) && (
+        <WarningAlert title="Microphone Permission Required" className="absolute bottom-[calc(100%+0.5rem)] left-1/2 -translate-x-1/2 min-w-[300px] z-[1001] shadow-[0_4px_20px_rgba(0,0,0,0.4)] text-xs">
+          {error}
+        </WarningAlert>
+      )}
 
       {/* Interim transcript display (Step 4.2: visual feedback) */}
       {interimText && (

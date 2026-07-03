@@ -3,6 +3,7 @@ import { PiWifiSlashFill } from 'react-icons/pi';
 import { FiRefreshCw } from 'react-icons/fi';
 import { useWsStatus } from '@/core/realtime/useWsStatus';
 import { ConnectionState } from '@/core/realtime/wsConstants';
+import { WarningAlert } from '@/shared/components/ui/alert-variants';
 import wsManager from '@/services/wsManager';
 
 export interface ConnectionBadgeProps {
@@ -88,33 +89,34 @@ export function ConnectionBadge({
 
   const showReconnectButton = status === ConnectionState.FAILED || status === ConnectionState.DISCONNECTED;
 
+  if (stateGroup !== 'ready') {
+    return (
+      <WarningAlert className={isSmall ? 'py-1 px-2.5 min-w-[200px]' : 'py-2 px-4 min-w-[240px] text-xs font-semibold'}>
+        <div className="flex justify-between items-center w-full min-w-0">
+          <span className="truncate" title={statusText}>{statusText}</span>
+          {showReconnectButton && onReconnect && (
+            <button
+              onClick={onReconnect}
+              title="Reconnect"
+              className={buttonClasses}
+            >
+              <FiRefreshCw size={iconSize} />
+            </button>
+          )}
+        </div>
+      </WarningAlert>
+    );
+  }
+
   return (
     <div className={containerClasses}>
       <div className={dotWrapperClasses}>
-        {stateGroup === 'offline' && currentSessionId !== null ? (
-          <PiWifiSlashFill size={iconSize} className="text-red-500" />
-        ) : (
-          <>
-            <div className={dotClasses}></div>
-            {(stateGroup === 'ready' || isConnecting) && (
-              <div className={pingClasses}></div>
-            )}
-          </>
-        )}
+        <div className={dotClasses}></div>
+        <div className={pingClasses}></div>
       </div>
-      <span className={`${textClasses} ${isConnecting ? 'shimmer shimmer-color-muted-foreground' : ''}`} title={statusText}>
+      <span className={textClasses} title={statusText}>
         {statusText}
       </span>
-      
-      {showReconnectButton && onReconnect && (
-        <button
-          onClick={onReconnect}
-          title="Reconnect"
-          className={buttonClasses}
-        >
-          <FiRefreshCw size={iconSize} />
-        </button>
-      )}
     </div>
   );
 }

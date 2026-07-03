@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FiCheckCircle, FiClock, FiFileText, FiLoader, FiTrash2, FiXCircle } from 'react-icons/fi';
 import { useDocumentList } from '../useDocumentList';
+import { DangerAlert } from '@/shared/components/ui/alert-variants';
 import './DocumentsPanel.css';
 import { UploadTab } from './UploadTab';
 import { formatDateOnly } from '@/shared/utils/date';
@@ -93,12 +94,14 @@ export function DocumentsPanel({ sessionId = null, onEnsureSession, onClose }: D
         </div>
 
         {error && (
-          <div className="error-banner" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span>{error}</span>
-            <button type="button" onClick={clearError} className="icon-btn" style={{ marginLeft: 'auto' }} aria-label="Clear error">
-              <FiXCircle />
-            </button>
-          </div>
+          <DangerAlert className="mb-4">
+            <div className="flex justify-between items-center w-full">
+              <span>{error}</span>
+              <button type="button" onClick={clearError} className="text-crimson-glow hover:text-white" aria-label="Clear error">
+                <FiXCircle className="w-4 h-4" />
+              </button>
+            </div>
+          </DangerAlert>
         )}
 
         {(!documents || documents.length === 0) ? (

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { generateDiagram, getDiagram, DiagramData } from '../api/diagramApi';
-import { toast } from '@/shared/utils/toast';
+import { notify } from '@/shared/utils/notify';
 
 export type DiagramState = 'idle' | 'generating' | 'active' | 'error';
 
@@ -21,7 +21,7 @@ export function useDiagramSession() {
       setDiagramState('active');
     } catch (error) {
       setDiagramState('error');
-      toast.error('Diagram Error', 'Failed to generate diagram. Please try again.');
+      notify.error('Diagram Error', 'Failed to generate diagram. Please try again.');
     }
   }, []);
 

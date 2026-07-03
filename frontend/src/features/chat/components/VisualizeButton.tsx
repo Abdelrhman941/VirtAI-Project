@@ -1,4 +1,4 @@
-import { toast } from '@/shared/utils/toast';
+import { notify } from '@/shared/utils/notify';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -55,9 +55,9 @@ export function VisualizeButton({ messageId, locale = 'en', onExpand }: Visualiz
   const handleVisualize = useCallback(async (force = false) => {
     const now = Date.now();
     if (now - lastRequestTime.current < 5000 && !force) {
-      toast.warning(
+      notify.warning(
         'Please Wait',
-        'Please wait a few seconds before requesting another visualization.'
+        'Please wait a few seconds before requesting another visualization.',
       );
       return;
     }

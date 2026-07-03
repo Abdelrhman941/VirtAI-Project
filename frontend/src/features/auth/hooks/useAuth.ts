@@ -8,7 +8,7 @@ import {
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { notify } from '@/shared/utils/notify';
 
 export function useLogin() {
   const [isLoading, setIsLoading] = useState(false);
@@ -20,11 +20,11 @@ export function useLogin() {
     try {
       const { access_token, user } = await loginUser(email, password);
       setAuth(user, access_token);
-      toast.success('Welcome back!', { description: `Signed in as ${user.email}` });
+      notify.success('Welcome back!', `Signed in as ${user.email}`);
       navigate(user.setupComplete ? '/classroom' : '/setup', { replace: true });
     } catch (err) {
       const message = err.response?.data?.detail || err.response?.data?.message || 'Invalid email or password.';
-      toast.error('Login Failed', { description: message });
+      notify.error('Login Failed', message);
     } finally {
       setIsLoading(false);
     }
@@ -43,11 +43,11 @@ export function useSignup() {
     try {
       const { access_token, user } = await signupUser(formData);
       setAuth(user, access_token);
-      toast.success('Account Created', { description: 'Welcome to VirtAI!' });
+      notify.success('Account Created', 'Welcome to VirtAI!');
       navigate(user.setupComplete ? '/classroom' : '/setup', { replace: true });
     } catch (err) {
       const message = err.response?.data?.detail || err.response?.data?.message || 'Could not create account.';
-      toast.error('Signup Failed', { description: message });
+      notify.error('Signup Failed', message);
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +65,7 @@ export function useGoogleAuth() {
       const url = await getGoogleAuthUrl();
       window.location.href = url;
     } catch {
-      toast.error('Google Auth', { description: 'Could not connect to Google.' });
+      notify.error('Google Auth', 'Could not connect to Google.');
     } finally {
       setIsLoading(false);
     }
@@ -84,11 +84,11 @@ export function useGoogleCallback() {
     try {
       const { access_token, user } = await exchangeGoogleCode(code, state);
       setAuth(user, access_token);
-      toast.success('Welcome!', { description: `Signed in as ${user.email}` });
+      notify.success('Welcome!', `Signed in as ${user.email}`);
       navigate(user.setupComplete ? '/classroom' : '/setup', { replace: true });
     } catch (err) {
       const message = err.response?.data?.detail || err.response?.data?.message || 'Google sign-in failed.';
-      toast.error('Auth Failed', { description: message });
+      notify.error('Auth Failed', message);
       throw err;
     } finally {
       setIsLoading(false);

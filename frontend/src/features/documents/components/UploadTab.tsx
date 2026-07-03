@@ -1,6 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FiFileText, FiUploadCloud, FiX } from 'react-icons/fi';
+import { DangerAlert } from '@/shared/components/ui/alert-variants';
+import { notify } from '@/shared/utils/notify';
 import { Document } from '../types';
 import './UploadTab.css';
 
@@ -150,6 +152,11 @@ export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) 
       }
     }
 
+    const successfulUploads = selectedFiles.filter(f => !localErrors[f.name]);
+    if (successfulUploads.length > 0) {
+      notify.success('Upload complete', `${successfulUploads.length} document(s) uploaded successfully.`);
+    }
+
     setIsProcessing(false);
   }, [selectedFiles, hashWorker, enqueueUpload, removeFile, localErrors]);
 
@@ -166,9 +173,9 @@ export function UploadTab({ onSkip, enqueueUpload, documents }: UploadTabProps) 
         </div>
 
         {isLimitReached && (
-          <div className="error-banner" style={{ marginBottom: '1rem' }}>
+          <DangerAlert className="mb-4">
             This session has reached the limit of 10 curriculum documents. Please remove an existing document to upload a new one.
-          </div>
+          </DangerAlert>
         )}
 
         <div

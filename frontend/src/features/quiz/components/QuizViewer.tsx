@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { QuizData, QuizQuestion } from '../hooks/useQuizSession';
 import { FiCheckCircle, FiXCircle, FiBarChart2, FiArrowLeft, FiArrowRight } from 'react-icons/fi';
 import apiClient from '@/core/api/apiClient';
-import { toast } from 'sonner';
+import { notify } from '@/shared/utils/notify';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -134,10 +134,10 @@ export function QuizViewer({ quiz, onRetake, onViewAnalytics }: QuizViewerProps)
       const res = await apiClient.post(`/api/v1/rag/quiz/${quiz.id}/attempt`, payload);
       setAttemptId(res.data.attempt_id);
       setIsSubmitted(true);
-      toast.success("Quiz submitted successfully!");
+      notify.success("Quiz submitted successfully!");
     } catch (error) {
       console.error("Failed to submit quiz attempt", error);
-      toast.error("Failed to submit quiz attempt. Please try again.");
+      notify.error("Failed to submit quiz attempt. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

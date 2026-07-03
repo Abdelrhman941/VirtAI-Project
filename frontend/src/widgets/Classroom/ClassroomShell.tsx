@@ -20,7 +20,7 @@ import { useClassroomAudio } from './hooks/useClassroomAudio';
 import { useClassroomChat } from './hooks/useClassroomChat';
 import { useClassroomState } from './hooks/useClassroomState';
 import { useChatUIStore } from '@/features/chat/store/useChatUIStore';
-import { MessageScrollerProvider } from '@/shared/components/ui/message-scroller';
+
 
 import { FiMonitor, FiShare2, FiEdit3, FiMessageSquare, FiFileText } from 'react-icons/fi';
 import { ErrorState } from '@/shared/components/UIStates';
@@ -304,7 +304,7 @@ export default function ClassroomShell() {
         <title>{avatarName} — VirtAI Classroom</title>
       </Helmet>
 
-      <MessageScrollerProvider key={currentSessionId} defaultScrollPosition="last-anchor">
+
         {/* Root Layout: Handled by AppLayout, we just provide the full width/height container */}
         <div className="flex w-full h-full relative text-white font-sans">
 
@@ -546,7 +546,7 @@ export default function ClassroomShell() {
 
         </main>
       </div>
-      </MessageScrollerProvider>
+
     </>
   );
 }

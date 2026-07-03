@@ -5,7 +5,8 @@ import { useNavigate } from 'react-router-dom';
 
 import { updateSetupStatus } from '@/features/auth/services/authApi';
 import { selectIsAuthenticated, useAuthStore } from '@/features/auth/store/authStore';
-import { toast } from 'sonner';
+import { notify } from '@/shared/utils/notify';
+import { SuccessAlert } from '@/shared/components/ui/alert-variants';
 import { saveSetup } from '../services/setupStorage';
 import SuccessAnimation from './SuccessAnimation';
 
@@ -53,7 +54,7 @@ export default function AllSetTab({
         navigate('/classroom', { replace: true });
       }
     } catch {
-      toast.error('Unable to Save Configuration', { description: 'We were unable to save your assistant configuration because of a temporary connection error. Please try clicking the button again.' });
+      notify.error('Unable to Save Configuration', 'We were unable to save your assistant configuration because of a temporary connection error. Please try clicking the button again.');
     } finally {
        
       setIsSaving(false);
@@ -67,23 +68,18 @@ export default function AllSetTab({
     <div className="flex flex-col items-center justify-center p-5 h-full">
       <SuccessAnimation />
 
-      <motion.h2
-        className="setup-section-title text-center mt-5"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
-      >
-        Configuration Complete
-      </motion.h2>
-
-      <motion.p
-        className="setup-section-subtitle text-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-      >
-        Your curriculum-aware teaching assistant has been configured.
-      </motion.p>
+      {isReady && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.8 }}
+          className="w-full max-w-md my-4"
+        >
+          <SuccessAlert title="Configuration Complete!">
+            Your curriculum-aware assistant has been fully configured and is ready.
+          </SuccessAlert>
+        </motion.div>
+      )}
 
       <motion.div
         className="flex flex-col gap-2.5 my-6 py-5 px-7 bg-white/5 border border-white/10 rounded-xl min-w-[260px]"

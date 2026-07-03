@@ -483,10 +483,10 @@ input[type="password"]::-webkit-contacts-auto-fill-button {
 /* Shimmer Animation styles */
 @keyframes shimmer-animation {
   0% {
-    background-position: -200% 0;
+    background-position: 200% 0;
   }
   100% {
-    background-position: 200% 0;
+    background-position: -200% 0;
   }
 }
 

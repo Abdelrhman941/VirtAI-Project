@@ -1,20 +1,9 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { PiLightbulbFilament } from 'react-icons/pi';
-import { AnimatePresence, motion } from 'framer-motion';
 import MessageBubble from './MessageBubble';
 import { ChatBubble, MessageStatus } from '../../../shared/components/ChatPrimitives';
 import { IMessage } from '../../session/types';
 import { useChatUIStore } from '../store/useChatUIStore';
-import {
-  MessageScroller,
-  MessageScrollerViewport,
-  MessageScrollerContent,
-  MessageScrollerItem,
-  MessageScrollerButton,
-  useMessageScrollerScrollable,
-} from '@/shared/components/ui/message-scroller';
-
-const MotionMessageScrollerItem = motion.create(MessageScrollerItem);
 
 function StreamingLayer({ avatarName }: { avatarName: string }) {
   const currentMessage = useChatUIStore((s) => s.currentMessage);
@@ -24,53 +13,23 @@ function StreamingLayer({ avatarName }: { avatarName: string }) {
   return (
     <>
       {pipelineState === 'thinking' && !currentMessage && (
-        <MessageScrollerItem messageId="thinking-state" className="w-full">
-          <ChatBubble role="assistant" isTyping ariaLabel="AI is typing">
-            <MessageStatus />
-          </ChatBubble>
-        </MessageScrollerItem>
+        <ChatBubble role="assistant" isTyping ariaLabel="AI is typing">
+          <MessageStatus />
+        </ChatBubble>
       )}
 
       {interimTranscript && (
-        <MessageScrollerItem messageId="interim-transcript" className="w-full">
-          <ChatBubble role="user" isInterim ariaLabel="Interim transcript">
-            {interimTranscript}
-          </ChatBubble>
-        </MessageScrollerItem>
+        <ChatBubble role="user" isInterim ariaLabel="Interim transcript">
+          {interimTranscript}
+        </ChatBubble>
       )}
 
       {currentMessage && (
-        <MessageScrollerItem messageId="streaming-message" className="w-full" scrollAnchor={true}>
-          <ChatBubble role="assistant" avatarName={avatarName} ariaLabel="Assistant is typing">
-            {/* The streaming message content is formatted inside ChatBubble */}
-            {currentMessage}
-          </ChatBubble>
-        </MessageScrollerItem>
+        <ChatBubble role="assistant" avatarName={avatarName} ariaLabel="Assistant is typing">
+          {currentMessage}
+        </ChatBubble>
       )}
     </>
-  );
-}
-
-// Scroll-to-bottom overlay button gated by scroll position state
-function ScrollToLatestButton() {
-  const { isAtBottom } = useMessageScrollerScrollable();
-
-  return (
-    <AnimatePresence>
-      {!isAtBottom && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 10 }}
-          transition={{ duration: 0.2 }}
-          className="absolute bottom-4 right-4 z-50 pointer-events-auto"
-        >
-          <MessageScrollerButton>
-            <span>↓</span>
-          </MessageScrollerButton>
-        </motion.div>
-      )}
-    </AnimatePresence>
   );
 }
 
@@ -84,10 +43,34 @@ const MessageList = React.memo(function MessageList({
   messages,
   avatarName,
 }: MessageListProps) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
+
+  // Track whether user is near the bottom
+  const handleScroll = () => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const threshold = 48;
+    isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+  };
+
+  // Scroll to bottom on new messages when pinned to bottom
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    if (isAtBottomRef.current) {
+      el.scrollTop = el.scrollHeight;
+    }
+  });
+
   return (
-    <MessageScroller>
-      <MessageScrollerViewport className="flex-1 w-full relative">
-        <MessageScrollerContent className="w-full pb-20">
+    <div className="flex flex-col h-full relative overflow-hidden">
+      <div
+        ref={viewportRef}
+        onScroll={handleScroll}
+        className="flex-1 w-full overflow-y-auto no-scrollbar"
+      >
+        <div className="w-full flex flex-col gap-4 p-4 pb-20 min-h-full">
           {messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[300px]">
               <PiLightbulbFilament className="text-4xl text-[#b4ab8b] mb-4 animate-pulse" />
@@ -95,34 +78,21 @@ const MessageList = React.memo(function MessageList({
               <p className="text-sm text-gray-400 max-w-sm">Ask {avatarName} anything to begin your lesson.</p>
             </div>
           ) : (
-            <div className="w-full flex flex-col gap-4 p-4">
-              {messages.map((msg, index) => {
-                const isUser = msg.role === 'user';
-                return (
-                  <MotionMessageScrollerItem
-                    key={msg.id || index}
-                    messageId={msg.id || `msg-${index}`}
-                    scrollAnchor={isUser}
-                    initial={{ opacity: 0, x: isUser ? 24 : -24 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.28, ease: 'easeOut' }}
-                    className="w-full"
-                  >
-                    <MessageBubble
-                      msg={msg}
-                      isLast={index === messages.length - 1}
-                      avatarName={avatarName}
-                    />
-                  </MotionMessageScrollerItem>
-                );
-              })}
+            <>
+              {messages.map((msg, index) => (
+                <MessageBubble
+                  key={msg.id || index}
+                  msg={msg}
+                  isLast={index === messages.length - 1}
+                  avatarName={avatarName}
+                />
+              ))}
               <StreamingLayer avatarName={avatarName} />
-            </div>
+            </>
           )}
-        </MessageScrollerContent>
-      </MessageScrollerViewport>
-      <ScrollToLatestButton />
-    </MessageScroller>
+        </div>
+      </div>
+    </div>
   );
 });
 

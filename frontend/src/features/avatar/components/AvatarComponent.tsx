@@ -6,7 +6,7 @@ import { SkeletonUtils } from 'three-stdlib';
 import { useAvatarAnimations } from './useAvatarAnimations';
 import { useAvatarLipSync } from './useAvatarLipSync';
 import { Viseme } from '@/features/voice/hooks/useGaplessAudioQueue';
-import { toast } from '@/shared/utils/toast';
+import { notify } from '@/shared/utils/notify';
 
 const TOAST_DURATION = 5000;
 
@@ -100,7 +100,7 @@ export function AvatarComponent({
       if (import.meta.env.DEV) {
         console.warn('[AvatarComponent] Missing morphTargetDictionary or morphTargetInfluences on Avatar nodes. Expressions and lip-sync will fail silently.');
       }
-      toast.warning('Avatar Warning', 'Lip-sync targets missing. Using fallback animation.', TOAST_DURATION);
+      notify.warning('Avatar Warning', 'Lip-sync targets missing. Using fallback animation.');
       toastShownRef.current = true;
     }
   }, [nodes, targetMeshes]);

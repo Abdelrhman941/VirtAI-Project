@@ -1,7 +1,7 @@
 import PageLoader from '@/shared/components/PageLoader';
+import { Toaster } from '@/shared/components/ui/sonner';
 import { Component, Suspense, ReactNode } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Toaster } from 'sonner';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -20,7 +20,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     return { hasError: true };
   }
 
-  componentDidCatch(error, errorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // TODO: Send error to Sentry or another monitoring service in production
     // Sentry.captureException(error, { extra: errorInfo });
     console.error('Error caught by boundary:', error, errorInfo);
@@ -28,10 +28,19 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="error-fallback" role="alert" aria-live="assertive">
-          <h2 className="display-h2">Something went wrong</h2>
-          <p>Please refresh the page or try again later.</p>
-          <button onClick={() => window.location.reload()}>Refresh</button>
+        <div
+          className="flex h-screen flex-col items-center justify-center gap-4 p-8 text-center"
+          role="alert"
+          aria-live="assertive"
+        >
+          <h2 className="text-xl font-semibold text-foreground">Something went wrong</h2>
+          <p className="text-muted-foreground">Please refresh the page or try again later.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Refresh
+          </button>
         </div>
       );
     }
@@ -47,21 +56,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <meta name="description" content="Interactive learning platform" />
       </Helmet>
       <div className="app min-w-0 w-full overflow-x-hidden relative">
-        <Toaster
-          richColors
-          position="top-right"
-          theme="dark"
-          closeButton
-          duration={5000}
-          toastOptions={{
-            style: {
-              transition: 'transform 0.3s ease-out, opacity 0.3s ease-out, box-shadow 0.3s ease-out'
-            },
-            classNames: {
-              closeButton: 'bg-white/20 hover:bg-white/40 border-white/30 text-white !opacity-100 !flex !visible !right-2 !top-2 w-6 h-6 items-center justify-center rounded-full',
-            }
-          }}
-        />
+        <Toaster />
         <Suspense fallback={<PageLoader />}>
           {children || null}
         </Suspense>

@@ -324,18 +324,11 @@
   background: linear-gradient(90deg, #6d001a, #b4ab8b);
 }
 
-.documents-panel-loading,
-.error-banner {
+.documents-panel-loading {
   border-radius: 12px;
   padding: 0.9rem 1rem;
   background: rgb(255 255 255 / 5%);
   color: var(--text-secondary, #b0b0b0);
-}
-
-.error-banner {
-  color: #fca5a5;
-  border: 1px solid rgb(239 68 68 / 28%);
-  background: rgb(127 29 29 / 12%);
 }
 
 @media (width <=1024px) {
