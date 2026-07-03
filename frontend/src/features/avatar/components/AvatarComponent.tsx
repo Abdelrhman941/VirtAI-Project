@@ -127,7 +127,6 @@ export function AvatarComponent({
 
   const targetMeshes = useMemo(() => {
     if (!nodes) return [];
-<<<<<<< HEAD
     return Object.values(nodes).filter((node) => {
       const mesh = node as THREE.SkinnedMesh;
       if (
@@ -140,17 +139,6 @@ export function AvatarComponent({
           Object.keys(mesh.morphTargetDictionary),
         );
         return true;
-=======
-    return Object.values(nodes).filter(
-      (node) => {
-        const mesh = node as THREE.SkinnedMesh;
-        // Strictly filter to meshes with skinning AND morph targets (e.g. Wolf3D_Head)
-        if (mesh.isSkinnedMesh && mesh.morphTargetDictionary && mesh.morphTargetInfluences) {
-          logger.debug(`[AvatarComponent] Morph Targets on ${mesh.name}:`, Object.keys(mesh.morphTargetDictionary));
-          return true;
-        }
-        return false;
->>>>>>> d09ebb86556ac328001727aaf9b84d7cdb8f3635
       }
       return false;
     }) as THREE.SkinnedMesh[];
@@ -158,7 +146,6 @@ export function AvatarComponent({
 
   useEffect(() => {
     if (nodes && targetMeshes.length === 0 && !toastShownRef.current) {
-<<<<<<< HEAD
       logger.warn(
         '[AvatarComponent] Missing morphTargetDictionary or morphTargetInfluences. Lip-sync will fail silently.',
       );
@@ -166,10 +153,6 @@ export function AvatarComponent({
         'Avatar Warning',
         'Lip-sync targets missing. Using fallback animation.',
       );
-=======
-        logger.warn('[AvatarComponent] Missing morphTargetDictionary or morphTargetInfluences. Lip-sync will fail silently.');
-      notify.warning('Avatar Warning', 'Lip-sync targets missing. Using fallback animation.');
->>>>>>> d09ebb86556ac328001727aaf9b84d7cdb8f3635
       toastShownRef.current = true;
     }
   }, [nodes, targetMeshes]);

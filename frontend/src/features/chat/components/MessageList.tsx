@@ -60,11 +60,8 @@ export interface MessageListProps {
 }
 
 const MessageList = React.memo(function MessageList({ messages, avatarName }: MessageListProps) {
-<<<<<<< HEAD
   const streamingMessageId = useChatUIStore((s) => s.streamingMessageId);
 
-=======
->>>>>>> d09ebb86556ac328001727aaf9b84d7cdb8f3635
   return (
     <div className="flex flex-col h-full relative overflow-hidden">
       <MessageScrollerProvider>
@@ -79,10 +76,7 @@ const MessageList = React.memo(function MessageList({ messages, avatarName }: Me
                     msg={msg}
                     isLast={index === messages.length - 1}
                     avatarName={avatarName}
-<<<<<<< HEAD
                     isStreaming={index === messages.length - 1 && streamingMessageId === msg.id}
-=======
->>>>>>> d09ebb86556ac328001727aaf9b84d7cdb8f3635
                   />
                 </MessageScrollerItem>
               ))}
