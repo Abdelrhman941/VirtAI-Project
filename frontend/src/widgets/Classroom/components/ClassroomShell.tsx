@@ -5,6 +5,7 @@ import { PresentationState, useExplainWS } from '@/features/explain/hooks/useExp
 import { SettingsDrawer, useSessionManager } from '@/features/session';
 import { PCMRecorder } from '@/features/voice/audio/pcmRecorder';
 import { toast } from '@/shared/utils/notify';
+import { logger } from '@/shared/utils/logger';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -13,6 +14,7 @@ import { useClassroomChat } from '../hooks/useClassroomChat';
 import { useClassroomState } from '../hooks/useClassroomState';
 import { AssistantPanel } from './AssistantPanel';
 import { AvatarTopBar } from './AvatarTopBar';
+import { cn } from "@/shared/utils/cn";
 
 const AvatarCanvasWrapper = lazy(() => import('./AvatarCanvasWrapper').then(m => ({ default: m.AvatarCanvasWrapper })));
 
@@ -225,7 +227,7 @@ export default function ClassroomShell() {
     if (!payload) return;
 
     // Await audio context unlock so it's strictly bound to this gesture
-    unlockAudioContext().catch(console.warn);
+    unlockAudioContext().catch((err) => logger.warn('[AudioContext] Failed to unlock on user gesture:', err));
 
     commitAndSend(payload);
 
@@ -353,8 +355,24 @@ export default function ClassroomShell() {
           <div className="hidden lg:flex flex-row w-full flex-1 min-h-0 gap-6">
 
             {/* Avatar Panel (Left) */}
-            <aside className="flex-[3] min-w-0 min-h-0 relative overflow-hidden flex items-center justify-center bg-dark-secondary/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl">
-              <Suspense fallback={<div className="w-full h-full animate-pulse bg-white/5 rounded-2xl" />}>
+            <aside
+              className={cn(
+                'flex-[3] min-w-0 min-h-0 relative overflow-hidden rounded-2xl',
+                'flex items-center justify-center',
+                'bg-gradient-to-b from-[color:var(--color-dark-secondary)] via-[color:var(--color-dark)] to-black',
+                'ring-1 ring-white/[0.04]',
+                'shadow-[0_20px_60px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.03)]'
+              )}
+            >
+              <div
+                aria-hidden
+                className="absolute inset-x-0 bottom-0 h-1/3 pointer-events-none"
+                style={{
+                  background: 'radial-gradient(ellipse at 50% 100%, rgba(201,169,97,0.08), transparent 70%)',
+                }}
+              />
+
+              <Suspense fallback={<div className="w-full h-full animate-pulse bg-white/[0.03] rounded-2xl" />}>
                 <AvatarCanvasWrapper
                   avatarId={activeAvatarId}
                   pipelineState={conversationState.pipelineState}
@@ -410,8 +428,24 @@ export default function ClassroomShell() {
           <div className="flex lg:hidden flex-col w-full flex-1 min-h-0 gap-4 pb-16">
 
             {/* Avatar Container: exactly 40% of available height */}
-            <aside className="h-[40%] min-h-0 relative overflow-hidden flex items-center justify-center bg-dark-secondary/50 backdrop-blur-md border border-white/5 rounded-2xl shadow-xl mx-4">
-              <Suspense fallback={<div className="w-full h-full animate-pulse bg-white/5 rounded-2xl" />}>
+            <aside
+              className={cn(
+                'h-[40%] min-h-0 relative overflow-hidden rounded-2xl mx-4',
+                'flex items-center justify-center',
+                'bg-gradient-to-b from-[color:var(--color-dark-secondary)] via-[color:var(--color-dark)] to-black',
+                'ring-1 ring-white/[0.04]',
+                'shadow-[0_16px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.03)]'
+              )}
+            >
+              <div
+                aria-hidden
+                className="absolute inset-x-0 bottom-0 h-1/3 pointer-events-none"
+                style={{
+                  background: 'radial-gradient(ellipse at 50% 100%, rgba(201,169,97,0.08), transparent 70%)',
+                }}
+              />
+
+              <Suspense fallback={<div className="w-full h-full animate-pulse bg-white/[0.03] rounded-2xl" />}>
                 <AvatarCanvasWrapper
                   avatarId={activeAvatarId}
                   pipelineState={conversationState.pipelineState}

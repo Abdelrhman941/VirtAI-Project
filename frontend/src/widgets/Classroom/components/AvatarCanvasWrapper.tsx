@@ -1,5 +1,6 @@
 import { AvatarComponent } from '@/features/avatar/components/AvatarComponent';
 import { Viseme } from '@/features/voice/hooks/useGaplessAudioQueue';
+import { logger } from '@/shared/utils/logger';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import { Canvas, useThree } from '@react-three/fiber';
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
@@ -97,12 +98,12 @@ export const AvatarCanvasWrapper = memo(function AvatarCanvasWrapper({
   const [isContextLost, setIsContextLost] = useState(false);
 
   const handleContextLost = useCallback(() => {
-    console.warn('WebGL Context Lost! Gracefully pausing 3D rendering.');
+    logger.warn('WebGL Context Lost! Gracefully pausing 3D rendering.');
     setIsContextLost(true);
   }, []);
 
   const handleContextRestored = useCallback(() => {
-    console.info('WebGL Context Restored! Resuming 3D rendering.');
+    logger.info('WebGL Context Restored! Resuming 3D rendering.');
     setIsContextLost(false);
   }, []);
 
@@ -118,7 +119,7 @@ export const AvatarCanvasWrapper = memo(function AvatarCanvasWrapper({
         className="classroom-watermark absolute bottom-4 left-4 z-50 m-0 text-[1.75rem] font-bold tracking-tight opacity-50 pointer-events-none"
       >
         <span className="text-[color:var(--text-primary)]">Virt</span>
-        <span className="text-[color:var(--accent-gold,#D4B47A)]">AI</span>
+        <span className="text-[color:var(--color-gold)]">AI</span>
       </h1>
 
       <Canvas
@@ -131,8 +132,7 @@ export const AvatarCanvasWrapper = memo(function AvatarCanvasWrapper({
             },
             gl: { size: state.size, viewport: state.viewport },
           };
-          console.log('[Runtime Evidence] Canvas Created:', evidence);
-          (window as any).__CAMERA_EVIDENCE = evidence;
+          logger.debug('[Runtime Evidence] Canvas Created:', evidence);
         }}
       >
         <CanvasDisposer />

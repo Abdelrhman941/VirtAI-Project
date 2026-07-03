@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 
+import { logger } from '@/shared/utils/logger';
 import { useLipSyncConfigStore } from '../store/useLipSyncConfigStore';
 
 const TWO_PI = Math.PI * 2;
@@ -219,7 +220,7 @@ export function useAvatarLipSync({
         }
 
         if (Math.random() < 0.05) { // log 5% of frames
-          console.log('[LipSync Debug] isSpeaking:', isEffectivelySpeaking, 'FFT Jaw:', targetJawOpen.toFixed(2), 'RealViseme:', activeRealViseme, 'cuesCount:', mouthCuesRef?.current?.length);
+          logger.debug('[LipSync] isSpeaking:', isEffectivelySpeaking, 'FFT Jaw:', targetJawOpen.toFixed(2), 'RealViseme:', activeRealViseme, 'cuesCount:', mouthCuesRef?.current?.length);
         }
       }
 

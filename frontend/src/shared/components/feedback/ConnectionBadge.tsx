@@ -1,120 +1,156 @@
 import { useWsStatus } from '@/core/realtime/useWsStatus';
 import { ConnectionState } from '@/core/realtime/wsConstants';
-import { WarningAlert } from '@/shared/components/ui/alert-variants';
+import { cn } from '@/shared/utils/cn';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { FiRefreshCw } from 'react-icons/fi';
+import { FiAlertTriangle, FiCheckCircle, FiLoader, FiRefreshCw } from 'react-icons/fi';
+
+/**
+ * ConnectionBadge — dark-premium status pill.
+ *
+ * Replaces the previous WarningAlert-based banner (which rendered an amber
+ * warning banner even for benign reconnect states) with a semantic pill:
+ *   • ready       → subtle emerald
+ *   • connecting  → gold, spinner
+ *   • offline     → crimson, reconnect button
+ */
 
 export interface ConnectionBadgeProps {
   currentSessionId: string | null;
   size?: 'sm' | 'md';
   onReconnect?: () => void;
+  /** Hide the pill entirely once fully connected, so it's not always on-screen. */
+  hideWhenReady?: boolean;
+}
+
+type Group = 'ready' | 'connecting' | 'offline';
+
+function useStatusView(
+  status: ConnectionState,
+  retryCount: number,
+  countdown: number | null,
+) {
+  const group: Group =
+    status === ConnectionState.CONNECTED ? 'ready'
+      : (status === ConnectionState.CONNECTING || status === ConnectionState.RECONNECTING) ? 'connecting'
+        : 'offline';
+
+  let text = '';
+  if (group === 'ready') {
+    text = 'Connected';
+  } else if (group === 'connecting') {
+    if (status === ConnectionState.RECONNECTING && retryCount > 0) {
+      text = countdown != null && countdown > 0
+        ? `Reconnecting in ${countdown}s`
+        : `Reconnecting (${retryCount})`;
+    } else {
+      text = 'Connecting';
+    }
+  } else {
+    text = status === ConnectionState.FAILED
+      ? 'Connection failed'
+      : 'Disconnected';
+  }
+
+  return { group, text };
 }
 
 export function ConnectionBadge({
-  currentSessionId,
+  currentSessionId: _currentSessionId,
   size = 'md',
-  onReconnect
+  onReconnect,
+  hideWhenReady = false,
 }: ConnectionBadgeProps) {
   const { status, retryCount, nextRetryIn } = useWsStatus();
-
   const [countdown, setCountdown] = useState<number | null>(null);
 
   useEffect(() => {
-    if (nextRetryIn === null) {
+    if (nextRetryIn == null) {
       setCountdown(null);
       return;
     }
-
-    const targetTime = Date.now() + nextRetryIn;
-
-    const updateCountdown = () => {
-      const remaining = Math.max(0, Math.ceil((targetTime - Date.now()) / 1000));
-      setCountdown(remaining);
-    };
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
-    return () => clearInterval(interval);
+    const target = Date.now() + nextRetryIn;
+    const tick = () =>
+      setCountdown(Math.max(0, Math.ceil((target - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
   }, [nextRetryIn]);
 
-  const stateGroup = status === ConnectionState.CONNECTED ? 'ready'
-    : (status === ConnectionState.CONNECTING || status === ConnectionState.RECONNECTING) ? 'connecting'
-      : 'offline';
-
-  let statusText = '';
-  if (stateGroup === 'ready') {
-    statusText = 'Assistant Connected';
-  } else if (stateGroup === 'connecting') {
-    if (status === ConnectionState.RECONNECTING && retryCount > 0) {
-      statusText = `Reconnecting (Attempt ${retryCount})...`;
-      if (countdown !== null && countdown > 0) {
-        statusText = `Reconnecting in ${countdown}s...`;
-      }
-    } else {
-      statusText = 'Establishing Connection...';
-    }
-  } else {
-    if (status === ConnectionState.FAILED) {
-      statusText = 'Connection Failed (Max Retries)';
-    } else {
-      statusText = 'Disconnected';
-    }
-  }
-
-  const isConnecting = stateGroup === 'connecting';
-  const pulseClass = (stateGroup === 'ready' || isConnecting) ? 'animate-pulse' : '';
-
-  let dotColor = '';
-  if (stateGroup === 'ready') dotColor = 'bg-green-500';
-  else if (stateGroup === 'connecting') dotColor = 'bg-yellow-500';
-  else dotColor = 'bg-red-500';
-
+  const { group, text } = useStatusView(status, retryCount, countdown);
   const isSmall = size === 'sm';
-  const containerClasses = isSmall
-    ? "flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-dark-tertiary/80 shadow-sm"
-    : "flex items-center gap-2.5 px-4 py-2 rounded-full border border-white/10 bg-dark-tertiary/80 shadow-sm transition-colors duration-300";
 
-  const dotWrapperClasses = "relative flex items-center justify-center";
-  const iconSize = isSmall ? 12 : 14;
-  const dotClasses = isSmall ? `w-2 h-2 rounded-full ${dotColor} ${pulseClass}` : `w-2.5 h-2.5 rounded-full ${dotColor} ${pulseClass}`;
-  const pingClasses = isSmall ? `absolute w-2 h-2 rounded-full ${dotColor} animate-ping opacity-75` : `absolute w-2.5 h-2.5 rounded-full ${dotColor} animate-ping opacity-75`;
-  const textClasses = isSmall
-    ? "text-xs font-semibold text-white/95 tracking-wide font-display truncate max-w-[120px]"
-    : "text-sm font-semibold text-white/90 tracking-wide font-display truncate max-w-[150px] lg:max-w-[200px]";
-  const buttonClasses = isSmall
-    ? "flex items-center justify-center text-gray-400 hover:text-white active:text-white transition-colors ml-0.5 cursor-pointer"
-    : "flex items-center justify-center text-gray-400 hover:text-white transition-colors cursor-pointer ml-1";
+  if (hideWhenReady && group === 'ready') return null;
 
-  const showReconnectButton = status === ConnectionState.FAILED || status === ConnectionState.DISCONNECTED;
+  const showReconnect =
+    (status === ConnectionState.FAILED ||
+      status === ConnectionState.DISCONNECTED) &&
+    !!onReconnect;
 
-  if (stateGroup !== 'ready') {
-    return (
-      <WarningAlert className={isSmall ? 'py-1 px-2.5 min-w-[200px]' : 'py-2 px-4 min-w-[240px] text-xs font-semibold'}>
-        <div className="flex justify-between items-center w-full min-w-0">
-          <span className="truncate" title={statusText}>{statusText}</span>
-          {showReconnectButton && onReconnect && (
-            <button
-              onClick={onReconnect}
-              title="Reconnect"
-              className={buttonClasses}
-            >
-              <FiRefreshCw size={iconSize} />
-            </button>
-          )}
-        </div>
-      </WarningAlert>
-    );
-  }
+  const surface = cn(
+    'inline-flex items-center gap-2 rounded-full backdrop-blur-md border transition-colors select-none',
+    isSmall ? 'h-7 px-2.5 text-[11px]' : 'h-9 px-3.5 text-xs',
+
+    group === 'ready' && [
+      'bg-emerald-500/8 border-emerald-400/25 text-emerald-300',
+    ],
+    group === 'connecting' && [
+      'bg-[color:var(--color-gold)]/8',
+      'border-[color:var(--color-gold)]/30',
+      'text-[color:var(--color-gold-glow)]',
+    ],
+    group === 'offline' && [
+      'bg-[color:var(--color-crimson)]/12',
+      'border-[color:var(--color-crimson)]/35',
+      'text-[color:var(--color-crimson-soft)]',
+    ],
+  );
+
+  const Icon =
+    group === 'ready' ? FiCheckCircle
+      : group === 'connecting' ? FiLoader
+        : FiAlertTriangle;
 
   return (
-    <div className={containerClasses}>
-      <div className={dotWrapperClasses}>
-        <div className={dotClasses}></div>
-        <div className={pingClasses}></div>
-      </div>
-      <span className={textClasses} title={statusText}>
-        {statusText}
-      </span>
-    </div>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={group}
+        initial={{ opacity: 0, y: -4, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -4, scale: 0.98 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
+        className={surface}
+        role="status"
+        aria-live="polite"
+      >
+        <Icon
+          size={isSmall ? 12 : 14}
+          className={cn(group === 'connecting' && 'animate-spin')}
+          aria-hidden
+        />
+        <span
+          className="font-semibold tracking-wide truncate max-w-[200px]"
+          title={text}
+        >
+          {text}
+        </span>
+
+        {showReconnect && (
+          <button
+            onClick={onReconnect}
+            title="Reconnect now"
+            aria-label="Reconnect"
+            className={cn(
+              'ml-1 grid place-items-center rounded-full transition-colors',
+              'text-current/70 hover:text-current hover:bg-white/8',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-current/40',
+              isSmall ? 'size-5' : 'size-6',
+            )}
+          >
+            <FiRefreshCw size={isSmall ? 11 : 12} />
+          </button>
+        )}
+      </motion.div>
+    </AnimatePresence>
   );
 }

@@ -1,6 +1,7 @@
 import { useAvatarAnimations } from '@/features/avatar/hooks/useAvatarAnimations';
 import { useAvatarLipSync } from '@/features/avatar/hooks/useAvatarLipSync';
 import { Viseme } from '@/features/voice/hooks/useGaplessAudioQueue';
+import { logger } from '@/shared/utils/logger';
 import { notify } from '@/shared/utils/notify';
 import { useGLTF } from '@react-three/drei';
 import { useGraph } from '@react-three/fiber';
@@ -27,6 +28,35 @@ interface GLTFResult {
   nodes: Record<string, THREE.Object3D | THREE.Mesh>;
 }
 
+/**
+ * AvatarComponent — 3D avatar renderer.
+ *
+ * ────────────────────────────────────────────────────────────────────────
+ * ARM RELAXATION — POSTURE CONVENTION (fixes the "arm behind body" bug)
+ * ────────────────────────────────────────────────────────────────────────
+ *
+ * Root cause of the previous bug:
+ *   • baseline (this file)  premultiplied  +20°  around **X-axis** on BOTH sides.
+ *   • clip relaxation (`relaxArmPosture` in useAvatarAnimations.ts) applied -15°
+ *     around **X-axis** on BOTH sides.
+ *   • Net effect at rest: baseline (+20°) alone = 20° arm pitch BACKWARD
+ *     (X-axis on Mixamo/RPM rigs = pitch, not roll → wrong axis for a shoulder drop).
+ *     Also, mirroring L/R with the same quaternion sends BOTH arms in the same
+ *     world-direction (they should mirror), so one arm ended up "behind the body".
+ *
+ * Correct convention (used everywhere now):
+ *   • Axis:   Z  (roll, i.e. adduction — arm drops toward the torso).
+ *   • Angle:  small negative on the LEFT side; INVERTED on the RIGHT side.
+ *   • Applied identically in baseline AND clip tracks so rest ↔ animation align.
+ *
+ *   qDropArmL      = axisAngle(Z, -12°)    → left arm drops closer to torso
+ *   qDropArmR      = qDropArmL.invert()    → mirror for right arm
+ *   qDropShoulderL = axisAngle(Z,  -4°)    → very subtle clavicle relaxation
+ *   qDropShoulderR = qDropShoulderL.invert()
+ *
+ * Any change to these angles must be mirrored in `useAvatarAnimations.ts`.
+ * ────────────────────────────────────────────────────────────────────────
+ */
 export function AvatarComponent({
   avatarId,
   pipelineState,
@@ -38,7 +68,7 @@ export function AvatarComponent({
   getNextPlaybackTime,
   getAnalyserNode,
   morphTargetValuesRef,
-  currentTimeOverrideRef
+  currentTimeOverrideRef,
 }: AvatarComponentProps) {
   const groupRef = useRef<THREE.Group>(null);
   const avatarUrl = `/models/${avatarId}.glb`;
@@ -48,62 +78,84 @@ export function AvatarComponent({
   const { nodes } = useGraph(clone) as unknown as GLTFResult;
 
   const avatarRoot = useMemo(() => {
-    // SHARED BASELINE POSTURE LAYER
-    // Apply the exact same relaxation logic used in the clips directly to the bind pose.
-    // Since sanitizeClip strips arms from Idle and shoulders from all clips, they fall back
-    // to this baseline permanently. By relaxing the baseline, we eliminate the robotic
-    // stance at the start, end, and rest states without breaking animations.
-    const qDropArm = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(20));
-    const qDropShoulder = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(1));
+    // ✅ FIX: match sign, axis, AND L/R mirror with useAvatarAnimations.relaxArmPosture()
+    // Z-axis (roll) with negative sign drops the arm inward (adduction).
+    // Right side uses inverse quaternion so both arms mirror correctly.
+    const qDropArmL = new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(0, 0, 1),
+      THREE.MathUtils.degToRad(-12),
+    );
+    const qDropArmR = qDropArmL.clone().invert();
+
+    const qDropShoulderL = new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(0, 0, 1),
+      THREE.MathUtils.degToRad(-4),
+    );
+    const qDropShoulderR = qDropShoulderL.clone().invert();
 
     clone.traverse((node) => {
-      if ((node as THREE.Bone).isBone) {
-        const bone = node as THREE.Bone;
-        if (bone.name.startsWith('LeftArm') || bone.name.startsWith('RightArm')) {
-          bone.quaternion.premultiply(qDropArm);
-        }
-        if (bone.name.startsWith('LeftShoulder') || bone.name.startsWith('RightShoulder')) {
-          bone.quaternion.premultiply(qDropShoulder);
-        }
+      if (!(node as THREE.Bone).isBone) return;
+      const bone = node as THREE.Bone;
+
+      if (bone.name.startsWith('LeftArm')) {
+        bone.quaternion.premultiply(qDropArmL);
+      } else if (bone.name.startsWith('RightArm')) {
+        bone.quaternion.premultiply(qDropArmR);
+      } else if (bone.name.startsWith('LeftShoulder')) {
+        bone.quaternion.premultiply(qDropShoulderL);
+      } else if (bone.name.startsWith('RightShoulder')) {
+        bone.quaternion.premultiply(qDropShoulderR);
       }
     });
 
     return clone;
   }, [clone]);
 
-  // Hook 1: Animation Mixer, Tracks, and State Machine
-  useAvatarAnimations(avatarRoot as THREE.Group, pipelineState, movementEnabled, getAudioContext, playbackStartTimeRef, mouthCuesRef, getIsAudioPlaying, getNextPlaybackTime);
+  useAvatarAnimations(
+    avatarRoot as THREE.Group,
+    pipelineState,
+    movementEnabled,
+    getAudioContext,
+    playbackStartTimeRef,
+    mouthCuesRef,
+    getIsAudioPlaying,
+    getNextPlaybackTime,
+  );
 
   const toastShownRef = useRef(false);
 
   const targetMeshes = useMemo(() => {
     if (!nodes) return [];
-    return Object.values(nodes).filter(
-      (node) => {
-        const mesh = node as THREE.SkinnedMesh;
-        // Strictly filter to meshes with skinning AND morph targets (e.g. Wolf3D_Head)
-        if (mesh.isSkinnedMesh && mesh.morphTargetDictionary && mesh.morphTargetInfluences) {
-          if (import.meta.env.DEV) {
-            console.log(`[AvatarComponent] Available Morph Targets on ${mesh.name}:`, Object.keys(mesh.morphTargetDictionary));
-          }
-          return true;
-        }
-        return false;
+    return Object.values(nodes).filter((node) => {
+      const mesh = node as THREE.SkinnedMesh;
+      if (
+        mesh.isSkinnedMesh &&
+        mesh.morphTargetDictionary &&
+        mesh.morphTargetInfluences
+      ) {
+        logger.debug(
+          `[AvatarComponent] Morph Targets on ${mesh.name}:`,
+          Object.keys(mesh.morphTargetDictionary),
+        );
+        return true;
       }
-    ) as THREE.SkinnedMesh[];
+      return false;
+    }) as THREE.SkinnedMesh[];
   }, [nodes]);
 
   useEffect(() => {
     if (nodes && targetMeshes.length === 0 && !toastShownRef.current) {
-      if (import.meta.env.DEV) {
-        console.warn('[AvatarComponent] Missing morphTargetDictionary or morphTargetInfluences on Avatar nodes. Expressions and lip-sync will fail silently.');
-      }
-      notify.warning('Avatar Warning', 'Lip-sync targets missing. Using fallback animation.');
+      logger.warn(
+        '[AvatarComponent] Missing morphTargetDictionary or morphTargetInfluences. Lip-sync will fail silently.',
+      );
+      notify.warning(
+        'Avatar Warning',
+        'Lip-sync targets missing. Using fallback animation.',
+      );
       toastShownRef.current = true;
     }
   }, [nodes, targetMeshes]);
 
-  // Hook 2: Morph Target Interpolation, Blink, and Viseme application
   useAvatarLipSync({
     targetMeshes,
     pipelineState,
@@ -115,7 +167,7 @@ export function AvatarComponent({
     getAnalyserNode,
     groupRef,
     morphTargetValuesRef,
-    currentTimeOverrideRef
+    currentTimeOverrideRef,
   });
 
   useEffect(() => {
@@ -123,25 +175,24 @@ export function AvatarComponent({
       const box = new THREE.Box3().setFromObject(clone);
       const evidence = {
         box: {
-          minY: box.min.y, maxY: box.max.y, height: box.max.y - box.min.y, centerY: (box.min.y + box.max.y) / 2
+          minY: box.min.y,
+          maxY: box.max.y,
+          height: box.max.y - box.min.y,
+          centerY: (box.min.y + box.max.y) / 2,
         },
         modelTransform: {
           position: groupRef.current.position.toArray(),
           scale: groupRef.current.scale.toArray(),
-          rotation: groupRef.current.rotation.toArray()
-        }
+          rotation: groupRef.current.rotation.toArray(),
+        },
       };
-      console.log('[Runtime Evidence] Avatar Mount:', evidence);
-      (window as any).__AVATAR_EVIDENCE = evidence;
-      (window as any).__AVATAR_CLONE = clone;
+      logger.debug('[Runtime Evidence] Avatar Mount:', evidence);
     }
   }, [clone]);
 
   useEffect(() => {
     return () => {
-      if (groupRef.current) {
-        groupRef.current.clear();
-      }
+      if (groupRef.current) groupRef.current.clear();
     };
   }, []);
 

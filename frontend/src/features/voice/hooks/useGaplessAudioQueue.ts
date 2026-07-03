@@ -1,4 +1,5 @@
 import apiClient from '@/core/api/apiClient';
+import { logger } from '@/shared/utils/logger';
 import { useCallback, useEffect, useRef } from 'react';
 
 const IMMEDIATE_STOP_TIME = 0;
@@ -64,10 +65,10 @@ export function useGaplessAudioQueue() {
       const ctx = getAudioContext();
       if (ctx.state === 'suspended') {
         await ctx.resume();
-        console.log('[GaplessAudio] AudioContext resumed via user gesture');
+        logger.debug('[GaplessAudio] AudioContext resumed via user gesture');
       }
     } catch (err) {
-      console.warn('[GaplessAudio] Failed to unlock AudioContext:', err);
+      logger.warn('[GaplessAudio] Failed to unlock AudioContext:', err);
     }
   }, [getAudioContext]);
 
@@ -104,7 +105,7 @@ export function useGaplessAudioQueue() {
           activeSourceNodeRef.current.disconnect();
         }
       } catch (e) {
-        console.warn('[GaplessAudio] Failed to disconnect activeSourceNode:', e);
+        logger.warn('[GaplessAudio] Failed to disconnect activeSourceNode:', e);
       }
       activeSourceNodeRef.current = null;
     }
@@ -123,7 +124,7 @@ export function useGaplessAudioQueue() {
           node.disconnect();
         }
       } catch (e) {
-        console.warn('[GaplessAudio] Failed to disconnect scheduled node:', e);
+        logger.warn('[GaplessAudio] Failed to disconnect scheduled node:', e);
       }
     });
 
@@ -161,42 +162,42 @@ export function useGaplessAudioQueue() {
           // A3 fix: use apiClient so the request/response interceptors handle token refresh automatically.
           let arrayBuffer: ArrayBuffer;
           try {
-            console.log(`[GaplessAudio Debug] 1. Fetching URL: ${url}`);
+            logger.debug(`[GaplessAudio] 1. Fetching URL: ${url}`);
             const response = await apiClient.get<ArrayBuffer>(url, {
               responseType: 'arraybuffer',
               signal: abortControllerRef.current.signal,
             });
             arrayBuffer = response.data;
-            console.log(`[GaplessAudio Debug] 2. Download successful. Byte length: ${arrayBuffer.byteLength}`);
+            logger.debug(`[GaplessAudio] 2. Download successful. Byte length: ${arrayBuffer.byteLength}`);
           } catch (fetchErr: any) {
             if (fetchErr.name === 'AbortError' || fetchErr.code === 'ERR_CANCELED') return;
-            console.error('[GaplessAudio Debug] 2. URL fallback fetch failed:', fetchErr);
+            logger.error('[GaplessAudio] 2. URL fallback fetch failed:', fetchErr);
             return;
           }
 
           let audioBuffer: AudioBuffer;
           try {
             if (url.toLowerCase().endsWith('.mp3')) {
-              console.log(`[GaplessAudio Debug] 3. Decoding MP3 via AudioContext...`);
+              logger.debug('[GaplessAudio] 3. Decoding MP3 via AudioContext...');
               audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
-              console.log(`[GaplessAudio Debug] 6. MP3 decoded successfully. Duration: ${audioBuffer.duration}s`);
+              logger.debug(`[GaplessAudio] 6. MP3 decoded successfully. Duration: ${audioBuffer.duration}s`);
             } else {
-              console.log(`[GaplessAudio Debug] 3. Decoding raw PCM Int16 to Float32...`);
+              logger.debug('[GaplessAudio] 3. Decoding raw PCM Int16 to Float32...');
               const float32Data = convertInt16ToFloat32(arrayBuffer);
-              console.log(`[GaplessAudio Debug] 4. Decoded Float32 length: ${float32Data.length}`);
+              logger.debug(`[GaplessAudio] 4. Decoded Float32 length: ${float32Data.length}`);
 
-              console.log(`[GaplessAudio Debug] 5. Creating AudioContext Buffer (Channels: ${PCM_NUM_CHANNELS}, SampleRate: ${PCM_SAMPLE_RATE})`);
+              logger.debug(`[GaplessAudio] 5. Creating AudioContext Buffer (Channels: ${PCM_NUM_CHANNELS}, SampleRate: ${PCM_SAMPLE_RATE})`);
               audioBuffer = ctx.createBuffer(PCM_NUM_CHANNELS, float32Data.length, PCM_SAMPLE_RATE);
               audioBuffer.copyToChannel(float32Data as any, 0);
-              console.log(`[GaplessAudio Debug] 6. AudioBuffer created successfully. Duration: ${audioBuffer.duration}s`);
+              logger.debug(`[GaplessAudio] 6. AudioBuffer created. Duration: ${audioBuffer.duration}s`);
             }
           } catch (err) {
             if (err instanceof DOMException) {
-              console.error('[GaplessAudio Debug] DOMException during audio buffer creation (URL path):', err.name, err.message);
+              logger.error('[GaplessAudio] DOMException during audio buffer creation (URL path):', err.name, err.message);
             } else if (err instanceof TypeError) {
-              console.error('[GaplessAudio Debug] TypeError during audio data conversion (URL path):', err.message);
+              logger.error('[GaplessAudio] TypeError during audio data conversion (URL path):', err.message);
             } else {
-              console.error('[GaplessAudio Debug] Failed to process PCM audio from URL.', err);
+              logger.error('[GaplessAudio] Failed to process PCM audio from URL.', err);
             }
             return;
           }
@@ -223,7 +224,7 @@ export function useGaplessAudioQueue() {
 
           const chunkOffset = scheduleTime - visemeBaseStartTimeRef.current;
 
-          console.log(`[GaplessAudio Debug] 7. Scheduling playback at time: ${scheduleTime} (Current ctx time: ${ctx.currentTime})`);
+          logger.debug(`[GaplessAudio] 7. Scheduling playback at time: ${scheduleTime} (ctx: ${ctx.currentTime})`);
 
           const source = ctx.createBufferSource();
           activeSourceNodeRef.current = source;
@@ -237,7 +238,7 @@ export function useGaplessAudioQueue() {
           scheduledNodesRef.current.push(source);
 
           source.onended = () => {
-            console.log(`[GaplessAudio Debug] 10. Playback finished for URL: ${url}`);
+            logger.debug(`[GaplessAudio] 10. Playback finished for URL: ${url}`);
             if (!source) return;
             try {
               if (typeof source.disconnect === 'function') {
@@ -246,7 +247,7 @@ export function useGaplessAudioQueue() {
               // Defensive GC: Nullify buffer to prevent memory leaks from retained audio buffers
               source.buffer = null;
             } catch (e) {
-              console.warn('[GaplessAudio] Failed to cleanup activeSourceNode onended:', e);
+              logger.warn('[GaplessAudio] Failed to cleanup activeSourceNode onended:', e);
             }
             if (activeSourceNodeRef.current === source) {
               activeSourceNodeRef.current = null;
@@ -255,12 +256,12 @@ export function useGaplessAudioQueue() {
           };
 
           source.start(scheduleTime);
-          console.log(`[GaplessAudio Debug] 8. source.start() executed successfully.`);
+          logger.debug('[GaplessAudio] 8. source.start() executed successfully.');
           nextPlaybackTimeRef.current = scheduleTime + (audioBuffer.duration / playbackRateRef.current);
-          console.log(`[GaplessAudio Debug] 9. Expected end time: ${nextPlaybackTimeRef.current}`);
+          logger.debug(`[GaplessAudio] 9. Expected end time: ${nextPlaybackTimeRef.current}`);
 
           if (visemes.length > 0 && mouthCuesRef) {
-            console.log(`[Runtime Evidence] Raw Visemes Payload. Count: ${visemes.length}, First: ${JSON.stringify(visemes[0])}, Last: ${JSON.stringify(visemes[visemes.length - 1])}, Audio Duration: ${audioBuffer.duration}`);
+            logger.debug(`[Runtime Evidence] Raw Visemes Payload. Count: ${visemes.length}`);
             // DEFENSIVE FIX: Automatically normalize viseme timestamps.
             // Some TTS backends output visemes in milliseconds while Web Audio uses seconds.
             // If the last viseme ends at a time > 100, it is safely assumed to be in milliseconds.
@@ -277,7 +278,7 @@ export function useGaplessAudioQueue() {
         })
         .catch((err) => {
           if (err.name === 'AbortError') return;
-          console.error('[GaplessAudio] Processing Queue failed:', err);
+          logger.error('[GaplessAudio] Processing Queue failed:', err);
         });
     },
     [getAudioContext]
@@ -307,11 +308,11 @@ export function useGaplessAudioQueue() {
             chunkDecodedSuccessfullyRef.current = true;
           } catch (err) {
             if (err instanceof DOMException) {
-              console.error('[GaplessAudio] DOMException during audio buffer creation:', err.name, err.message);
+              logger.error('[GaplessAudio] DOMException during audio buffer creation:', err.name, err.message);
             } else if (err instanceof TypeError) {
-              console.error('[GaplessAudio] TypeError during audio data conversion:', err.message);
+              logger.error('[GaplessAudio] TypeError during audio data conversion:', err.message);
             } else {
-              console.error('[GaplessAudio] Failed to process PCM audio chunk.', err);
+              logger.error('[GaplessAudio] Failed to process PCM audio chunk.', err);
             }
             // Do NOT set chunkDecodedSuccessfullyRef — let the URL fallback run.
             return;
@@ -349,7 +350,7 @@ export function useGaplessAudioQueue() {
               if (typeof source.disconnect === 'function') source.disconnect();
               source.buffer = null;
             } catch (e) {
-              console.warn('[GaplessAudio] Failed to cleanup activeSourceNode onended:', e);
+              logger.warn('[GaplessAudio] Failed to cleanup activeSourceNode onended:', e);
             }
             if (activeSourceNodeRef.current === source) {
               activeSourceNodeRef.current = null;
@@ -364,7 +365,7 @@ export function useGaplessAudioQueue() {
         })
         .catch((err) => {
           if (err.name === 'AbortError') return;
-          console.error('[GaplessAudio] Processing Queue failed for chunk:', err);
+          logger.error('[GaplessAudio] Processing Queue failed for chunk:', err);
         });
     },
     [getAudioContext]
@@ -376,7 +377,7 @@ export function useGaplessAudioQueue() {
         const customEvent = event as CustomEvent<Blob | ArrayBuffer>;
         enqueueAudioChunk(customEvent.detail);
       } catch (err) {
-        console.error('[GaplessAudio] Failed to handle audio_chunk event:', err);
+        logger.error('[GaplessAudio] Failed to handle audio_chunk event:', err);
       }
     };
     window.addEventListener('audio_chunk', handleAudioChunk);
@@ -426,7 +427,7 @@ export function useGaplessAudioQueue() {
       if (ctx.state === 'suspended') {
         ctx.resume().catch(() => { });
       } else if (ctx.state === 'running' && ctx.currentTime > nextPlaybackTimeRef.current + (WATCHDOG_TIMEOUT_MS / 1000)) {
-        console.warn('[GaplessAudio] Watchdog triggered: Audio context stalled. Flushing queue.');
+        logger.warn('[GaplessAudio] Watchdog triggered: Audio context stalled. Flushing queue.');
         flushQueue();
       }
     }, WATCHDOG_TIMEOUT_MS);

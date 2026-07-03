@@ -51,24 +51,36 @@ export function useAvatarAnimations(
     }
 
     function relaxArmPosture(clip: THREE.AnimationClip) {
-      // Gently drop upper arms and shoulders to reduce robotic T-pose abduction
-      const qDropArm = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(-15));
-      const qDropShoulder = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(-5));
+      // ✅ FIX: Z-axis roll, small negative on LEFT; INVERTED for RIGHT (mirror).
+      //         Must match baseline in AvatarComponent.tsx exactly.
+      const qDropArmL = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 0, 1),
+        THREE.MathUtils.degToRad(20),
+      );
+      const qDropArmR = qDropArmL.clone().invert();
+
+      const qDropShoulderL = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 0, 1),
+        THREE.MathUtils.degToRad(55),
+      );
+      const qDropShoulderR = qDropShoulderL.clone().invert();
 
       for (const track of clip.tracks) {
         if (!(track instanceof THREE.QuaternionKeyframeTrack)) continue;
 
         let qOffset: THREE.Quaternion | null = null;
-        if (track.name.startsWith('LeftArm') || track.name.startsWith('RightArm')) qOffset = qDropArm;
-        if (track.name.startsWith('LeftShoulder') || track.name.startsWith('RightShoulder')) qOffset = qDropShoulder;
+        if (track.name.startsWith('LeftArm'))            qOffset = qDropArmL;
+        else if (track.name.startsWith('RightArm'))      qOffset = qDropArmR;
+        else if (track.name.startsWith('LeftShoulder'))  qOffset = qDropShoulderL;
+        else if (track.name.startsWith('RightShoulder')) qOffset = qDropShoulderR;
 
-        if (qOffset) {
-          const tmp = new THREE.Quaternion();
-          for (let i = 0; i < track.values.length; i += 4) {
-            tmp.fromArray(track.values, i);
-            tmp.premultiply(qOffset); // Clean local rotation, avoids Mixamo/RPM cross-axis twisting
-            tmp.toArray(track.values, i);
-          }
+        if (!qOffset) continue;
+
+        const tmp = new THREE.Quaternion();
+        for (let i = 0; i < track.values.length; i += 4) {
+          tmp.fromArray(track.values, i);
+          tmp.premultiply(qOffset);
+          tmp.toArray(track.values, i);
         }
       }
     }

@@ -75,22 +75,26 @@ const SessionListItem = memo(function SessionListItem({
     <ContextMenu>
       <ContextMenuTrigger>
         <div
-          className="sidebar-session-item-wrapper"
+          className="group/item"
           onMouseEnter={(e) => onMouseEnter(session, e.currentTarget)}
           onMouseLeave={onMouseLeave}
         >
           <button
-            className={`sidebar-session-item ${isActive ? 'active' : ''}`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors duration-150 ${
+              isActive
+                ? 'bg-gold/10 text-offwhite'
+                : 'text-offwhite/60 hover:bg-white/5 hover:text-offwhite'
+            }`}
             onClick={() => onSelect(session.id)}
             aria-label={`Open chat: ${session.title || 'New chat'}`}
           >
-            <PiChatCircleTextFill className="session-icon" />
+            <PiChatCircleTextFill className="shrink-0 w-4 h-4 opacity-70" />
 
-            <div className="session-info">
+            <div className="flex-1 min-w-0">
               {isEditing ? (
                 <input
                   type="text"
-                  className="session-edit-input"
+                  className="w-full bg-transparent border border-gold/30 rounded-md px-2 py-0.5 text-sm text-offwhite outline-none focus:ring-1 focus:ring-gold/50"
                   value={editValue}
                   onChange={(e) => onEditValueChange(e.target.value)}
                   onBlur={() => onSaveEdit(session.id)}
@@ -99,10 +103,12 @@ const SessionListItem = memo(function SessionListItem({
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (
-                <div className="session-title-row min-w-0">
-                  <span className="session-title truncate block w-full overflow-hidden text-ellipsis" dir="auto" title={session.title || 'New chat'}>{session.title || 'New chat'}</span>
+                <div className="min-w-0">
+                  <span className="block truncate text-sm" dir="auto" title={session.title || 'New chat'}>
+                    {session.title || 'New chat'}
+                  </span>
                   {displayTime && (
-                    <span className="session-time">{formatRelativeTime(displayTime)}</span>
+                    <span className="block text-[10px] text-offwhite/35 mt-0.5">{formatRelativeTime(displayTime)}</span>
                   )}
                 </div>
               )}
@@ -245,9 +251,9 @@ const SessionList = memo(function SessionList({
   }, []);
 
   return (
-    <div className="sidebar-inner w-full relative">
+    <div className="w-full relative flex flex-col h-full">
 
-      <div className="sidebar-chats-section">
+      <div className="flex flex-col flex-1 min-h-0">
         <div className="flex items-center justify-between w-full mb-4 px-4 pt-4 border-b border-white/5 pb-4">
           <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 m-0 leading-none">
             Discussion History
@@ -274,10 +280,10 @@ const SessionList = memo(function SessionList({
           </div>
         </div>
 
-        <div className="scroll-fade scroll-fade-24 overflow-y-auto no-scrollbar h-full">
+        <div className="flex-1 overflow-y-auto no-scrollbar min-h-0 px-2 pb-2">
           {filtered.length === 0 ? (
-            <div className="sidebar-empty-state">
-              <p>No active classroom sessions. Upload a syllabus or document to start your first session.</p>
+            <div className="flex flex-col items-center justify-center h-32 text-center px-4">
+              <p className="text-xs text-offwhite/40">No active classroom sessions. Upload a syllabus or document to start your first session.</p>
             </div>
           ) : (
             filtered.map((session) => {

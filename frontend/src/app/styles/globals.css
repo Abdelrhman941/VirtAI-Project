@@ -2,34 +2,86 @@
  * VirtAI · globals.css   (the ONLY root-level stylesheet)
  * ----------------------------------------------------------------------------
  * Imported once from `app/main.tsx`.
- * Contains: Tailwind directives · design tokens · brand palette
+ * Contains: Tailwind v4 import · design tokens · brand palette
  *           · [dir="rtl"] logical-property overrides · shared utilities.
  * DO NOT add feature-specific rules here — use Tailwind utilities in the JSX.
  * ============================================================================ */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
-/* ---------- design tokens (CSS variables) --------------------------------- */
-:root {
-  /* Brand palette */
-  --color-dark: #0A0908;
-  --color-dark-secondary: #14120F;
-  --color-dark-tertiary: #1E1B17;
+/* ---------- Tailwind v4 theme tokens (custom design system) --------------- */
+@theme {
+  /* Surface hierarchy — dark premium */
+  --color-dark: #0a0a0a;
+  /* app background */
+  --color-dark-secondary: #121212;
+  /* cards, drawers */
+  --color-dark-tertiary: #1a1a1a;
+  /* inputs, chips */
+  --color-dark-elevated: #222222;
+  /* hover / active */
+
+  /* Text hierarchy */
   --color-offwhite: #F5F1EC;
-  --color-gold: #D4B47A;
-  --color-gold-soft: #B4AB8B;
-  --color-gold-deep: #6D5B34;
-  --color-crimson: #6D001A;
-  --color-crimson-glow: #C81E42;
+  --color-offwhite-dim: #C9C4BB;
 
+  /* Gold accent — rich, saturated, unmistakably premium */
+  --color-gold: #C9A961;
+  /* primary accent */
+  --color-gold-soft: #D9BD82;
+  /* hover / light */
+  --color-gold-deep: #A88940;
+  /* pressed / gradient bottom */
+  --color-gold-glow: #E8CE96;
+  /* highlight / shimmer center */
+
+  /* Crimson — for danger / recording */
+  --color-crimson: #8B1F35;
+  --color-crimson-glow: #C13350;
+  --color-crimson-soft: #E56B7F;
+
+  /* Semantic tokens map to brand */
+  --color-background: var(--color-dark);
+  --color-foreground: var(--color-offwhite);
+  --color-muted-foreground: #7A736A;
+
+  --color-card: var(--color-dark-secondary);
+  --color-card-foreground: var(--color-offwhite);
+  --color-popover: var(--color-dark-secondary);
+  --color-popover-foreground: var(--color-offwhite);
+
+  --color-primary: var(--color-gold);
+  --color-primary-foreground: #0a0a0a;
+
+  --color-secondary: var(--color-dark-tertiary);
+  --color-secondary-foreground: var(--color-offwhite);
+
+  --color-accent: var(--color-dark-elevated);
+  --color-accent-foreground: var(--color-offwhite);
+
+  --color-destructive: var(--color-crimson);
+  --color-destructive-foreground: var(--color-offwhite);
+
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-input: rgba(255, 255, 255, 0.06);
+  --color-ring: var(--color-gold);
+
+  --radius: 0.75rem;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Sora', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ---------- CSS variables (for non-Tailwind consumers, e.g. shadcn) ------- */
+:root {
   /* Semantic aliases (consumed by shadcn primitives) */
-  --background: var(--color-dark);
-  --foreground: var(--color-offwhite);
+  --background: #0A0908;
+  --foreground: #F5F1EC;
   --border-color: rgba(245, 241, 236, 0.12);
-  --text-primary: var(--color-offwhite);
-  --accent-gold: var(--color-gold);
+  --text-primary: #F5F1EC;
+  --accent-gold: #D4B47A;
 
   /* Visual viewport unit (iOS Safari mobile-keyboard fix — see useVisualViewport hook) */
   --vv-height: 100dvh;
@@ -37,34 +89,140 @@
 
 /* ---------- base layer ---------------------------------------------------- */
 @layer base {
+  * { border-color: var(--color-border); }
 
-  html,
-  body,
-  #root {
+  html, body, #root {
     height: 100%;
-    background-color: var(--color-dark);
-    color: var(--color-offwhite);
-  }
-
-  body {
-    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
-  /* RTL logical-property overrides — Arabic UI. */
-  [dir="rtl"] .flip-x {
-    transform: scaleX(-1);
+  body {
+    background:
+      radial-gradient(1200px 800px at 20% -10%, rgba(201, 169, 97, 0.045), transparent 60%),
+      radial-gradient(900px 700px at 100% 100%, rgba(139, 31, 53, 0.03), transparent 60%),
+      var(--color-dark);
+  }
+
+  ::selection {
+    background: rgba(201, 169, 97, 0.28);
+    color: var(--color-offwhite);
   }
 }
 
-/* ---------- shared utilities --------------------------------------------- */
+/* ---------- display typography utilities ---------------------------------- */
 @layer utilities {
-  .no-scrollbar {
-    scrollbar-width: none;
+
+  /* ── Scrollbars ── */
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.12) transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.10);
+    border-radius: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(201, 169, 97, 0.35);
   }
 
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
+  /* ── Shimmer — the missing piece for "Thinking…" ── */
+  @keyframes shimmer-sweep {
+    0%   { background-position: -200% 0; }
+    100% { background-position:  200% 0; }
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(245, 241, 236, 0.38) 0%,
+      rgba(245, 241, 236, 0.38) 40%,
+      var(--color-gold-glow)    50%,
+      rgba(245, 241, 236, 0.38) 60%,
+      rgba(245, 241, 236, 0.38) 100%
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+    animation: shimmer-sweep 1.8s ease-in-out infinite;
+  }
+  .shimmer-once             { animation-iteration-count: 1; }
+  .shimmer-duration-1100    { animation-duration: 1.1s; }
+  .shimmer-duration-1800    { animation-duration: 1.8s; }
+  .shimmer-duration-2400    { animation-duration: 2.4s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shimmer {
+      animation: none;
+      color: var(--color-offwhite-dim);
+    }
+  }
+
+  /* ── Fade in ── */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .fade-in { animation: fadeIn .28s ease-out both; }
+
+  /* ── Glass card — clean, no brown tint ── */
+  .modern-glass-card {
+    background:
+      linear-gradient(180deg,
+        rgba(255,255,255,0.045),
+        rgba(255,255,255,0.018));
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow:
+      0 18px 40px rgba(0,0,0,0.35),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  /* ── Setup section headings (already used, kept for parity) ── */
+  .setup-section-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--color-offwhite);
+    margin: 0 0 6px 0;
+  }
+  .setup-section-subtitle {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--color-muted-foreground);
+    max-width: 46ch;
+    margin: 0 auto;
+  }
+
+  /* ── Classroom watermark ── */
+  .classroom-watermark {
+    text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  }
+
+  /* ── Streaming cursor blink ── */
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.25; }
+  }
+  .streaming-cursor {
+    display: inline-block;
+    width: 0.5ch;
+    height: 1em;
+    margin-left: 2px;
+    background: var(--color-gold-glow);
+    border-radius: 1px;
+    vertical-align: text-bottom;
+    animation: cursor-blink 1.05s ease-in-out infinite;
   }
 }

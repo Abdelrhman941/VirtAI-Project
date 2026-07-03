@@ -111,8 +111,7 @@ export default function ChatInput({
   const isGenerating = ['thinking', 'speaking'].includes(pipelineState);
 
   return (
-    // Static safe-area padding — Tailwind arbitrary value replaces inline style.
-    <div className="chat-input-container w-full px-4 mb-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+    <div className="w-full px-4 mb-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
       <div className="flex flex-row items-end gap-3 max-w-[800px] mx-auto w-full">
         <div className="flex flex-row items-end gap-2">
           <VoiceModeButton
@@ -132,7 +131,7 @@ export default function ChatInput({
           </button>
         </div>
 
-        <div className="chat-input-pill flex-1 flex flex-row items-end gap-2.5 rounded-[26px] bg-dark-tertiary px-4 py-1 transition-colors duration-300 min-h-[52px]">
+        <div className="flex flex-row items-end gap-2.5 flex-1 rounded-[26px] bg-dark-tertiary px-4 py-1 transition-colors duration-300 min-h-[52px]">
           <textarea
             ref={textareaRef}
             className="flex-1 bg-transparent border-none resize-none text-[15px] text-white/90 placeholder:text-white/40 py-[11px] min-h-[44px] max-h-[132px] overflow-y-auto outline-none shadow-none focus:ring-0 focus:border-none focus:outline-none focus:shadow-none"

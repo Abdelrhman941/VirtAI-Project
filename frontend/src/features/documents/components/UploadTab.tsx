@@ -1,5 +1,6 @@
 import { Document } from '@/features/documents/types';
 import { DangerAlert } from '@/shared/components/ui/alert-variants';
+import { cn } from '@/shared/utils/cn';
 import { notify } from '@/shared/utils/notify';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -22,12 +23,22 @@ function validateSelectedFile(file: File): string | null {
 interface UploadTabProps {
   onUploaded?: () => void;
   onSkip?: () => void;
-  enqueueUpload: (file: File, tempId: string, fileHash: string, confirmedDuplicate?: boolean) => Promise<{ isDuplicate: boolean } | void>;
+  enqueueUpload: (
+    file: File,
+    tempId: string,
+    fileHash: string,
+    confirmedDuplicate?: boolean,
+  ) => Promise<{ isDuplicate: boolean } | void>;
   documents: Document[];
   compact?: boolean;
 }
 
-export function UploadTab({ onSkip, enqueueUpload, documents, compact = false }: UploadTabProps) {
+export function UploadTab({
+  onSkip,
+  enqueueUpload,
+  documents,
+  compact = false,
+}: UploadTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
@@ -35,7 +46,10 @@ export function UploadTab({ onSkip, enqueueUpload, documents, compact = false }:
   const [hashWorker, setHashWorker] = useState<Worker | null>(null);
 
   useEffect(() => {
-    const worker = new Worker(new URL('../workers/hashWorker.ts', import.meta.url), { type: 'module' });
+    const worker = new Worker(
+      new URL('../workers/hashWorker.ts', import.meta.url),
+      { type: 'module' },
+    );
     setHashWorker(worker);
     return () => worker.terminate();
   }, []);
@@ -45,23 +59,18 @@ export function UploadTab({ onSkip, enqueueUpload, documents, compact = false }:
 
   const setFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
-
     const newFiles = Array.from(files);
     const validFiles: File[] = [];
     const errors = { ...localErrors };
-
     let projectedCount = totalFiles + selectedFiles.length;
 
-    newFiles.forEach(file => {
-      if (selectedFiles.some(f => f.name === file.name)) {
-        return;
-      }
-
+    newFiles.forEach((file) => {
+      if (selectedFiles.some((f) => f.name === file.name)) return;
       if (projectedCount >= 10) {
-        errors[file.name] = 'You have reached the maximum limit of 10 uploaded documents for this session.';
+        errors[file.name] =
+          'You have reached the maximum limit of 10 uploaded documents for this session.';
         return;
       }
-
       const validationError = validateSelectedFile(file);
       if (validationError) {
         errors[file.name] = validationError;
@@ -71,7 +80,7 @@ export function UploadTab({ onSkip, enqueueUpload, documents, compact = false }:
       }
     });
 
-    setSelectedFiles(prev => [...prev, ...validFiles]);
+    setSelectedFiles((prev) => [...prev, ...validFiles]);
     setLocalErrors(errors);
   };
 
@@ -92,8 +101,8 @@ export function UploadTab({ onSkip, enqueueUpload, documents, compact = false }:
   };
 
   const removeFile = useCallback((fileName: string) => {
-    setSelectedFiles(prev => prev.filter(f => f.name !== fileName));
-    setLocalErrors(prev => {
+    setSelectedFiles((prev) => prev.filter((f) => f.name !== fileName));
+    setLocalErrors((prev) => {
       const newErrors = { ...prev };
       delete newErrors[fileName];
       return newErrors;
@@ -106,57 +115,61 @@ export function UploadTab({ onSkip, enqueueUpload, documents, compact = false }:
 
     for (const file of selectedFiles) {
       if (localErrors[file.name]) continue;
-
       try {
-        const hashResult = await new Promise<{ hash?: string, fileName: string }>((resolve, reject) => {
-          let onMessage: (e: MessageEvent) => void;
-
-          const timeoutId = setTimeout(() => {
-            hashWorker.removeEventListener('message', onMessage);
-            reject(new Error('Hashing timed out after 10 seconds'));
-          }, 30000);
-
-          onMessage = (e: MessageEvent) => {
-            if (e.data.fileName === file.name) {
-              clearTimeout(timeoutId);
+        const hashResult = await new Promise<{ hash?: string; fileName: string }>(
+          (resolve, reject) => {
+            let onMessage: (e: MessageEvent) => void;
+            const timeoutId = setTimeout(() => {
               hashWorker.removeEventListener('message', onMessage);
-              if (e.data.error) {
-                reject(new Error(e.data.error));
-              } else {
-                resolve(e.data);
+              reject(new Error('Hashing timed out after 30 seconds'));
+            }, 30000);
+            onMessage = (e: MessageEvent) => {
+              if (e.data.fileName === file.name) {
+                clearTimeout(timeoutId);
+                hashWorker.removeEventListener('message', onMessage);
+                if (e.data.error) reject(new Error(e.data.error));
+                else resolve(e.data);
               }
-            }
-          };
-          hashWorker.addEventListener('message', onMessage);
-          hashWorker.postMessage(file);
-        });
+            };
+            hashWorker.addEventListener('message', onMessage);
+            hashWorker.postMessage(file);
+          },
+        );
 
-        // Generate UUID tempId for optimistic UI tracking
         const tempId = crypto.randomUUID();
-
         const result = await enqueueUpload(file, tempId, hashResult.hash!);
         if (result && result.isDuplicate) {
-          if (window.confirm(`A file named "${file.name}" with the exact same size already exists. Are you sure you want to upload it again?`)) {
+          if (
+            window.confirm(
+              `A file named "${file.name}" with the exact same size already exists. Are you sure you want to upload it again?`,
+            )
+          ) {
             await enqueueUpload(file, tempId, hashResult.hash!, true);
           } else {
             removeFile(file.name);
             continue;
           }
         }
-
         removeFile(file.name);
-
       } catch (err: unknown) {
-        setLocalErrors(prev => ({ ...prev, [file.name]: 'Failed to calculate file hash: ' + (err instanceof Error ? err.message : 'Unknown checksum error') + '. Please try uploading the file again.' }));
-        console.error("Hashing error", err);
+        setLocalErrors((prev) => ({
+          ...prev,
+          [file.name]:
+            'Failed to calculate file hash: ' +
+            (err instanceof Error ? err.message : 'Unknown checksum error') +
+            '. Please try uploading the file again.',
+        }));
+        console.error('Hashing error', err);
       }
     }
 
-    const successfulUploads = selectedFiles.filter(f => !localErrors[f.name]);
+    const successfulUploads = selectedFiles.filter((f) => !localErrors[f.name]);
     if (successfulUploads.length > 0) {
-      notify.success('Upload complete', `${successfulUploads.length} document(s) uploaded successfully.`);
+      notify.success(
+        'Upload complete',
+        `${successfulUploads.length} document(s) uploaded successfully.`,
+      );
     }
-
     setIsProcessing(false);
   }, [selectedFiles, hashWorker, enqueueUpload, removeFile, localErrors]);
 
@@ -164,27 +177,64 @@ export function UploadTab({ onSkip, enqueueUpload, documents, compact = false }:
   const isDisabled = isProcessing || isLimitReached;
 
   return (
-    <div className={`${compact ? '' : 'min-h-full'} flex items-center justify-center ltr fade-in`}>
-      <div className={`w-full ${compact ? '' : 'max-w-[620px] p-6 rounded-[18px] border border-white/10 bg-gradient-to-b from-white/[0.055] to-white/[0.025] bg-[#121212]/56 shadow-[0_18px_44px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] sm:p-[18px] sm:gap-4'} flex flex-col gap-5 modern-glass-card`}>
+    <div
+      className={cn(
+        compact ? '' : 'min-h-full',
+        'flex items-center justify-center ltr fade-in',
+      )}
+    >
+      <div
+        className={cn(
+          'w-full flex flex-col gap-5 modern-glass-card',
+          compact ? '' : 'max-w-[560px] p-6 rounded-2xl',
+        )}
+      >
+        {/* Header */}
         <div className="flex flex-col items-center text-center">
-          <h2 className={`${compact ? 'text-[18px] font-bold' : 'setup-section-title'}`}>Upload Curriculum Documents</h2>
+          <h2
+            className={cn(
+              compact
+                ? 'text-[18px] font-bold text-[color:var(--color-offwhite)]'
+                : 'setup-section-title',
+            )}
+          >
+            Upload Curriculum Documents
+          </h2>
           {!compact && (
             <p className="setup-section-subtitle">
-              Provide syllabus, textbooks, or course notes to inform your virtual teaching assistant&apos;s curriculum awareness (Maximum 10 files per session).
+              Provide syllabus, textbooks, or course notes to inform your virtual
+              teaching assistant&apos;s curriculum awareness (Maximum 10 files
+              per session).
             </p>
           )}
         </div>
 
         {isLimitReached && (
           <DangerAlert className="mb-4">
-            This session has reached the limit of 10 curriculum documents. Please remove an existing document to upload a new one.
+            This session has reached the limit of 10 curriculum documents.
+            Please remove an existing document to upload a new one.
           </DangerAlert>
         )}
 
+        {/* Dropzone */}
         <div
-          className={`${compact ? 'min-h-[140px] p-3' : 'min-h-[210px] sm:min-h-[190px] sm:px-4 sm:py-[22px] p-7'} flex flex-col items-center justify-center rounded-[18px] border-2 border-dashed transition-all duration-200 ease-out
-            ${isDisabled ? 'cursor-progress opacity-80 border-primary/30 bg-black/15' : 'cursor-pointer border-primary/30 bg-black/15 hover:border-primary/70 hover:bg-primary/10 hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)] hover:-translate-y-px'}
-            ${hasFiles ? 'has-file' : ''}`}
+          className={cn(
+            'flex flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all duration-200 ease-out',
+            compact ? 'min-h-[140px] p-3' : 'min-h-[200px] p-6',
+            isDisabled
+              ? 'cursor-progress opacity-70 border-white/15 bg-black/25'
+              : [
+                'cursor-pointer',
+                'border-[color:var(--color-gold)]/25 bg-black/20',
+                // ✅ FIX: use `hover:` alone (valid), guard against disabled state via class toggle
+                'hover:border-[color:var(--color-gold)]/60',
+                'hover:bg-[color:var(--color-gold)]/[0.04]',
+                'hover:-translate-y-px',
+                'hover:shadow-[0_12px_30px_rgba(0,0,0,0.25)]',
+              ],
+            hasFiles &&
+            'border-[color:var(--color-gold)]/40 bg-black/25',
+          )}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           onClick={() => !isDisabled && fileInputRef.current?.click()}
@@ -201,39 +251,91 @@ export function UploadTab({ onSkip, enqueueUpload, documents, compact = false }:
 
           {!hasFiles ? (
             <div className="w-full flex flex-col items-center justify-center gap-3 text-center">
-              <span className="w-[66px] h-[66px] grid place-items-center rounded-[20px] bg-primary/10 text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-                <FiUploadCloud className="w-[34px] h-[34px]" />
+              <span
+                className={cn(
+                  'grid place-items-center rounded-2xl border',
+                  'w-16 h-16',
+                  'bg-[color:var(--color-gold)]/8',
+                  'text-[color:var(--color-gold)]',
+                  'border-[color:var(--color-gold)]/20',
+                  'shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]',
+                )}
+              >
+                <FiUploadCloud className="w-8 h-8" />
               </span>
-              <p className={`m-0 text-foreground font-[650] ${compact ? 'text-[13px] mt-2 mb-1' : 'text-[15px]'}`}>Drag reference documents here, or click to browse files</p>
-              <span className={`text-muted-foreground ${compact ? 'text-[12px]' : 'text-[13px]'}`}>Supports PDF, TXT, or MD formats up to 25MB</span>
+              <p
+                className={cn(
+                  'm-0 font-semibold text-[color:var(--color-offwhite)]',
+                  compact ? 'text-[13px]' : 'text-[15px]',
+                )}
+              >
+                Drag documents here, or click to browse
+              </p>
+              <span
+                className={cn(
+                  'text-[color:var(--color-muted-foreground)]',
+                  compact ? 'text-[11px]' : 'text-[12px]',
+                )}
+              >
+                PDF, TXT, or Markdown — up to {MAX_FILE_SIZE_MB}MB
+              </span>
             </div>
           ) : (
-            <div className="w-full flex flex-col gap-2 max-h-[250px] overflow-y-auto p-1 custom-scrollbar" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="w-full flex flex-col gap-2 max-h-[250px] overflow-y-auto p-1 custom-scrollbar"
+              onClick={(e) => e.stopPropagation()}
+            >
               <AnimatePresence>
                 {selectedFiles.map((file) => {
                   const fileError = localErrors[file.name];
-
                   return (
                     <motion.div
                       key={file.name}
-                      className={`flex items-center gap-3 px-4 py-3 border rounded-xl relative transition-all duration-200 hover:bg-black/30
-                        ${fileError ? 'border-red-500/30 bg-red-500/5' : 'bg-black/20 border-white/10'}`}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-3 border rounded-xl relative transition-all duration-200',
+                        'hover:bg-black/30',
+                        fileError
+                          ? 'border-red-500/30 bg-red-500/5'
+                          : 'bg-black/25 border-white/10',
+                      )}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                     >
-                      <FiFileText className={`w-6 h-6 shrink-0 ${fileError ? 'text-red-500' : 'text-primary'}`} />
+                      <FiFileText
+                        className={cn(
+                          'w-6 h-6 shrink-0',
+                          fileError
+                            ? 'text-red-500'
+                            : 'text-[color:var(--color-gold)]',
+                        )}
+                      />
                       <div className="flex flex-col flex-1 min-w-0 text-left">
-                        <span className="text-foreground text-[14px] font-semibold overflow-hidden text-ellipsis whitespace-nowrap block w-full" dir="auto" title={file.name}>{file.name}</span>
-                        <span className="text-muted-foreground text-[12px]">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                        <span
+                          className="text-[color:var(--color-offwhite)] text-[14px] font-semibold overflow-hidden text-ellipsis whitespace-nowrap block w-full"
+                          dir="auto"
+                          title={file.name}
+                        >
+                          {file.name}
+                        </span>
+                        <span className="text-[color:var(--color-muted-foreground)] text-[12px]">
+                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                        </span>
                         {fileError && (
-                          <span className="text-red-300 text-[12px] mt-0.5">{fileError}</span>
+                          <span className="text-red-300 text-[12px] mt-0.5">
+                            {fileError}
+                          </span>
                         )}
                       </div>
 
                       {!isProcessing && (
                         <button
-                          className="w-7 h-7 grid place-items-center border border-white/10 rounded-full bg-white/5 text-muted-foreground cursor-pointer transition-all duration-200 shrink-0 hover:bg-red-500/15 hover:border-red-500/40 hover:text-red-300 hover:scale-105"
+                          className={cn(
+                            'w-7 h-7 grid place-items-center border border-white/10 rounded-full',
+                            'bg-white/5 text-[color:var(--color-muted-foreground)]',
+                            'cursor-pointer transition-all duration-200 shrink-0',
+                            'hover:bg-red-500/15 hover:border-red-500/40 hover:text-red-300 hover:scale-105',
+                          )}
                           onClick={() => removeFile(file.name)}
                           aria-label="Remove selected file"
                         >
@@ -248,10 +350,20 @@ export function UploadTab({ onSkip, enqueueUpload, documents, compact = false }:
           )}
         </div>
 
-        <div className="flex justify-center w-full gap-3.5 flex-wrap mt-5 sm:flex-col-reverse">
+        {/* Buttons */}
+        <div className="flex justify-center w-full gap-3 flex-wrap mt-4 sm:flex-col-reverse">
           {onSkip && (
             <button
-              className="min-w-[150px] min-h-[44px] inline-flex items-center justify-center rounded-xl px-[18px] py-2 border text-[14px] font-bold font-sans cursor-pointer transition-all duration-200 text-muted-foreground bg-white/5 border-white/15 hover:not:disabled:text-foreground hover:not:disabled:border-white/25 hover:not:disabled:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed hover:not:disabled:-translate-y-px sm:w-full"
+              className={cn(
+                'min-w-[150px] h-11 inline-flex items-center justify-center rounded-xl px-5 text-sm font-semibold transition-all',
+                'text-[color:var(--color-offwhite)]/70 bg-white/[0.03] border border-white/10',
+                // ✅ FIX: was `hover:not:disabled:...` (broken syntax). Use `enabled:hover:` chain.
+                'enabled:hover:text-[color:var(--color-offwhite)]',
+                'enabled:hover:bg-white/[0.06]',
+                'enabled:hover:border-white/20',
+                'enabled:hover:-translate-y-px',
+                'disabled:opacity-40 disabled:cursor-not-allowed',
+              )}
               onClick={onSkip}
               disabled={isProcessing}
             >
@@ -260,12 +372,30 @@ export function UploadTab({ onSkip, enqueueUpload, documents, compact = false }:
           )}
 
           <button
-            className="min-w-[150px] min-h-[44px] inline-flex items-center justify-center rounded-xl px-[18px] py-2 border text-[14px] font-bold font-sans cursor-pointer transition-all duration-200 text-[#121212] bg-primary border-primary/70 hover:not:disabled:bg-[#c9bf9c] hover:not:disabled:shadow-[0_14px_24px_rgba(255,255,255,0.08)] disabled:opacity-40 disabled:cursor-not-allowed hover:not:disabled:-translate-y-px sm:w-full"
+            className={cn(
+              'min-w-[200px] h-11 inline-flex items-center justify-center rounded-xl px-5 text-sm font-bold transition-all',
+              // Idle: rich gold gradient — visible on the dark surface
+              'bg-gradient-to-br from-[color:var(--color-gold)] to-[color:var(--color-gold-deep)]',
+              'text-[color:var(--color-primary-foreground)]',
+              'border border-[color:var(--color-gold)]/60',
+              'shadow-[0_4px_14px_rgba(201,169,97,0.25)]',
+              // ✅ FIX: use `enabled:hover:` (was `hover:not:disabled:` — invalid)
+              'enabled:hover:shadow-[0_6px_20px_rgba(201,169,97,0.38)]',
+              'enabled:hover:-translate-y-px',
+              // Disabled: stays visible in muted grey, but non-interactive
+              'disabled:opacity-100',
+              'disabled:from-[color:var(--color-dark-tertiary)] disabled:to-[color:var(--color-dark-tertiary)]',
+              'disabled:text-[color:var(--color-offwhite)]/30',
+              'disabled:border-white/8 disabled:shadow-none',
+              'disabled:cursor-not-allowed',
+            )}
             onClick={handleUpload}
             disabled={!hasFiles || isDisabled}
           >
             {isProcessing ? (
-              <span className="shimmer shimmer-once shimmer-duration-1100">Indexing document…</span>
+              <span className="shimmer shimmer-duration-1100">
+                Indexing document…
+              </span>
             ) : (
               'Upload Reference Materials'
             )}
