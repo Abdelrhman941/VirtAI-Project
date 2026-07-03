@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FiCheckCircle, FiClock, FiFileText, FiXCircle } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ISession } from '../types';
-import './SessionHoverPreview.css';
 
 export interface SessionHoverPreviewProps {
   session: ISession;
@@ -34,7 +34,7 @@ export default function SessionHoverPreview({
     };
   }, [isHovered, session.id]);
 
-  if (!show || !triggerElement) return null;
+  if (!triggerElement) return null;
   if (!session.documents || session.documents.length === 0) return null;
 
   const rect = triggerElement.getBoundingClientRect();
@@ -46,35 +46,45 @@ export default function SessionHoverPreview({
   const remainingFiles = session.documents.length - maxFiles;
 
   return createPortal(
-    <div
-      className="session-hover-preview"
-      style={{
-        position: 'absolute',
-        top: `${top}px`,
-        left: `${left}px`,
-        zIndex: 9999,
-      }}
-    >
-      <div className="preview-header">Attached Documents</div>
-      <div className="preview-files">
-        {displayedFiles.map((doc: any) => (
-          <div key={doc.id} className="preview-file-item">
-            <FiFileText className="preview-file-icon" />
-            <span className="preview-file-name" title={doc.filename}>
-              {doc.filename}
-            </span>
-            {doc.status === 'QUEUED' && <FiClock className="preview-status-icon pending" />}
-            {doc.status === 'READY' && <FiCheckCircle className="preview-status-icon success" />}
-            {doc.status === 'FAILED' && <FiXCircle className="preview-status-icon error" />}
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -5 }}
+          transition={{ duration: 0.2 }}
+          className="bg-card border border-border rounded-lg p-3 w-[250px] shadow-[0_4px_12px_rgba(0,0,0,0.5)] pointer-events-none text-foreground font-sans"
+          style={{
+            position: 'absolute',
+            top: `${top}px`,
+            left: `${left}px`,
+            zIndex: 9999,
+          }}
+        >
+          <div className="text-[0.8rem] font-semibold uppercase tracking-wider text-muted-foreground mb-2 border-b border-border pb-1">
+            Attached Documents
           </div>
-        ))}
-        {remainingFiles > 0 && (
-          <div className="preview-file-more">
-            +{remainingFiles} more {remainingFiles === 1 ? 'file' : 'files'}
+          <div className="flex flex-col gap-1.5">
+            {displayedFiles.map((doc: any) => (
+              <div key={doc.id} className="flex items-center gap-2 text-[0.85rem]">
+                <FiFileText className="text-muted-foreground shrink-0" />
+                <span className="grow whitespace-nowrap overflow-hidden text-ellipsis" title={doc.filename}>
+                  {doc.filename}
+                </span>
+                {doc.status === 'QUEUED' && <FiClock className="shrink-0 text-yellow-500" />}
+                {doc.status === 'READY' && <FiCheckCircle className="shrink-0 text-green-500" />}
+                {doc.status === 'FAILED' && <FiXCircle className="shrink-0 text-red-500" />}
+              </div>
+            ))}
+            {remainingFiles > 0 && (
+              <div className="text-[0.8rem] text-muted-foreground italic mt-1">
+                +{remainingFiles} more {remainingFiles === 1 ? 'file' : 'files'}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    </div>,
+        </motion.div>
+      )}
+    </AnimatePresence>,
     document.body
   );
 }
