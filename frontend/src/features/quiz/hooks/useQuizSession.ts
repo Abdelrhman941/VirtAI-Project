@@ -1,5 +1,5 @@
 import apiClient from '@/core/api/apiClient';
-import { toast } from '@/shared/utils/toast';
+import { toast } from '@/shared/utils/notify';
 import { useCallback, useState } from 'react';
 import { z } from 'zod';
 

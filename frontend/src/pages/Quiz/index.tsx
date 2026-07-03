@@ -1,4 +1,4 @@
-import { toast } from '@/shared/utils/toast';
+import { toast } from '@/shared/utils/notify';
 import { useState } from 'react';
 import { FiArrowLeft } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
@@ -19,7 +19,7 @@ export default function QuizPage() {
   /* TODO: Analytics - Dashboard Wrapper */
 
   return (
-    <div className="classroom-shell w-full h-full flex bg-[#0A0908]">
+    <div className="drawer-body flex flex-col h-full py-4 min-h-0">
       <div className="relative flex-1 flex">
         <button
           className="absolute top-8 left-8 flex items-center gap-2 px-4 py-2 bg-transparent text-[#b0b0b0] border-none text-[0.95rem] font-medium cursor-pointer transition-colors duration-200 z-50 hover:text-white"

@@ -4,7 +4,7 @@ import { useDocumentList } from '@/features/documents/hooks/useDocumentList';
 import { PresentationState, useExplainWS } from '@/features/explain/hooks/useExplainWS';
 import { SettingsDrawer, useSessionManager } from '@/features/session';
 import { PCMRecorder } from '@/features/voice/audio/pcmRecorder';
-import { toast } from '@/shared/utils/toast';
+import { toast } from '@/shared/utils/notify';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';

@@ -1,5 +1,5 @@
 import { cn } from '@/shared/utils/cn';
-import { toast } from '@/shared/utils/toast';
+import { toast } from '@/shared/utils/notify';
 import { Check, Copy } from 'lucide-react';
 import { lazy, Suspense, useCallback, useState } from 'react';
 

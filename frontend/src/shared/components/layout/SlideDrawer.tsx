@@ -5,7 +5,14 @@ import {
   SheetTitle,
 } from '@/shared/components/ui/sheet';
 import { cn } from '@/shared/utils/cn';
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 interface SlideDrawerProps {
   title: string;
@@ -24,14 +31,16 @@ interface SlideDrawerProps {
   resizable?: boolean;
 }
 
+const FOCUSABLE_SELECTOR = 'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])';
+
 export default function SlideDrawer({
   title,
   description,
   isOpen,
   onClose,
   children,
-  className = '',
-  contentClassName = '',
+  className,
+  contentClassName,
   zIndex = 1000,
   enableDrag = false,
   width,
@@ -41,7 +50,7 @@ export default function SlideDrawer({
   resizable = false,
 }: SlideDrawerProps) {
   const [isMobile, setIsMobile] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches,
   );
   const [isResizing, setIsResizing] = useState(false);
   const titleId = useId();
@@ -78,17 +87,12 @@ export default function SlideDrawer({
     };
   }, [isResizing, minWidth, maxWidth, onWidthChange]);
 
-  // Focus trap (Tab cycling). Radix Dialog already handles ESC + focus-lock,
-  // but this custom handler is preserved for inner content that bypasses
-  // Radix's focus scope.
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key !== 'Tab') return;
     const container = contentRef.current;
     if (!container) return;
     const focusable = Array.from(
-      container.querySelectorAll<HTMLElement>(
-        'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])'
-      )
+      container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
     ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
     if (focusable.length === 0) return;
     const first = focusable[0];
@@ -107,12 +111,11 @@ export default function SlideDrawer({
       <SheetContent
         side={isMobile ? 'bottom' : 'right'}
         showCloseButton={false}
-        // zIndex + width are DYNAMIC → stay inline (documented exception).
-        style={{ zIndex, ...((!isMobile && width) ? { width } : {}) }}
+        /* zIndex + width are runtime-dynamic → intentional inline style */
+        style={{ zIndex, ...(!isMobile && width ? { width } : {}) }}
         className={cn(
           '!bg-transparent !border-0 !shadow-none !gap-0 !p-0 [&]:w-auto [&]:max-w-none',
-          `drawer-content ${contentClassName}`,
-          isResizing ? 'resizing' : '',
+          contentClassName,
           className,
         )}
         aria-labelledby={title ? `${titleId}-title` : undefined}
@@ -121,26 +124,33 @@ export default function SlideDrawer({
       >
         <div ref={contentRef} className="contents">
           {title && (
-            <SheetTitle id={`${titleId}-title`} className="sr-only">{title}</SheetTitle>
+            <SheetTitle id={`${titleId}-title`} className="sr-only">
+              {title}
+            </SheetTitle>
           )}
           {description && (
-            <SheetDescription id={`${descId}-desc`} className="sr-only">{description}</SheetDescription>
+            <SheetDescription id={`${descId}-desc`} className="sr-only">
+              {description}
+            </SheetDescription>
           )}
 
-          {/* Resize handle — desktop-only. bg color still inline because it depends on live `isResizing` state. */}
           {!isMobile && resizable && (
             <div
-              className="drawer-resize-handle absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 transition-colors duration-200 hover:bg-white/5"
+              role="separator"
+              aria-orientation="vertical"
+              className={cn(
+                'absolute start-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 transition-colors duration-200',
+                'hover:bg-white/5',
+                isResizing && 'bg-white/10',
+              )}
               onMouseDown={() => setIsResizing(true)}
-              style={{ backgroundColor: isResizing ? 'rgba(255, 255, 255, 0.1)' : undefined }}
             />
           )}
 
-          {/* Mobile drag handle pill — fully static → Tailwind. */}
           {isMobile && enableDrag && (
             <div
-              className="drawer-drag-handle w-10 h-[5px] mx-auto mt-3 rounded flex-shrink-0"
-              style={{ background: 'var(--border-color)' }}
+              aria-hidden
+              className="w-10 h-[5px] mx-auto mt-3 rounded flex-shrink-0 bg-border/60"
             />
           )}
 

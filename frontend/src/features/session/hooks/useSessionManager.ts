@@ -1,5 +1,5 @@
 import { selectIsAuthenticated, useAuthStore } from '@/features/auth/store/authStore';
-import { toast } from '@/shared/utils/toast';
+import { toast } from '@/shared/utils/notify';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

@@ -274,7 +274,7 @@ const SessionList = memo(function SessionList({
           </div>
         </div>
 
-        <div className="sidebar-sessions-scroll overflow-y-auto no-scrollbar h-full">
+        <div className="scroll-fade scroll-fade-24 overflow-y-auto no-scrollbar h-full">
           {filtered.length === 0 ? (
             <div className="sidebar-empty-state">
               <p>No active classroom sessions. Upload a syllabus or document to start your first session.</p>

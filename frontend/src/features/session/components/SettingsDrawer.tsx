@@ -46,7 +46,7 @@ export default function SettingsDrawer({
       onWidthChange={onWidthChange}
       resizable={resizable}
     >
-      <div className="drawer-body flex flex-col h-full py-4 min-h-0">
+      <div className="flex flex-col h-full py-4 min-h-0">
         <SessionList
           sessions={sessions}
           currentSessionId={currentSessionId}

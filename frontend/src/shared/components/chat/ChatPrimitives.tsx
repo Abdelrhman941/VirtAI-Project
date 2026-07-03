@@ -1,5 +1,11 @@
+import { cn } from '@/shared/utils/cn';
+import { cva, type VariantProps } from 'class-variance-authority';
 import { Bot, User } from 'lucide-react';
-import React, { ReactNode } from 'react';
+import type { ReactNode } from 'react';
+
+/* ------------------------------------------------------------------ */
+/*  Avatar                                                             */
+/* ------------------------------------------------------------------ */
 
 export interface AvatarProps {
   type: 'user' | 'assistant';
@@ -8,30 +14,76 @@ export interface AvatarProps {
   isTyping?: boolean;
 }
 
-export const Avatar: React.FC<AvatarProps> = ({ type, size = 22, className = '', isTyping }) => {
+export function Avatar({ type, size = 22, className, isTyping }: AvatarProps) {
   const isUser = type === 'user';
   return (
-    <div className={`message-avatar ${isUser ? 'user-avatar' : `ai-avatar ${isTyping ? '' : 'mt-1'}`} ${className}`}>
-      {isUser ? <User size={size} aria-hidden="true" /> : <Bot size={size} aria-hidden="true" />}
+    <div
+      className={cn(
+        'flex-shrink-0 flex items-center justify-center rounded-full',
+        'size-9 border border-white/10',
+        isUser
+          ? 'bg-primary/15 text-primary'
+          : 'bg-white/[0.04] text-foreground/80',
+        !isUser && !isTyping && 'mt-1',
+        className,
+      )}
+    >
+      {isUser ? <User size={size} aria-hidden /> : <Bot size={size} aria-hidden />}
     </div>
   );
-};
+}
+
+/* ------------------------------------------------------------------ */
+/*  Thinking marker (shimmer)                                          */
+/* ------------------------------------------------------------------ */
 
 export function ThinkingMarker({ label = 'Thinking…' }: { label?: string }) {
   return (
     <div
       role="status"
       aria-live="polite"
-      className="shimmer shimmer-duration-1800 text-sm font-mono tracking-wide text-gray-400 select-none"
+      className="shimmer shimmer-duration-1800 text-sm font-mono tracking-wide text-muted-foreground select-none"
     >
       {label}
     </div>
   );
 }
 
-export const MessageStatus: React.FC = () => <ThinkingMarker />;
+/** @deprecated Kept only for external re-exports — use ThinkingMarker directly. */
+export const MessageStatus = () => <ThinkingMarker />;
 
-export interface ChatBubbleProps {
+/* ------------------------------------------------------------------ */
+/*  Chat bubble (CVA variants)                                         */
+/* ------------------------------------------------------------------ */
+
+const bubbleWrapperVariants = cva('flex w-full gap-3 px-2', {
+  variants: {
+    role: {
+      user: 'justify-end',
+      assistant: 'justify-start',
+    },
+  },
+  defaultVariants: { role: 'assistant' },
+});
+
+const bubbleVariants = cva('rounded-2xl px-4 py-2.5 max-w-[85%] break-words', {
+  variants: {
+    role: {
+      user: 'bg-primary text-primary-foreground ms-auto relative',
+      assistant:
+        'bg-transparent text-foreground me-auto w-full flex flex-col gap-2 border-none shadow-none',
+    },
+    state: {
+      normal: '',
+      interim: 'opacity-60 italic',
+    },
+  },
+  defaultVariants: { role: 'assistant', state: 'normal' },
+});
+
+type BubbleVariantProps = VariantProps<typeof bubbleVariants>;
+
+export interface ChatBubbleProps extends BubbleVariantProps {
   role: 'user' | 'assistant';
   children: ReactNode;
   avatarName?: string;
@@ -41,52 +93,48 @@ export interface ChatBubbleProps {
   ariaLabel?: string;
 }
 
-export const ChatBubble: React.FC<ChatBubbleProps> = ({
+export function ChatBubble({
   role,
   children,
   avatarName,
   isTyping,
   isInterim,
   timeString,
-  ariaLabel
-}) => {
+  ariaLabel,
+}: ChatBubbleProps) {
   const isUser = role === 'user';
+  const state = isInterim ? 'interim' : 'normal';
 
   return (
     <div
-      className={`chat-message-wrapper ${isUser ? 'user-message-wrapper' : 'ai-message-wrapper'} ${isInterim ? '' : 'message-enter'}`}
+      className={bubbleWrapperVariants({ role })}
       role={isInterim || isTyping ? 'status' : 'article'}
       aria-label={ariaLabel}
       aria-live={isInterim ? 'polite' : undefined}
     >
-      <div
-        className={`chat-message ${isUser ? 'user-message' : 'ai-message'} ${isTyping ? 'typing-state items-center' : 'items-start'} ${isInterim ? 'interim-transcript' : ''}`}
-      >
-        {!isUser && <Avatar type="assistant" isTyping={isTyping} />}
+      {!isUser && <Avatar type="assistant" isTyping={isTyping} />}
 
-        <div className={`message-bubble-container flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-none w-full`}>
-          {!isUser && avatarName && !isTyping && (
-            <div className="flex justify-start items-center w-full mt-1 mb-0.5 px-1 gap-1">
-              <span className="font-extrabold text-[#D4B47A] text-[15px] tracking-wide">{avatarName}</span>
-            </div>
-          )}
-
-          <div className={`message-bubble ${isUser ? (isInterim ? '' : 'user-bubble-content relative') : 'bg-transparent shadow-none border-none flex flex-col gap-2 w-full'}`}>
-            {children}
-
-            {isUser && !isInterim && timeString && (
-              <>
-                <span className="inline-block w-[45px]"></span>
-                <span className="absolute bottom-1 right-2 text-[10px] text-black/60 leading-none font-medium">
-                  {timeString}
-                </span>
-              </>
-            )}
+      <div className={cn('flex flex-col w-full max-w-none', isUser ? 'items-end' : 'items-start')}>
+        {!isUser && avatarName && !isTyping && (
+          <div className="flex items-center w-full mt-1 mb-0.5 px-1 gap-1">
+            <span className="font-extrabold text-primary text-[15px] tracking-wide">
+              {avatarName}
+            </span>
           </div>
-        </div>
+        )}
 
-        {isUser && <Avatar type="user" />}
+        <div className={bubbleVariants({ role, state })}>
+          {children}
+
+          {isUser && !isInterim && timeString && (
+            <span className="absolute bottom-1 end-2 text-[10px] text-black/60 leading-none font-medium">
+              {timeString}
+            </span>
+          )}
+        </div>
       </div>
+
+      {isUser && <Avatar type="user" />}
     </div>
   );
-};
+}

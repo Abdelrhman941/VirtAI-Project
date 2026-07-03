@@ -3,7 +3,7 @@ import useWSClient, { ConnectionState } from '@/core/realtime/useWSClient';
 import useConversationReducer from '@/features/chat/hooks/useConversationReducer';
 import { useChatUIStore } from '@/features/chat/store/useChatUIStore';
 import { PCMRecorder } from '@/features/voice/audio/pcmRecorder';
-import { toast } from '@/shared/utils/toast';
+import { toast } from '@/shared/utils/notify';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Viseme, WSPayload, WSPayloadSchema } from '../types';
 
