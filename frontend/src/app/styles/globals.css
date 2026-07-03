@@ -8,6 +8,7 @@
  * ============================================================================ */
 
 @import "tailwindcss";
+<<<<<<< HEAD
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ---------- Tailwind v4 theme tokens (custom design system) --------------- */
@@ -71,6 +72,26 @@
 
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Sora', 'Inter', ui-sans-serif, system-ui, sans-serif;
+=======
+
+/* ---------- Tailwind v4 theme tokens (custom design system) --------------- */
+@theme {
+  /* Brand palette */
+  --color-dark: #0A0908;
+  --color-dark-secondary: #14120F;
+  --color-dark-tertiary: #1E1B17;
+  --color-offwhite: #F5F1EC;
+  --color-gold: #D4B47A;
+  --color-gold-soft: #B4AB8B;
+  --color-gold-deep: #6D5B34;
+  --color-crimson: #6D001A;
+  --color-crimson-soft: #C81E42;
+  --color-crimson-glow: #C81E42;
+
+  /* Font families */
+  --font-sans: 'General Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Cabinet Grotesk', 'General Sans', ui-sans-serif, system-ui, sans-serif;
+>>>>>>> d09ebb86556ac328001727aaf9b84d7cdb8f3635
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
@@ -93,9 +114,18 @@
 
   html, body, #root {
     height: 100%;
+<<<<<<< HEAD
     background: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+=======
+    background-color: #0A0908;
+    color: #F5F1EC;
+  }
+
+  body {
+    font-family: 'General Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+>>>>>>> d09ebb86556ac328001727aaf9b84d7cdb8f3635
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -115,6 +145,7 @@
 
 /* ---------- display typography utilities ---------------------------------- */
 @layer utilities {
+<<<<<<< HEAD
 
   /* ── Scrollbars ── */
   .no-scrollbar { scrollbar-width: none; }
@@ -132,6 +163,38 @@
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(201, 169, 97, 0.35);
+=======
+  /* Hero / page-level heading  */
+  .display-h1 {
+    font-family: 'Cabinet Grotesk', 'General Sans', ui-sans-serif, system-ui, sans-serif;
+    font-size: clamp(2.25rem, 5vw + 1rem, 4rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  /* Section headings */
+  .display-h2 {
+    font-family: 'Cabinet Grotesk', 'General Sans', ui-sans-serif, system-ui, sans-serif;
+    font-size: clamp(1.75rem, 3.5vw + 0.5rem, 2.75rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+  }
+
+  /* Card / sub-section headings */
+  .display-h3 {
+    font-family: 'Cabinet Grotesk', 'General Sans', ui-sans-serif, system-ui, sans-serif;
+    font-size: clamp(1.125rem, 2vw + 0.25rem, 1.5rem);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+
+  /* ---------- scrollbar utilities ---------------------------------------- */
+  .no-scrollbar {
+    scrollbar-width: none;
+>>>>>>> d09ebb86556ac328001727aaf9b84d7cdb8f3635
   }
 
   /* ── Shimmer — the missing piece for "Thinking…" ── */
