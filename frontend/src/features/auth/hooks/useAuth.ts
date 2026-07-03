@@ -5,6 +5,7 @@ import {
   logoutUser,
   signupUser,
 } from '@/features/auth/services/authApi';
+import { postAuthDestination } from '@/features/auth/utils/authDecisions';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { notify } from '@/shared/utils/notify';
 import { useCallback, useState } from 'react';
@@ -15,15 +16,16 @@ export function useLogin() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
 
-  const login = async (email, password) => {
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
       const { access_token, user } = await loginUser(email, password);
       setAuth(user, access_token);
       notify.success('Welcome back!', `Signed in as ${user.email}`);
-      navigate(user.setupComplete ? '/classroom' : '/setup', { replace: true });
-    } catch (err) {
-      const message = err.response?.data?.detail || err.response?.data?.message || 'Invalid email or password.';
+      navigate(postAuthDestination(user.setupComplete), { replace: true });
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string; message?: string } } };
+      const message = e.response?.data?.detail || e.response?.data?.message || 'Invalid email or password.';
       notify.error('Login Failed', message);
     } finally {
       setIsLoading(false);
@@ -38,15 +40,16 @@ export function useSignup() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
 
-  const signup = async (formData) => {
+  const signup = async (formData: { fullName: string; email: string; password: string }) => {
     setIsLoading(true);
     try {
       const { access_token, user } = await signupUser(formData);
       setAuth(user, access_token);
       notify.success('Account Created', 'Welcome to VirtAI!');
-      navigate(user.setupComplete ? '/classroom' : '/setup', { replace: true });
-    } catch (err) {
-      const message = err.response?.data?.detail || err.response?.data?.message || 'Could not create account.';
+      navigate(postAuthDestination(user.setupComplete), { replace: true });
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string; message?: string } } };
+      const message = e.response?.data?.detail || e.response?.data?.message || 'Could not create account.';
       notify.error('Signup Failed', message);
     } finally {
       setIsLoading(false);
@@ -79,15 +82,16 @@ export function useGoogleCallback() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
 
-  const handleCallback = async (code, state) => {
+  const handleCallback = async (code: string, state: string) => {
     setIsLoading(true);
     try {
       const { access_token, user } = await exchangeGoogleCode(code, state);
       setAuth(user, access_token);
       notify.success('Welcome!', `Signed in as ${user.email}`);
-      navigate(user.setupComplete ? '/classroom' : '/setup', { replace: true });
-    } catch (err) {
-      const message = err.response?.data?.detail || err.response?.data?.message || 'Google sign-in failed.';
+      navigate(postAuthDestination(user.setupComplete), { replace: true });
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string; message?: string } } };
+      const message = e.response?.data?.detail || e.response?.data?.message || 'Google sign-in failed.';
       notify.error('Auth Failed', message);
       throw err;
     } finally {
@@ -116,7 +120,7 @@ export function useLogout() {
     try {
       await logoutUser();
     } catch {
-      // ignore
+      // ignore — logout API failure should not prevent local session clear
     }
     storeLogout();
     navigate('/');

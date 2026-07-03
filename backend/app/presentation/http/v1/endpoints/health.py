@@ -45,22 +45,28 @@ async def health_check(request: Request) -> dict:
 
     status["services"]["app_ready"] = "ok"
 
-    # PostgreSQL + pgvector ping
+    # PostgreSQL ping
     try:
         from app.infrastructure.db.database import engine
 
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-            # Also check if vector extension is enabled
-            result = await conn.execute(
-                text("SELECT extname FROM pg_extension WHERE extname = 'vector'")
-            )
-            has_vector = result.scalar() is not None
+
+            # pgvector check: run once and cache in app.state to avoid a
+            # redundant SQL round-trip on every health poll (every 30 s).
+            if not hasattr(request.app.state, "pgvector_available"):
+                result = await conn.execute(
+                    text("SELECT extname FROM pg_extension WHERE extname = 'vector'")
+                )
+                request.app.state.pgvector_available = result.scalar() is not None
+                if not request.app.state.pgvector_available:
+                    logger.warning("[Health] pgvector extension not found — cached as missing")
+
+        has_vector = request.app.state.pgvector_available
         status["services"]["postgresql"] = "ok"
         status["services"]["pgvector"] = "ok" if has_vector else "missing"
         if not has_vector:
             status["status"] = "degraded"
-            logger.warning("[Health] pgvector extension not found")
     except Exception as e:
         logger.warning(f"[Health] PostgreSQL ping failed: {e}")
         status["services"]["postgresql"] = "unavailable"

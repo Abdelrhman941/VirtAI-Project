@@ -2,6 +2,7 @@ import { useAvatarAnimations } from '@/features/avatar/hooks/useAvatarAnimations
 import { useAvatarLipSync } from '@/features/avatar/hooks/useAvatarLipSync';
 import { Viseme } from '@/features/voice/hooks/useGaplessAudioQueue';
 import { notify } from '@/shared/utils/notify';
+import { logger } from '@/shared/utils/logger';
 import { useGLTF } from '@react-three/drei';
 import { useGraph } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef } from 'react';
@@ -83,9 +84,7 @@ export function AvatarComponent({
         const mesh = node as THREE.SkinnedMesh;
         // Strictly filter to meshes with skinning AND morph targets (e.g. Wolf3D_Head)
         if (mesh.isSkinnedMesh && mesh.morphTargetDictionary && mesh.morphTargetInfluences) {
-          if (import.meta.env.DEV) {
-            console.log(`[AvatarComponent] Available Morph Targets on ${mesh.name}:`, Object.keys(mesh.morphTargetDictionary));
-          }
+          logger.debug(`[AvatarComponent] Morph Targets on ${mesh.name}:`, Object.keys(mesh.morphTargetDictionary));
           return true;
         }
         return false;
@@ -95,9 +94,7 @@ export function AvatarComponent({
 
   useEffect(() => {
     if (nodes && targetMeshes.length === 0 && !toastShownRef.current) {
-      if (import.meta.env.DEV) {
-        console.warn('[AvatarComponent] Missing morphTargetDictionary or morphTargetInfluences on Avatar nodes. Expressions and lip-sync will fail silently.');
-      }
+        logger.warn('[AvatarComponent] Missing morphTargetDictionary or morphTargetInfluences. Lip-sync will fail silently.');
       notify.warning('Avatar Warning', 'Lip-sync targets missing. Using fallback animation.');
       toastShownRef.current = true;
     }
@@ -131,9 +128,7 @@ export function AvatarComponent({
           rotation: groupRef.current.rotation.toArray()
         }
       };
-      console.log('[Runtime Evidence] Avatar Mount:', evidence);
-      (window as any).__AVATAR_EVIDENCE = evidence;
-      (window as any).__AVATAR_CLONE = clone;
+      logger.debug('[Runtime Evidence] Avatar Mount:', evidence);
     }
   }, [clone]);
 

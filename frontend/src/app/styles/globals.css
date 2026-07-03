@@ -2,17 +2,15 @@
  * VirtAI · globals.css   (the ONLY root-level stylesheet)
  * ----------------------------------------------------------------------------
  * Imported once from `app/main.tsx`.
- * Contains: Tailwind directives · design tokens · brand palette
+ * Contains: Tailwind v4 import · design tokens · brand palette
  *           · [dir="rtl"] logical-property overrides · shared utilities.
  * DO NOT add feature-specific rules here — use Tailwind utilities in the JSX.
  * ============================================================================ */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* ---------- design tokens (CSS variables) --------------------------------- */
-:root {
+/* ---------- Tailwind v4 theme tokens (custom design system) --------------- */
+@theme {
   /* Brand palette */
   --color-dark: #0A0908;
   --color-dark-secondary: #14120F;
@@ -22,14 +20,23 @@
   --color-gold-soft: #B4AB8B;
   --color-gold-deep: #6D5B34;
   --color-crimson: #6D001A;
+  --color-crimson-soft: #C81E42;
   --color-crimson-glow: #C81E42;
 
+  /* Font families */
+  --font-sans: 'General Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Cabinet Grotesk', 'General Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ---------- CSS variables (for non-Tailwind consumers, e.g. shadcn) ------- */
+:root {
   /* Semantic aliases (consumed by shadcn primitives) */
-  --background: var(--color-dark);
-  --foreground: var(--color-offwhite);
+  --background: #0A0908;
+  --foreground: #F5F1EC;
   --border-color: rgba(245, 241, 236, 0.12);
-  --text-primary: var(--color-offwhite);
-  --accent-gold: var(--color-gold);
+  --text-primary: #F5F1EC;
+  --accent-gold: #D4B47A;
 
   /* Visual viewport unit (iOS Safari mobile-keyboard fix — see useVisualViewport hook) */
   --vv-height: 100dvh;
@@ -42,12 +49,12 @@
   body,
   #root {
     height: 100%;
-    background-color: var(--color-dark);
-    color: var(--color-offwhite);
+    background-color: #0A0908;
+    color: #F5F1EC;
   }
 
   body {
-    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-family: 'General Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -58,8 +65,36 @@
   }
 }
 
-/* ---------- shared utilities --------------------------------------------- */
+/* ---------- display typography utilities ---------------------------------- */
 @layer utilities {
+  /* Hero / page-level heading  */
+  .display-h1 {
+    font-family: 'Cabinet Grotesk', 'General Sans', ui-sans-serif, system-ui, sans-serif;
+    font-size: clamp(2.25rem, 5vw + 1rem, 4rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  /* Section headings */
+  .display-h2 {
+    font-family: 'Cabinet Grotesk', 'General Sans', ui-sans-serif, system-ui, sans-serif;
+    font-size: clamp(1.75rem, 3.5vw + 0.5rem, 2.75rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+  }
+
+  /* Card / sub-section headings */
+  .display-h3 {
+    font-family: 'Cabinet Grotesk', 'General Sans', ui-sans-serif, system-ui, sans-serif;
+    font-size: clamp(1.125rem, 2vw + 0.25rem, 1.5rem);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+
+  /* ---------- scrollbar utilities ---------------------------------------- */
   .no-scrollbar {
     scrollbar-width: none;
   }

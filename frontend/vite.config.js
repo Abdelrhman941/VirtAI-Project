@@ -28,7 +28,12 @@ export default defineConfig({
     // Never try to open a browser — not possible inside Docker / CI
     open: false,
     watch: {
-      usePolling: true,
+      // Only enable polling when explicitly requested (e.g. on macOS APFS or
+      // network filesystems where inotify is unreliable).
+      // Unconditional polling is one of the primary causes of Vite OOM inside
+      // Docker because it allocates timers + stat calls for every file.
+      usePolling: process.env.VITE_USE_POLLING === 'true',
+      interval: 300,
     },
     proxy: {
       '/api': {

@@ -1,4 +1,5 @@
 import { useGaplessAudioQueue, Viseme } from '@/features/voice/hooks/useGaplessAudioQueue';
+import { logger } from '@/shared/utils/logger';
 import { useCallback, useRef } from 'react';
 
 export function useClassroomAudio() {
@@ -92,7 +93,7 @@ export function useClassroomAudio() {
 
     if (hasFutureChunks && !missingChunkTimeoutsRef.current[baseId]) {
       missingChunkTimeoutsRef.current[baseId] = setTimeout(() => {
-        console.warn(`[AudioSequence] Timeout waiting for chunk ${expected}. Skipping.`);
+        logger.warn(`[AudioSequence] Timeout waiting for chunk ${expected}. Skipping.`);
         expectedChunkRef.current[baseId]++;
         delete missingChunkTimeoutsRef.current[baseId];
         tryPlayChunkInner(baseId);
@@ -158,7 +159,7 @@ export function useClassroomAudio() {
         if (chunk && chunk.url) {
           const ctx = getAudioContext();
           if (ctx.state === 'suspended') ctx.resume();
-          console.warn(`[AudioSequence] Eager reconciliation flush. Pushing out-of-order chunk ${idx}`);
+          logger.warn(`[AudioSequence] Eager reconciliation flush. Pushing out-of-order chunk ${idx}`);
           enqueueAudioUrl(chunk.url, chunk.cues || [], mouthCuesRef);
 
           if (chunksRef.current[baseId]?.[idx.toString()]) {

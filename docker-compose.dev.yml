@@ -27,9 +27,21 @@ services:
     volumes:
       - ./frontend:/app
       - frontend-node-modules:/app/node_modules
+    environment:
+      # P1 fix: cap Node.js heap to prevent OOM kills (exit code 137).
+      # Vite v8 + TypeScript + Tailwind v4 can spike to 1.5-2 GB without this.
+      - NODE_OPTIONS=--max-old-space-size=4096
     depends_on:
       backend:
         condition: service_started
+    deploy:
+      resources:
+        limits:
+          # 6 GB hard ceiling — prevents Linux OOM killer from firing.
+          # Raise if your host has more RAM available.
+          memory: 6G
+        reservations:
+          memory: 512M
 
   tts:
     ports:

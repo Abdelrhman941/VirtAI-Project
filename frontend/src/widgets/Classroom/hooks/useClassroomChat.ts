@@ -4,6 +4,7 @@ import useConversationReducer from '@/features/chat/hooks/useConversationReducer
 import { useChatUIStore } from '@/features/chat/store/useChatUIStore';
 import { PCMRecorder } from '@/features/voice/audio/pcmRecorder';
 import { toast } from '@/shared/utils/notify';
+import { logger } from '@/shared/utils/logger';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Viseme, WSPayload, WSPayloadSchema } from '../types';
 
@@ -148,7 +149,7 @@ export function useClassroomChat({
           isCreatingSessionRef.current = false;
           dispatch({ type: 'PIPELINE_STATE', payload: { state: 'idle' } });
           useChatUIStore.getState().setPipelineState('idle');
-          console.error(err);
+          logger.error(err);
         });
       } else {
         const message_id = crypto.randomUUID();
@@ -183,11 +184,8 @@ export function useClassroomChat({
     const validatePayload = (rawData: unknown): WSPayload | null => {
       const result = WSPayloadSchema.safeParse(rawData);
       if (!result.success) {
-        if (import.meta.env.DEV) {
-          console.warn('[WS] Payload validation failed:', result.error);
-        } else {
-          console.error('[WS] Payload validation failed:', result.error);
-        }
+        if (import.meta.env.DEV) logger.warn('[WS] Payload validation failed:', result.error);
+        else logger.error('[WS] Payload validation failed:', result.error);
         const message = 'Network protocol mismatch detected. Please refresh.';
         dispatch({ type: 'ERROR', payload: { message } });
         toast.error('Connection Error', message, TOAST_DURATION_MS);

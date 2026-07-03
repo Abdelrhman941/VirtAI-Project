@@ -5,6 +5,7 @@ import { PresentationState, useExplainWS } from '@/features/explain/hooks/useExp
 import { SettingsDrawer, useSessionManager } from '@/features/session';
 import { PCMRecorder } from '@/features/voice/audio/pcmRecorder';
 import { toast } from '@/shared/utils/notify';
+import { logger } from '@/shared/utils/logger';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -225,7 +226,7 @@ export default function ClassroomShell() {
     if (!payload) return;
 
     // Await audio context unlock so it's strictly bound to this gesture
-    unlockAudioContext().catch(console.warn);
+    unlockAudioContext().catch((err) => logger.warn('[AudioContext] Failed to unlock on user gesture:', err));
 
     commitAndSend(payload);
 

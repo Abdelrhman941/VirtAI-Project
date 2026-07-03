@@ -1,9 +1,13 @@
 import { ChatBubble, MessageStatus } from '@/shared/components/chat/ChatPrimitives';
-import React, { useEffect, useRef } from 'react';
+import { MessageScrollerItem } from '@/shared/components/chat/MessageScrollerItem';
+import { MessageScrollerProvider } from '@/shared/components/chat/MessageScrollerProvider';
+import React from 'react';
 import { PiLightbulbFilament } from 'react-icons/pi';
-import { IMessage } from '../../session/types';
+import type { IMessage } from '../../session/types';
 import { useChatUIStore } from '../store/useChatUIStore';
 import MessageBubble from './MessageBubble';
+
+// ─── Streaming overlay ────────────────────────────────────────────────────────
 
 function StreamingLayer({ avatarName }: { avatarName: string }) {
   const currentMessage = useChatUIStore((s) => s.currentMessage);
@@ -33,68 +37,53 @@ function StreamingLayer({ avatarName }: { avatarName: string }) {
   );
 }
 
-interface MessageListProps {
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
+function EmptyState({ avatarName }: { avatarName: string }) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[300px]">
+      <PiLightbulbFilament className="text-4xl text-gold-soft mb-4 animate-pulse" />
+      <h2 className="text-xl font-bold text-offwhite mb-2">Start a conversation</h2>
+      <p className="text-sm text-offwhite/50 max-w-sm">
+        Ask {avatarName} anything to begin your lesson.
+      </p>
+    </div>
+  );
+}
+
+// ─── MessageList ──────────────────────────────────────────────────────────────
+
+export interface MessageListProps {
   messages: IMessage[];
   error?: string | null;
   avatarName: string;
 }
 
-const MessageList = React.memo(function MessageList({
-  messages,
-  avatarName,
-}: MessageListProps) {
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const isAtBottomRef = useRef(true);
-
-  // Track whether user is near the bottom
-  const handleScroll = () => {
-    const el = viewportRef.current;
-    if (!el) return;
-    const threshold = 48;
-    isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
-  };
-
-  // Scroll to bottom on new messages when pinned to bottom
-  useEffect(() => {
-    const el = viewportRef.current;
-    if (!el) return;
-    if (isAtBottomRef.current) {
-      el.scrollTop = el.scrollHeight;
-    }
-  });
-
+const MessageList = React.memo(function MessageList({ messages, avatarName }: MessageListProps) {
   return (
     <div className="flex flex-col h-full relative overflow-hidden">
-      <div
-        ref={viewportRef}
-        onScroll={handleScroll}
-        className="flex-1 w-full overflow-y-auto no-scrollbar"
-      >
+      <MessageScrollerProvider>
         <div className="w-full flex flex-col gap-4 p-4 pb-20 min-h-full">
           {messages.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[300px]">
-              <PiLightbulbFilament className="text-4xl text-[#b4ab8b] mb-4 animate-pulse" />
-              <h2 className="text-xl font-bold text-white mb-2">Start a conversation</h2>
-              <p className="text-sm text-gray-400 max-w-sm">Ask {avatarName} anything to begin your lesson.</p>
-            </div>
+            <EmptyState avatarName={avatarName} />
           ) : (
             <>
               {messages.map((msg, index) => (
-                <MessageBubble
-                  key={msg.id || index}
-                  msg={msg}
-                  isLast={index === messages.length - 1}
-                  avatarName={avatarName}
-                />
+                <MessageScrollerItem key={msg.id ?? index}>
+                  <MessageBubble
+                    msg={msg}
+                    isLast={index === messages.length - 1}
+                    avatarName={avatarName}
+                  />
+                </MessageScrollerItem>
               ))}
               <StreamingLayer avatarName={avatarName} />
             </>
           )}
         </div>
-      </div>
+      </MessageScrollerProvider>
     </div>
   );
 });
 
 export default MessageList;
-export type { MessageListProps };

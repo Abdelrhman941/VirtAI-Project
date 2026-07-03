@@ -39,6 +39,24 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("PostgreSQL + pgvector initialised")
 
+    # Cache pgvector availability once at startup so the health endpoint never
+    # needs to run SELECT extname FROM pg_extension on every poll.
+    try:
+        from sqlalchemy import text as _text
+        from app.infrastructure.db.database import engine as _engine
+        async with _engine.connect() as _conn:
+            _result = await _conn.execute(
+                _text("SELECT extname FROM pg_extension WHERE extname = 'vector'")
+            )
+            app.state.pgvector_available = _result.scalar() is not None
+        if not app.state.pgvector_available:
+            logger.warning("[Startup] pgvector extension NOT found — RAG features may be unavailable")
+        else:
+            logger.info("[Startup] pgvector extension confirmed")
+    except Exception as _pgv_err:
+        logger.warning(f"[Startup] Could not verify pgvector: {_pgv_err}")
+        app.state.pgvector_available = False
+
     # ── Redis ────────────────────────────────────────────────────────────────
     await init_redis()
     logger.info("Redis initialised")
