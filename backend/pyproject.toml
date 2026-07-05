@@ -12,7 +12,7 @@ dependencies = [
     "fastapi==0.115.0",
     "uvicorn[standard]==0.30.6",
     "websockets==13.1",
-    "python-multipart==0.0.12",
+    "python-multipart==0.0.32",
     # AI Services
     "edge-tts==7.2.7",
     # Audio Processing
