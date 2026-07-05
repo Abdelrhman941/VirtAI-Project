@@ -14,7 +14,7 @@ dependencies = [
     "websockets==13.1",
     "python-multipart==0.0.12",
     # AI Services
-    "edge-tts==7.2.7",
+    "edge-tts==7.2.8",
     # Audio Processing
     "pydub>=0.25.1",
     "numpy>=1.24.0",
