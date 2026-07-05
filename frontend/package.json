@@ -78,7 +78,7 @@
     "jscpd": "^5.0.9",
     "knip": "^6.16.1",
     "lighthouse": "^12.6.1",
-    "lint-staged": "^15.2.11",
+    "lint-staged": "^17.0.8",
     "madge": "^8.0.0",
     "prettier": "^3.8.4",
     "rollup-plugin-visualizer": "^5.14.0",
